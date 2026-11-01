@@ -705,14 +705,22 @@ document.querySelectorAll('.tabs [role="tab"]').forEach((tab) => {
 
 $('add-form').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const { good, bad } = parseNames($('add-input').value);
-  if (!good.length && !bad.length) return;
-  if (good.length && await save({ ...state, [kind]: [...state[kind], ...good] })) {
+  // u/ names and links pasted in the Subreddits tab go to Users, r/ ones in
+  // the Users tab to Subreddits.
+  const other = kind === 'subs' ? 'users' : 'subs';
+  const parts = $('add-input').value.split(/[\s,]+/).filter(Boolean);
+  const isOther = (p) => MuteStore.refKind(p) === (other === 'users' ? 'u' : 'r');
+  const here = parseNames(parts.filter((p) => !isOther(p)).join(' '));
+  const there = parseNames(parts.filter(isOther).join(' '), other);
+  const bad = [...here.bad, ...there.bad];
+  const added = [...here.good.map((n) => PREFIX[kind] + n), ...there.good.map((n) => PREFIX[other] + n)];
+  if (!added.length && !bad.length) return;
+  if (added.length && await save({ ...state, [kind]: [...state[kind], ...here.good], [other]: [...state[other], ...there.good] })) {
     $('add-input').value = bad.join(' ');
   }
   setStatus(bad.length
-    ? `Not valid names: ${bad.join(', ')}`
-    : `Muted ${good.map((n) => PREFIX[kind] + n).join(', ')}`, bad.length > 0);
+    ? `Not valid: ${bad.join(', ')}`
+    : `Muted ${added.join(', ')}`, bad.length > 0);
 });
 
 $('filter').addEventListener('input', render);
@@ -761,7 +769,7 @@ document.querySelectorAll('[data-edit]').forEach((button) => {
 /* ---------- Recommendations ---------- */
 
 // One box for both lists: u/ names and /user/ links are users, the rest subs.
-const isUserRef = (part) => /^(?:https?:\/\/[^/]+)?\/?(?:u|user)\//i.test(part);
+const isUserRef = (part) => MuteStore.refKind(part) === 'u';
 
 $('rec-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -775,7 +783,7 @@ $('rec-form').addEventListener('submit', async (e) => {
     $('rec-input').value = bad.join(' ');
   }
   setStatus(bad.length
-    ? `Not valid names: ${bad.join(', ')}`
+    ? `Not valid: ${bad.join(', ')}`
     : `Muted ${added.join(', ')} in recommendations`, bad.length > 0);
 });
 

@@ -76,9 +76,24 @@ const MuteStore = (() => {
   const ON_DEVICE = 'listOnDevice';
 
   // Accepts "name", "r/name", "/u/name", "user/name" or a full reddit URL.
+  // Links count only from reddit.com (any subdomain); other sites' links,
+  // and redd.it short links (no subreddit in them), give null.
+  function refPath(raw) {
+    const s = String(raw || '').trim().toLowerCase();
+    const link = s.match(/^(?:https?:\/\/)?([a-z0-9-]+(?:\.[a-z0-9-]+)+)(\/.*)?$/);
+    if (!link) return s.replace(/^\/+/, '');
+    if (link[1] !== 'reddit.com' && !link[1].endsWith('.reddit.com')) return null;
+    return (link[2] || '').replace(/^\/+/, '');
+  }
+
+  // 'u' for a u/ or user/ name or link, 'r' for r/, else null.
+  function refKind(raw) {
+    return refPath(raw)?.match(/^(u|user|r)\//)?.[1].slice(0, 1) || null;
+  }
+
   function normalize(raw) {
-    let s = String(raw || '').trim().toLowerCase();
-    s = s.replace(/^https?:\/\/[^/]+/, '').replace(/^\/+/, '');
+    let s = refPath(raw);
+    if (s == null) return null;
     const m = s.match(/^(?:r|u|user)\/([^/?#\s]+)/);
     if (m) s = m[1];
     return NAME_RE.test(s) ? s : null;
@@ -331,6 +346,6 @@ const MuteStore = (() => {
 
   return {
     KINDS, WORD_KINDS, REC_KINDS, KEEP_KINDS, SKIP_KINDS, NOTE_KINDS, SCOPE_KINDS, GROUP_KINDS, ALL_KINDS, subNoteFor, isSubKind, isUserKind,
-    normalize, normalizeSub, normalizeUser, normalizeWord, scopeOf, withScope, clean, load, save, add, remove, idle, onChange, onDevice, effective
+    normalize, refKind, normalizeSub, normalizeUser, normalizeWord, scopeOf, withScope, clean, load, save, add, remove, idle, onChange, onDevice, effective
   };
 })();
