@@ -179,6 +179,15 @@ html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toa
   font-size: 14px !important;
   line-height: 20px !important;
 }
+.rmute-decide a {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.rmute-decide a:hover,
+.rmute-decide a:focus-visible {
+  text-decoration: underline;
+}
 .rmute-decide button {
   display: inline-flex;
   align-items: center;
