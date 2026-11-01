@@ -177,6 +177,9 @@ html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toa
   white-space: nowrap;
 }
 .rmute-decide a {
+  /* The label carries the copied font; Reddit's own link styles mustn't win. */
+  font: inherit !important;
+  letter-spacing: inherit !important;
   color: inherit;
   text-decoration: none;
   cursor: pointer;
