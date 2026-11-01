@@ -50,8 +50,8 @@ html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toa
   padding: 0;
   border: 0;
   border-radius: 9999px;
-  /* Solid, so it stays readable where it overlaps a thumbnail. */
-  background: var(--color-neutral-background, #fff);
+  /* The circle shows only on hover. */
+  background: none;
   color: var(--color-neutral-content-weak, #576f76);
   cursor: pointer;
 }
