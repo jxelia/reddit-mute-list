@@ -26,4 +26,23 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
     return true;
   }
 });
+
+// The hidden-post count from a Reddit tab (content.js), on the toolbar icon.
+chrome.runtime.onMessage.addListener((msg, sender) => {
+  if (msg?.type !== 'rmute:badge' || !sender.tab) return;
+  chrome.action.setBadgeBackgroundColor({ tabId: sender.tab.id, color: '#576f76' });
+  chrome.action.setBadgeText({ tabId: sender.tab.id, text: msg.text });
+});
+
+// Running total of posts hidden, for the popup: { count, since }. Adds are
+// chained so tabs counting at once don't overwrite each other.
+let totalChain = Promise.resolve();
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg?.type !== 'rmute:addHidden') return;
+  totalChain = totalChain.then(async () => {
+    const { hiddenTotal } = await chrome.storage.local.get('hiddenTotal');
+    const total = hiddenTotal || { count: 0, since: Date.now() };
+    await chrome.storage.local.set({ hiddenTotal: { ...total, count: total.count + (msg.count || 0) } });
+  }).catch(() => {});
+});
 checkBuild();

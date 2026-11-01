@@ -38,6 +38,11 @@
 /* Display rules below (e.g. .restore) would otherwise show hidden elements. */
 [hidden] { display: none !important; }
 
+/* The "Extra features" switch (settings.extras): off hides .extra, on hides .core. */
+body:not(.extras) .extra, body.extras .core { display: none !important; }
+body:not(.extras) .word-table { --word-cols: minmax(0, 1fr) 4rem 2.4rem 1.8rem; }
+body:not(.extras) :is(.word-head > span, .word-table .list li > *):is(:nth-child(4), :nth-child(5)) { display: none; }
+
 body {
   margin: 0;
   background: var(--bg);
@@ -213,11 +218,11 @@ textarea { height: 14rem; resize: vertical; font-family: ui-monospace, Menlo, mo
 .word-section .hint { margin: 0 0 0.4rem; }
 .word-section #feeds-status { margin: 0.4rem 0 0; }
 
-/* Muted words: one row per word, [word] | Comments | Title | ×. */
-.word-table { --word-cols: minmax(0, 1fr) 4.6rem 3.2rem 2rem; }
+/* Muted words: one row per word, [word] | Comments | Title | Text | Flair | ×. */
+.word-table { --word-cols: minmax(0, 1fr) 4rem 2.4rem 2.4rem 2.4rem 1.8rem; }
 .word-head, .word-table .list li { display: grid; grid-template-columns: var(--word-cols); align-items: center; }
-.word-head { padding: 0 0.4rem 0.25rem 0.75rem; color: var(--muted); font-size: 0.8rem; }
-.word-head > span:nth-child(2), .word-head > span:nth-child(3), .word-table .list li > input { justify-self: center; }
+.word-head { padding: 0 0.4rem 0.25rem 0.75rem; color: var(--muted); font-size: 0.75rem; }
+.word-head > span:not(:first-child), .word-table .list li > input { justify-self: center; }
 .word-table .list li > span { overflow-wrap: anywhere; }
 .word-table .list li > input { margin: 0; cursor: pointer; }
 .word-table .list .remove { justify-self: end; }
@@ -255,3 +260,50 @@ body.popup .word-section .list { max-height: 10rem; }
 .page-subs-list button { width: 1.4rem; height: 1.4rem; padding: 0; border-radius: 50%; background: none; color: var(--muted); font-size: 0.75rem; font-weight: 400; line-height: 1; }
 .page-subs-list button:hover, .page-subs-list button[aria-pressed="true"] { color: var(--fg); background: var(--line); }
 .page-subs > button:disabled { opacity: 0.5; cursor: default; filter: none; }
+
+/* Sort order, beside each filter box. */
+select { font: inherit; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: 0.5rem; padding: 0.4rem 0.3rem; }
+.toolbar .sort { flex: none; font-size: 0.85rem; }
+
+/* Where a word or user applies: a small link under the name, and its editor row. */
+.name-cell { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; overflow-wrap: anywhere; }
+.list .scope { padding: 0; font-size: 0.75rem; font-weight: 400; text-align: left; white-space: normal; }
+.list .scope.set { color: var(--accent); }
+.list li.scope-edit { display: flex; flex-wrap: wrap; gap: 0.4rem; background: var(--surface); }
+.scope-edit input { flex: 1 1 8rem; padding: 0.3rem 0.5rem; }
+.scope-edit button { padding: 0.3rem 0.8rem; }
+
+.word-action { margin-top: 0.6rem; font-size: 0.85rem; flex-wrap: wrap; }
+
+.settings > .hint { margin: 0.15rem 0 0 0; }
+.settings input[type="number"] { width: 4.5rem; padding: 0.2rem 0.4rem; border: 1px solid var(--line); border-radius: 0.4rem; background: var(--surface); }
+
+.page-counts { margin: 0 0 0.5rem; }
+
+.status .link { color: var(--accent); padding: 0 0.4rem; font-size: inherit; }
+
+/* Muted words: the summary under the add box, and named word lists. */
+.summary { margin: -0.4rem 0 0.75rem; }
+#words-view .word-section h2 { margin-bottom: 0.4rem; }
+#word-groups .import-group .word-table { margin-top: 0.4rem; }
+.group-actions { display: flex; gap: 0.25rem; flex-wrap: wrap; margin-top: 0.3rem; }
+.group-actions .link { padding: 0.15rem 0.4rem; font-size: 0.85rem; }
+#new-list input, #new-list textarea, .group-edit input, .group-edit textarea { margin-top: 0.4rem; }
+.list-words { height: 6rem; font-family: inherit; }
+#suggested-list li { gap: 0.5rem; }
+#suggested-list .pack { min-width: 0; }
+#suggested-list .pack small { display: block; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#suggested-list button { flex: none; padding: 0.25rem 0.8rem; }
+#suggested-list button:disabled { background: var(--surface); color: var(--muted); cursor: default; filter: none; }
+.settings select, .word-action select { padding: 0.2rem 0.3rem; }
+
+/* Collapsed sections, so the popup shows the lists first. */
+.fold > summary { cursor: pointer; font-weight: 600; font-size: 0.95rem; }
+.fold[open] > summary { margin-bottom: 0.5rem; }
+#words-view > .fold { margin-top: 0.75rem; }
+#words-view > .fold > .import-group:first-of-type { margin-top: 0; }
+h2.spaced { margin-top: 1rem; }
+.settings > :not(summary) { margin-top: 0.5rem; }
+/* A word or user is the button that sets where it applies. */
+.list .name-btn { padding: 0; background: none; color: inherit; font-weight: inherit; border-radius: 0.25rem; text-align: left; overflow-wrap: anywhere; }
+.list .name-btn:hover { text-decoration: underline dotted; filter: none; }
