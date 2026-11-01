@@ -203,6 +203,15 @@ html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toa
   background: var(--color-secondary-background-hover, rgba(128, 128, 128, 0.2));
 }
 
+/* The Mute r/ button on r/popular bars: greyed until hovered. */
+.rmute-decide button.rmute-faint {
+  color: var(--color-neutral-content-weak, #8a8a8a);
+}
+.rmute-decide button.rmute-faint:hover,
+.rmute-decide button.rmute-faint:focus-visible {
+  color: var(--color-neutral-content-strong, inherit);
+}
+
 /* Button in Reddit's Muted communities box (settings) */
 .rmute-native {
   display: flex;

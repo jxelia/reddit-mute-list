@@ -1509,6 +1509,7 @@ function syncDecideBar(post, sub, popular = false) {
   // since recommendation mutes only apply on the home feed). Elsewhere a menu.
   const menu = popular ? iconButton(ICONS.mute, `Mute r/${sub}`) : iconButton(ICONS.menu, `Options for r/${sub}`);
   if (popular) {
+    menu.classList.add('rmute-faint');
     menu.addEventListener('click', (e) => {
       e.stopPropagation(); // not a toggle
       mute('subs', sub);
