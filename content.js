@@ -1462,7 +1462,7 @@ function markPopular(post) {
 }
 
 // Keep mode's one-line stand-in for an undecided recommended post: the sub
-// name as a link (clicking the rest of the bar shows or hides the post itself) and a menu with Keep and Mute.
+// name (clicking the bar shows or hides the post itself) and a menu with Keep and Mute.
 const hiddenNames = new WeakMap(); // post -> its own sub name link, hidden under a bar
 
 function syncDecideBar(post, sub, popular = false) {
@@ -1479,13 +1479,8 @@ function syncDecideBar(post, sub, popular = false) {
   el.className = 'rmute-decide';
   el.dataset.sub = sub;
   const label = document.createElement('span');
-  // Reddit's own capitalization (r/30ROCK), not the lowercased name. The name
-  // links to the sub, since the post's own link is hidden; the rest of the bar toggles.
-  const link = document.createElement('a');
-  link.href = `/r/${sub}/`;
-  link.textContent = post.getAttribute('subreddit-prefixed-name') || `r/${sub}`;
-  link.addEventListener('click', (e) => e.stopPropagation()); // not a toggle
-  label.append(link);
+  // Reddit's own capitalization (r/30ROCK), not the lowercased name.
+  label.textContent = post.getAttribute('subreddit-prefixed-name') || `r/${sub}`;
 
   // The whole bar is the show/hide toggle; no icon for it.
   el.setAttribute('role', 'button');
