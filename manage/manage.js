@@ -357,7 +357,7 @@ function render() {
     for (const k of REC_LISTS) renderList(k, $('list-' + k), $('empty-' + k), filter);
     return;
   }
-  $('add-input').placeholder = kind === 'subs' ? 'r/name, *word*, or paste links' : 'u/name, *bot*, or paste links';
+  $('add-input').placeholder = kind === 'subs' ? 'r/name, word, or paste links' : 'u/name, *bot*, or paste links';
   const filter = $('filter').value.trim().toLowerCase().replace(/^[ru]\//, '');
   renderList(kind, $('list'), $('empty'), filter);
   renderSkip(filter);
