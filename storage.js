@@ -54,7 +54,6 @@ const MuteStore = (() => {
     commentHideReplies: false, // their replies go too
     hideCommentSections: false, // no comments at all
     showCounter: true, // hidden-post count on the toolbar icon
-    hiddenNotice: true, // a notice on the page when posts are hidden, with Show
     theme: 'system', // the popup's own light/dark theme
     extras: false // the popup's "Extra features" switch (see effective)
   };
@@ -64,7 +63,7 @@ const MuteStore = (() => {
   // Nothing is deleted, so turning extras back on restores them.
   const CORE_SETTINGS = {
     wordAction: 'hide', minScore: 0, hideCommentAvatars: false, commentNames: 'show', commentAction: 'bar',
-    commentShowWord: true, commentHideReplies: false, hideCommentSections: false, showCounter: false, hiddenNotice: false
+    commentShowWord: true, commentHideReplies: false, hideCommentSections: false, showCounter: false
   };
   const EXTRA_KINDS = ['bodyWords', 'flairWords', 'scopes'];
 

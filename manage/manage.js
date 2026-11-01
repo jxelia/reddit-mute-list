@@ -330,7 +330,6 @@ function render() {
   $('hide-avatars').checked = !!state.settings.hideCommentAvatars;
   $('comment-names').value = state.settings.commentNames || 'show';
   $('hide-sections').checked = !!state.settings.hideCommentSections;
-  $('hidden-notice').checked = !!state.settings.hiddenNotice;
   $('comment-action').value = state.settings.commentAction || 'bar';
   $('comment-show-word').checked = state.settings.commentShowWord !== false;
   $('comment-hide-replies').checked = !!state.settings.commentHideReplies;
@@ -877,7 +876,6 @@ $('hide-comments').addEventListener('change', (e) => setSetting('hideComments', 
 $('hide-avatars').addEventListener('change', (e) => setSetting('hideCommentAvatars', e.target.checked));
 $('comment-names').addEventListener('change', (e) => setSetting('commentNames', e.target.value));
 $('hide-sections').addEventListener('change', (e) => setSetting('hideCommentSections', e.target.checked));
-$('hidden-notice').addEventListener('change', (e) => setSetting('hiddenNotice', e.target.checked));
 $('comment-action').addEventListener('change', (e) => setSetting('commentAction', e.target.value));
 $('comment-show-word').addEventListener('change', (e) => setSetting('commentShowWord', e.target.checked));
 $('comment-hide-replies').addEventListener('change', (e) => setSetting('commentHideReplies', e.target.checked));

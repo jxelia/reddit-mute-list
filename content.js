@@ -18,7 +18,6 @@ const BLOCK_HASH = '#rmute-block';
 
 let mutes = { subs: [], users: [], popularWords: [], subWords: [], commentWords: [], bodyWords: [], flairWords: [], recSubs: [], recUsers: [], keepSubs: [], userSubs: [], scopes: [], settings: { hideComments: true } };
 let me = null; // signed-in username (see loadMe)
-let peeking = false; // hidden posts shown faded for now (the page notice's Show)
 
 /* ---------- Hiding ---------- */
 
@@ -138,12 +137,9 @@ function buildCss(list) {
   // the 8000th simple selector of a single rule (a 13-bit index), which with a
   // few hundred muted subs left the end of the list, and the bar collapse
   // after it, doing nothing.
-  // Peeking (the page notice's Show): hidden things show, faded and outlined.
-  const hide = peeking ? '{ opacity: 0.45 !important; outline: 2px dashed rgba(255, 69, 0, 0.6) !important; outline-offset: -2px; }'
-    : '{ display: none !important; }';
   const rules = [];
   for (let i = 0; i < selectors.length; i += 100) {
-    rules.push(selectors.slice(i, i + 100).join(',\n') + ' ' + hide);
+    rules.push(selectors.slice(i, i + 100).join(',\n') + ' { display: none !important; }');
   }
   // Usernames in comments replaced with a placeholder.
   if (list.settings.commentNames === 'replace') {
@@ -313,7 +309,7 @@ let lastBadge = '';
 const everHidden = new Set(); // ids counted into the running total (background.js)
 
 function scheduleCount() {
-  const wanted = mutes.settings.showCounter || mutes.settings.hiddenNotice || subPorts.size || lastBadge; // (a shown badge still needs clearing)
+  const wanted = mutes.settings.showCounter || subPorts.size || lastBadge; // (a shown badge still needs clearing)
   if (wanted) countTimer ||= setTimeout(sendCount, 1000);
 }
 
@@ -321,14 +317,8 @@ function pageCounts() {
   if (location.pathname !== countPath) {
     counted.clear();
     countPath = location.pathname;
-    noticeClosed = false;
-    if (peeking) {
-      peeking = false;
-      applyStyle();
-    }
   }
-  // While peeking everything shows; keep the counts from before.
-  if (!peeking) for (const post of document.querySelectorAll(isOldReddit ? '.thing.link:not(.promoted)' : 'shreddit-post')) {
+  for (const post of document.querySelectorAll(isOldReddit ? '.thing.link:not(.promoted)' : 'shreddit-post')) {
     const id = post.id || post.getAttribute('permalink');
     if (!id) continue;
     const bar = post.previousElementSibling?.classList.contains('rmute-decide') ? post.previousElementSibling : null;
@@ -358,52 +348,6 @@ function sendCount() {
   lastBadge = badge;
   try { chrome.runtime.sendMessage({ type: 'rmute:badge', text: badge }).catch(() => {}); } catch (_) { /* extension reloaded */ }
   for (const port of subPorts) port.postMessage({ counts });
-  syncNotice(counts.hidden);
-}
-
-/* ---------- Page notice ---------- */
-
-// "12 posts hidden · Show": Show fades the hidden posts in (peeking) until
-// Hide again, the × or another page.
-let noticeClosed = false;
-
-function syncNotice(hidden) {
-  let notice = document.querySelector('.rmute-notice');
-  if (!mutes.settings.hiddenNotice || isOff() || noticeClosed || (!hidden && !peeking)) {
-    notice?.remove();
-    return;
-  }
-  if (!notice) {
-    notice = document.createElement('div');
-    notice.className = 'rmute-notice';
-    notice.setAttribute('role', 'status');
-    const text = document.createElement('span');
-    const show = document.createElement('button');
-    show.type = 'button';
-    show.className = 'rmute-notice-show';
-    show.addEventListener('click', togglePeek);
-    const close = document.createElement('button');
-    close.type = 'button';
-    close.className = 'rmute-notice-close';
-    close.textContent = '×';
-    close.title = close.ariaLabel = 'Close until the next page';
-    close.addEventListener('click', () => {
-      noticeClosed = true;
-      if (peeking) togglePeek();
-      notice.remove();
-    });
-    notice.append(text, show, close);
-    document.body.append(notice);
-  }
-  notice.querySelector('span').textContent = `${hidden} post${hidden === 1 ? '' : 's'} hidden`;
-  notice.querySelector('.rmute-notice-show').textContent = peeking ? 'Hide again' : 'Show';
-}
-
-function togglePeek() {
-  peeking = !peeking;
-  applyStyle();
-  lastCount = null;
-  sendCount();
 }
 
 /* ---------- Post actions ---------- */
