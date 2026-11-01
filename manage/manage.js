@@ -325,7 +325,7 @@ function render() {
   document.body.classList.toggle('off', state.settings.enabled === false);
   document.body.classList.toggle('extras', extras());
   $('extras').checked = extras();
-  $('enabled-label').textContent = state.settings.enabled === false ? 'Off' : 'On';
+  $('enabled-switch').title = state.settings.enabled === false ? 'Off on Reddit. Click to turn on.' : 'On on Reddit. Click to turn off.';
   $('hide-comments').checked = !!state.settings.hideComments;
   $('hide-avatars').checked = !!state.settings.hideCommentAvatars;
   $('comment-names').value = state.settings.commentNames || 'show';
