@@ -25,8 +25,6 @@
       <button type="button" id="page-subs-mute"></button>
     </div>
 
-    <p class="hint page-counts" id="page-counts" hidden></p>
-
     <nav class="tabs" role="tablist">
       <button type="button" role="tab" data-kind="subs" aria-selected="true">Subreddits</button>
       <button type="button" role="tab" data-kind="users" aria-selected="false">Users</button>
@@ -42,12 +40,6 @@
 
       <div class="toolbar">
         <input id="filter" type="search" placeholder="Filter" aria-label="Filter list">
-        <select class="sort" aria-label="Sort">
-          <option value="az">A–Z</option>
-          <option value="za">Z–A</option>
-          <option value="new">Newest</option>
-          <option value="old">Oldest</option>
-        </select>
         <button type="button" class="link" id="edit-text">Edit as text</button>
       </div>
 
@@ -71,19 +63,10 @@
         <label class="check"><input type="checkbox" id="word-comments" checked> Comments</label>
         <label class="check"><input type="checkbox" id="word-popular" checked> r/popular titles</label>
         <label class="check"><input type="checkbox" id="word-subs" checked> Subreddit titles</label>
-        <label class="check"><input type="checkbox" id="word-body" checked> Post text</label>
-        <label class="check"><input type="checkbox" id="word-flair"> Flair</label>
       </div>
-      <p class="hint summary" id="word-summary" aria-live="polite"></p>
 
       <div class="toolbar">
         <input id="word-filter" type="search" placeholder="Filter" aria-label="Filter words">
-        <select class="sort" aria-label="Sort">
-          <option value="az">A–Z</option>
-          <option value="za">Z–A</option>
-          <option value="new">Newest</option>
-          <option value="old">Oldest</option>
-        </select>
       </div>
 
       <div class="word-table" id="word-table">
@@ -91,56 +74,18 @@
           <span>Word <span class="count" id="count-words">0</span></span>
           <span>Comments</span>
           <span>Title</span>
-          <span>Text</span>
-          <span>Flair</span>
           <span></span>
         </div>
         <ul class="list" id="list-words"></ul>
       </div>
       <p class="empty" id="empty-words" hidden></p>
-      <div id="word-groups"></div>
-
-      <details class="fold" id="word-lists">
-        <summary>Word lists</summary>
-        <details class="import-group" id="new-list">
-          <summary>New list, or paste a shared one</summary>
-          <input type="text" id="list-name" placeholder="List name" aria-label="List name" maxlength="40">
-          <textarea id="list-words" class="list-words" spellcheck="false" placeholder="Words or phrases, commas or new lines between them. A shared list (“Name: word, word”) fills in its own name." aria-label="Words in the list"></textarea>
-          <button type="button" id="list-add">Add list</button>
-        </details>
-        <details class="import-group" id="suggested">
-          <summary>Suggested lists</summary>
-          <p class="hint">Added to the places ticked under the Mute box. Each becomes a list you can edit.</p>
-          <ul class="list" id="suggested-list"></ul>
-        </details>
-      </details>
-
-      <details class="fold" id="word-options">
-        <summary>Options</summary>
-      <label class="check word-action">Posts with a muted word:
-        <select id="word-action">
-          <option value="hide">Hide them</option>
-          <option value="rename">Show “Muted word” as the title</option>
-        </select>
-      </label>
-      <label class="check word-action">Comments with a muted word:
-        <select id="comment-action">
-          <option value="bar">Shrink to one line</option>
-          <option value="hide">Hide them</option>
-        </select>
-      </label>
-      <label class="check word-action"><input type="checkbox" id="comment-show-word"> Say which word matched</label>
-      <label class="check word-action"><input type="checkbox" id="comment-hide-replies"> Hide their replies too</label>
-      <p class="hint">Title and Text apply on r/popular and on subreddits you haven’t joined (not in your custom feeds); a half-ticked Title box means only one of those. Flair applies anywhere. Click a word to limit it to some subreddits.</p>
+      <p class="hint">Comments: the comment shrinks to a bar (click it to show; long-press to hide its replies too). Title: posts are hidden on r/popular and on pages of subreddits you haven’t joined and that aren’t in your custom feeds. A half-ticked Title box means only one of those two.</p>
       <p class="hint edit-links">Edit as text:
         <button type="button" class="link" data-edit="commentWords">Comments</button> ·
         <button type="button" class="link" data-edit="popularWords">r/popular titles</button> ·
-        <button type="button" class="link" data-edit="subWords">Subreddit titles</button> ·
-        <button type="button" class="link" data-edit="bodyWords">Post text</button> ·
-        <button type="button" class="link" data-edit="flairWords">Flair</button>
+        <button type="button" class="link" data-edit="subWords">Subreddit titles</button>
       </p>
       <p class="hint" id="feeds-status"></p>
-      </details>
     </section>
 
     <section id="rec-view" hidden>
@@ -174,12 +119,6 @@
 
       <div class="toolbar">
         <input id="rec-filter" type="search" placeholder="Filter" aria-label="Filter recommendation mutes">
-        <select class="sort" aria-label="Sort">
-          <option value="az">A–Z</option>
-          <option value="za">Z–A</option>
-          <option value="new">Newest</option>
-          <option value="old">Oldest</option>
-        </select>
       </div>
 
       <div class="word-section">
@@ -219,31 +158,14 @@
       </div>
     </section>
 
-    <details class="card fold settings">
-      <summary>Display settings</summary>
+    <section class="card">
       <label class="check">
         <input type="checkbox" id="hide-comments">
         Also hide comments from muted users
       </label>
-      <label class="check"><input type="checkbox" id="hide-avatars"> Hide avatars in comments</label>
-      <label class="check">Usernames in comments:
-        <select id="comment-names">
-          <option value="show">Show</option>
-          <option value="replace">Replace with “Redditor”</option>
-          <option value="hide">Hide</option>
-        </select>
-      </label>
-      <label class="check"><input type="checkbox" id="hide-sections"> Turn off comment sections</label>
-      <label class="check">Hide feed posts under
-        <input type="number" id="min-score" min="0" step="1" inputmode="numeric" aria-label="Minimum upvotes"> upvotes</label>
-      <p class="hint">On Home, r/popular, r/all and custom feeds. 0 turns it off.</p>
-      <label class="check"><input type="checkbox" id="show-counter"> Show how many posts are hidden on the toolbar icon</label>
-      <label class="check"><input type="checkbox" id="hidden-notice"> Show a notice on the page when posts are hidden, with Show to see them</label>
-      <p class="hint" id="hidden-total"></p>
-    </details>
+    </section>
 
-    <details class="card fold">
-      <summary>Import, export and backup</summary>
+    <section class="card">
       <h2>Import / export</h2>
       <div class="row">
         <button type="button" id="import">Import list…</button>
@@ -251,8 +173,10 @@
       </div>
       <input type="file" id="import-file" accept=".txt,text/plain" hidden>
       <p class="note">A text file of subreddits and users (r/name, u/name, *word* or links; spaces, commas or new lines between them). Imported names are listed under “Imported from …” at the bottom of the Subreddits and Users tabs.</p>
+    </section>
 
-      <h2 class="spaced">Backup</h2>
+    <section class="card">
+      <h2>Backup</h2>
       <div class="row">
         <button type="button" id="backup">Download backup</button>
         <button type="button" class="secondary" id="restore">Restore…</button>
@@ -263,13 +187,12 @@
         <input type="file" id="restore-file" accept="application/json,.json">
       </div>
       <p class="note">Coming later: back up to your own cloud storage (kept in sync), or restore from a web link such as a shared public drive file.</p>
-    </details>
+    </section>
 
     <p class="status" id="status" role="status"></p>
   </main>
 
   <script src="../presets/presets.js"></script>
-  <script src="../presets/wordlists.js"></script>
   <script src="../storage.js"></script>
   <script src="manage.js"></script>
 </body>
