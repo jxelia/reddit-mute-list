@@ -16,8 +16,9 @@ const ICONS = {
 };
 const BLOCK_HASH = '#rmute-block';
 
-let mutes = { subs: [], users: [], popularWords: [], subWords: [], commentWords: [], recSubs: [], recUsers: [], keepSubs: [], userSubs: [], settings: { hideComments: true } };
+let mutes = { subs: [], users: [], popularWords: [], subWords: [], commentWords: [], bodyWords: [], flairWords: [], recSubs: [], recUsers: [], keepSubs: [], userSubs: [], scopes: [], settings: { hideComments: true } };
 let me = null; // signed-in username (see loadMe)
+let peeking = false; // hidden posts shown faded for now (the page notice's Show)
 
 /* ---------- Hiding ---------- */
 
@@ -25,15 +26,27 @@ let me = null; // signed-in username (see loadMe)
 // Reddit puts on each post and comment. Being CSS, it applies to posts the
 // moment they're inserted (no flash, no per-node scanning on infinite scroll).
 // Names are restricted to [a-z0-9_-] by MuteStore.normalize, so they're safe
-// to drop into attribute selectors as-is. Sub patterns ("*cat*", "cat*",
-// "*cat") become substring, prefix or suffix matches.
-function subMatch(entry) {
+// to drop into attribute selectors as-is. Sub and user patterns ("*cat*",
+// "cat*", "*cat") become substring, prefix or suffix matches.
+function attrMatch(attr, entry, prefix = '') {
   const s = entry.replace(/\*/g, '');
   const start = entry.startsWith('*');
   const end = entry.endsWith('*');
   const op = start && end ? '*=' : start ? '$=' : end ? '^=' : '=';
-  const prefixed = start ? s : 'r/' + s;
-  return { post: [`[subreddit-prefixed-name${op}"${prefixed}" i]`, `[subreddit-name${op}"${s}" i]`], old: `[data-subreddit${op}"${s}" i]` };
+  return `[${attr}${op}"${start ? s : prefix + s}" i]`;
+}
+
+function subMatch(entry) {
+  return { post: [attrMatch('subreddit-prefixed-name', entry, 'r/'), attrMatch('subreddit-name', entry)], old: attrMatch('data-subreddit', entry) };
+}
+
+// A user muted only in (+) or everywhere except (-) some subs. Comments name
+// their sub in their permalink (/r/<sub>/comments/…).
+function scopeSel(scope, where) {
+  const one = (s) => where === 'post' ? `[subreddit-name="${s}" i]`
+    : where === 'comment' ? `[permalink^="/r/${s}/" i]` : `[data-subreddit="${s}" i]`;
+  const any = scope.subs.map(one).join(', ');
+  return scope.mode === '+' ? `:is(${any})` : `:not(${any})`;
 }
 
 function buildCss(list) {
@@ -51,7 +64,7 @@ function buildCss(list) {
   const REC = `shreddit-post[data-rmute-scope="home"][recommendation-source]:not([recommendation-source=""])`;
   const recPosts = [];
   for (const entry of list.recSubs) recPosts.push(...subMatch(entry).post.map((a) => REC + a));
-  for (const u of list.recUsers) recPosts.push(`${REC}[author="${u}" i]`);
+  for (const u of list.recUsers) recPosts.push(REC + attrMatch('author', u));
   // Built-in filters: markPreset() tags recommended posts from city, state,
   // province or airline subreddits.
   for (const preset of PRESETS) {
@@ -63,32 +76,53 @@ function buildCss(list) {
   // r/popular: every post starts as a bar (markPopular), recommended or not.
   const POPULAR = '[data-rmute-scope="popular"]';
   if (list.settings.collapsePopular) other.push(`shreddit-post${POPULAR}[data-rmute-preset~="undecided"]:not([data-rmute-open])`);
-  // A post hidden by a title word takes its bar with it.
-  other.push(`.rmute-decide:has(+ ${POPULAR}[data-rmute-words~="popular"])`);
+  // Muted words: markTitles() tags each post with what matched (see
+  // markTitle): popular/subs (title lists) and body apply on r/popular and on
+  // pages of subs not joined; flair, and words scoped "only in r/…", anywhere.
+  const P = `:is(${POST_SELECTOR}, .thing.link)`;
+  const tagged = (tag) => `[data-rmute-words~="${tag}"]`;
+  const wordAnywhere = [`${P}${POPULAR}${tagged('popular')}`, `${P}${POPULAR}${tagged('body')}`, `${P}${tagged('flair')}`, `${P}${tagged('only')}`];
+  const wordOnSubs = [`${P}${tagged('subs')}`, `${P}${tagged('body')}`];
+  const rename = list.settings.wordAction === 'rename';
+  // Feed posts under the minimum score (markScore).
+  posts.push(`${P}[data-rmute-low]`);
+  // A hidden post takes its bar with it.
+  other.push(`.rmute-decide:has(+ :is(${rename ? '' : wordAnywhere.join(', ') + ', '}[data-rmute-low]))`);
   for (const u of list.users) {
-    posts.push(`:is(${POST_SELECTOR})[author="${u}" i]`);
-    other.push(`.thing.link[data-author="${u}" i]`);
-    // Only the comment itself goes, not its replies. Replies sit deep inside
-    // the comment (details > div > div > shreddit-comment[slot="children-…"]),
-    // so walk the path down to them: at each level hide the siblings that
-    // hold no reply, and never touch anything inside a reply. Old Reddit
+    const scope = MuteStore.scopeOf(list, 'u', u);
+    const where = (kind) => (scope ? scopeSel(scope, kind) : '');
+    posts.push(`:is(${POST_SELECTOR})${attrMatch('author', u)}${where('post')}`);
+    other.push(`.thing.link${attrMatch('data-author', u)}${where('old')}`);
+    // Only the comment itself goes, not its replies (ownParts). Old Reddit
     // keeps replies in .child.
     if (list.settings.hideComments) {
-      const c = `shreddit-comment[author="${u}" i]`;
-      const reply = `shreddit-comment, [slot^="children"], [slot*="more" i]`;
-      other.push(
-        `:is(${c}, ${c} :has(${reply}):not(${c} shreddit-comment *)) > :not(${reply}, :has(${reply}))`,
-        `.thing.comment[data-author="${u}" i] > :not(.child)`
-      );
+      const c = `shreddit-comment${attrMatch('author', u)}${where('comment')}`;
+      other.push(...ownParts(c), `.thing.comment${attrMatch('data-author', u)}${where('old')} > :not(.child)`);
     }
   }
-  // Title words: posts are tagged by markTitles() with the word lists their
-  // title matches, and <html> with the list that applies to this page.
-  // r/popular's go by the post's own scope, like the bars.
-  posts.push(...recPosts, `:is(${POST_SELECTOR})${POPULAR}[data-rmute-words~="popular"]`);
-  other.push(`.thing.link${POPULAR}[data-rmute-words~="popular"]`);
-  const pagePosts = [['html[data-rmute-page="subs"]', `:is(${POST_SELECTOR})[data-rmute-words~="subs"]`]];
-  other.push(`html[data-rmute-page="subs"] .thing.link[data-rmute-words~="subs"]`);
+  // Comments with a muted word shrink to the bar markComment() puts in them
+  // (long-pressing it hides the replies too), or go completely.
+  const anyCword = ':is(shreddit-comment, .thing.comment)[data-rmute-cword]';
+  if (list.settings.commentAction === 'hide') {
+    if (list.settings.commentHideReplies) other.push(anyCword);
+    else other.push(...ownParts('shreddit-comment[data-rmute-cword]'), '.thing.comment[data-rmute-cword] > :not(.child)');
+  } else {
+    const cword = 'shreddit-comment[data-rmute-cword]:not([data-rmute-open])';
+    other.push(...ownParts(cword, '.rmute-cbar'),
+      '.thing.comment[data-rmute-cword]:not([data-rmute-open]) > :not(.child, .rmute-cbar)',
+      ':is(shreddit-comment, .thing.comment)[data-rmute-noreplies] > :not(.rmute-cbar)');
+  }
+  if (list.settings.hideCommentAvatars) other.push('shreddit-comment [slot="commentAvatar"] > *', '.thing.comment > .entry .tagline .author-avatar');
+  if (list.settings.commentNames === 'hide') {
+    other.push(`${COMMENT_NAME}, .thing.comment > .entry .tagline :is(.author, .userattrs)`);
+  }
+  // The comment box, sort and search bar, and the tree (post page dump 2026-11-02).
+  if (list.settings.hideCommentSections) {
+    other.push('comment-body-header, shreddit-comments-sort-dropdown, shreddit-comment-tree, shreddit-comment-tree-ads, shreddit-comment, .commentarea');
+  }
+  posts.push(...recPosts);
+  const pagePosts = rename ? [] : wordOnSubs.map((p) => ['html[data-rmute-page="subs"]', p]);
+  if (!rename) posts.push(...wordAnywhere);
 
   // Feed posts sit in an <article> followed by an <hr>; hide those too so no
   // empty gaps or double dividers are left behind. Ads (shreddit-ad-post) sit
@@ -104,11 +138,43 @@ function buildCss(list) {
   // the 8000th simple selector of a single rule (a 13-bit index), which with a
   // few hundred muted subs left the end of the list, and the bar collapse
   // after it, doing nothing.
+  // Peeking (the page notice's Show): hidden things show, faded and outlined.
+  const hide = peeking ? '{ opacity: 0.45 !important; outline: 2px dashed rgba(255, 69, 0, 0.6) !important; outline-offset: -2px; }'
+    : '{ display: none !important; }';
   const rules = [];
   for (let i = 0; i < selectors.length; i += 100) {
-    rules.push(selectors.slice(i, i + 100).join(',\n') + ' { display: none !important; }');
+    rules.push(selectors.slice(i, i + 100).join(',\n') + ' ' + hide);
+  }
+  // Usernames in comments replaced with a placeholder.
+  if (list.settings.commentNames === 'replace') {
+    const names = `${COMMENT_NAME} a, .thing.comment > .entry .tagline a.author`;
+    rules.push(`${names} { font-size: 0 !important; }`,
+      `${names.split(', ').map((n) => n + '::before').join(', ')} { content: "Redditor"; font-size: 12px; }`);
+  }
+  // Rename: the post stays, its title says which word matched, and its text,
+  // media and thumbnail are hidden.
+  if (rename) {
+    const hit = [...wordAnywhere, ...wordOnSubs.map((p) => `html[data-rmute-page="subs"] ${p}`)];
+    const inHit = (sel) => hit.map((p) => `${p} ${sel}`).join(',\n');
+    rules.push(
+      `${inHit(':is([slot="title"], a.title)[data-rmute-hit]')} { font-size: 0 !important; }`,
+      `${inHit(':is([slot="title"], a.title)[data-rmute-hit]::before')} { content: attr(data-rmute-hit); font-size: 14px; font-weight: 400; font-style: italic; opacity: 0.7; }`,
+      `${inHit(':is(shreddit-post-text-body, [slot="post-media-container"], [slot="thumbnail"], .thumbnail, .expando, .expando-button)')} { display: none !important; }`
+    );
   }
   return rules.join('\n');
+}
+
+// The comment author's name link (its avatar is [slot="commentAvatar"]).
+const COMMENT_NAME = 'shreddit-comment [slot="commentMeta"] faceplate-tracker[noun="comment_author"]';
+
+// A comment's own parts (header, text, actions) but not its replies. Replies
+// sit deep inside the comment (details > div > div > shreddit-comment[slot="children-…"]),
+// so walk the path down to them: at each level hide the siblings that hold
+// no reply, and never touch anything inside a reply. keep: also left showing.
+function ownParts(c, keep) {
+  const reply = `shreddit-comment, [slot^="children"], [slot*="more" i]`;
+  return [`:is(${c}, ${c} :has(${reply}):not(${c} shreddit-comment *)) > :not(${reply}, :has(${reply})${keep ? ', ' + keep : ''})`];
 }
 
 // The popup's on/off switch. Off: no hiding, nothing added to the page
@@ -124,6 +190,7 @@ function applyStyle() {
     (document.head || document.documentElement).appendChild(style);
   }
   style.textContent = isOff() ? '' : buildCss(mutes);
+  if (document.body) scheduleCount();
 }
 
 // sub: for users, the subreddit the post or comment was in (noted in the popup).
@@ -146,9 +213,16 @@ async function unmute(kind, name) {
   await MuteStore.remove(kind, name);
 }
 
+// Pages that mix many subs: home, r/popular, r/all, a+b multis and custom
+// feeds. Elsewhere (a sub, a post) the popup's "Mute all" card isn't wanted.
+const SORT = '(?:(?:best|hot|new|top|rising|controversial)/?)?';
+const FEED_RE = new RegExp(`^/(?:${SORT}|r/(?:popular|all|[^/]+\\+[^/]+)/${SORT}|(?:user/[^/]+|me)/m/[^/]+/${SORT}|m/[^/]+/${SORT})$`, 'i');
+const onFeed = () => FEED_RE.test(location.pathname.replace(/\/?$/, '/'));
+
 // Subs of the posts showing on the page (open or as a one-line bar), for the
 // popup's "Mute all on this page". Ads, profile posts and kept subs are left out.
 function pageSubs() {
+  if (!onFeed()) return [];
   const posts = isOldReddit
     ? [...document.querySelectorAll('.thing[data-subreddit]:not(.promoted)')]
     : [...document.querySelectorAll('shreddit-post')];
@@ -202,6 +276,8 @@ chrome.runtime.onConnect.addListener((port) => {
   subPorts.add(port);
   lastSubs = null;
   sendPageSubs();
+  lastCount = null;
+  sendCount();
   subsObserver ||= new MutationObserver(() => { subsTimer ||= setTimeout(sendPageSubs, 500); });
   subsObserver.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-rmute-off'] });
   port.onDisconnect.addListener(() => {
@@ -221,6 +297,114 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
     reply({ count: subs.length });
   }
 });
+
+/* ---------- Hidden-post counter ---------- */
+
+// How many posts on this page show, are hidden, or are one-line bars: the
+// hidden count goes on the toolbar icon, all three to the open popup. Posts
+// are remembered by id while the page's path stays the same, since Reddit
+// drops posts far above the viewport while scrolling.
+const counted = new Map(); // post id -> 'shown' | 'bar' | 'hidden'
+let countPath = null;
+let countTimer = null;
+let lastCount = null;
+let lastBadge = '';
+
+const everHidden = new Set(); // ids counted into the running total (background.js)
+
+function scheduleCount() {
+  const wanted = mutes.settings.showCounter || mutes.settings.hiddenNotice || subPorts.size || lastBadge; // (a shown badge still needs clearing)
+  if (wanted) countTimer ||= setTimeout(sendCount, 1000);
+}
+
+function pageCounts() {
+  if (location.pathname !== countPath) {
+    counted.clear();
+    countPath = location.pathname;
+    noticeClosed = false;
+    if (peeking) {
+      peeking = false;
+      applyStyle();
+    }
+  }
+  // While peeking everything shows; keep the counts from before.
+  if (!peeking) for (const post of document.querySelectorAll(isOldReddit ? '.thing.link:not(.promoted)' : 'shreddit-post')) {
+    const id = post.id || post.getAttribute('permalink');
+    if (!id) continue;
+    const bar = post.previousElementSibling?.classList.contains('rmute-decide') ? post.previousElementSibling : null;
+    counted.set(id, post.checkVisibility() ? 'shown' : bar?.checkVisibility() ? 'bar' : 'hidden');
+  }
+  const counts = { shown: 0, bar: 0, hidden: 0 };
+  let added = 0;
+  for (const [id, state] of counted) {
+    counts[state]++;
+    if (state === 'hidden' && !everHidden.has(id)) {
+      everHidden.add(id);
+      added++;
+    }
+  }
+  if (added) try { chrome.runtime.sendMessage({ type: 'rmute:addHidden', count: added }).catch(() => {}); } catch (_) { /* extension reloaded */ }
+  return counts;
+}
+
+function sendCount() {
+  clearTimeout(countTimer);
+  countTimer = null;
+  const counts = isOff() ? { shown: 0, bar: 0, hidden: 0 } : pageCounts();
+  const badge = mutes.settings.showCounter && !isOff() && counts.hidden ? String(counts.hidden) : '';
+  const key = JSON.stringify([counts, badge]);
+  if (key === lastCount) return;
+  lastCount = key;
+  lastBadge = badge;
+  try { chrome.runtime.sendMessage({ type: 'rmute:badge', text: badge }).catch(() => {}); } catch (_) { /* extension reloaded */ }
+  for (const port of subPorts) port.postMessage({ counts });
+  syncNotice(counts.hidden);
+}
+
+/* ---------- Page notice ---------- */
+
+// "12 posts hidden · Show": Show fades the hidden posts in (peeking) until
+// Hide again, the × or another page.
+let noticeClosed = false;
+
+function syncNotice(hidden) {
+  let notice = document.querySelector('.rmute-notice');
+  if (!mutes.settings.hiddenNotice || isOff() || noticeClosed || (!hidden && !peeking)) {
+    notice?.remove();
+    return;
+  }
+  if (!notice) {
+    notice = document.createElement('div');
+    notice.className = 'rmute-notice';
+    notice.setAttribute('role', 'status');
+    const text = document.createElement('span');
+    const show = document.createElement('button');
+    show.type = 'button';
+    show.className = 'rmute-notice-show';
+    show.addEventListener('click', togglePeek);
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'rmute-notice-close';
+    close.textContent = '×';
+    close.title = close.ariaLabel = 'Close until the next page';
+    close.addEventListener('click', () => {
+      noticeClosed = true;
+      if (peeking) togglePeek();
+      notice.remove();
+    });
+    notice.append(text, show, close);
+    document.body.append(notice);
+  }
+  notice.querySelector('span').textContent = `${hidden} post${hidden === 1 ? '' : 's'} hidden`;
+  notice.querySelector('.rmute-notice-show').textContent = peeking ? 'Hide again' : 'Show';
+}
+
+function togglePeek() {
+  peeking = !peeking;
+  applyStyle();
+  lastCount = null;
+  sendCount();
+}
 
 /* ---------- Post actions ---------- */
 
@@ -1007,7 +1191,7 @@ const FEEDS_KEY = 'feedSubs';
 const FEEDS_MAX_AGE = 6 * 60 * 60 * 1000;
 const LISTING_RE = /^\/r\/([^/]+)\/?(?:(?:best|hot|new|top|rising|controversial)\/?)?$/i;
 
-let titleMatchers = { popular: null, subs: null };
+let wordMatchers = {}; // word list -> compileScoped() result, or null when empty
 let feedSubs = null; // Set of subreddits joined or in the user's custom feeds, once known
 
 // Whole words or phrases, case-insensitive; "*" matches any letters, so
@@ -1021,18 +1205,189 @@ function compileWords(words) {
   return new RegExp(`(?<![\\p{L}\\p{N}_])(?:${parts.join('|')})(?![\\p{L}\\p{N}_])`, 'iu');
 }
 
+// Words with a subreddit scope are tested one by one; the rest as one regex.
+function compileScoped(words) {
+  if (!words.length) return null;
+  const plain = [];
+  const scoped = [];
+  for (const word of words) {
+    const scope = MuteStore.scopeOf(mutes, 'w', word);
+    if (scope) scoped.push({ re: compileWords([word]), ...scope });
+    else plain.push(word);
+  }
+  return { all: compileWords(plain), scoped };
+}
+
+// { text, only } when the text has a muted word that applies in this sub:
+// only = the word is scoped "only in" this sub, so it applies on every page.
+function wordHit(m, text, sub) {
+  if (!m || !text) return null;
+  const found = m.all?.exec(text);
+  if (found) return { text: found[0].trim(), only: false };
+  let hit = null;
+  for (const s of m.scoped) {
+    const match = s.re.exec(text);
+    if (!match) continue;
+    const listed = !!sub && s.subs.includes(sub);
+    if (s.mode === '+' && listed) return { text: match[0].trim(), only: true };
+    if (s.mode === '-' && !listed) hit ||= { text: match[0].trim(), only: false };
+  }
+  return hit;
+}
+
 function postTitle(post) {
   if (post.matches('.thing')) return post.querySelector('a.title')?.textContent || '';
-  return post.getAttribute('post-title') ||
-    post.querySelector('[slot="title"], a[id^="post-title"]')?.textContent || '';
+  return post.getAttribute('post-title') || titleLink(post)?.textContent || '';
 }
+
+const titleLink = (post) => post.querySelector(post.matches('.thing') ? 'a.title' : '[slot="title"], a[id^="post-title"]');
+
+// A text post's body (in the feed too, clamped by CSS) or old Reddit's expanded one.
+function postBody(post) {
+  if (post.matches('.thing')) return post.querySelector('.expando .md, .usertext-body .md')?.textContent || '';
+  return post.querySelector('shreddit-post-text-body, [id$="-post-rtjson-content"]')?.textContent || '';
+}
+
+function postFlair(post) {
+  if (post.matches('.thing')) return [...post.querySelectorAll('.linkflairlabel')].map((f) => f.title || f.textContent).join(' ');
+  return post.querySelector('shreddit-post-flair')?.textContent || '';
+}
+
+const postSub = (post) => (post.matches('.thing') ? MuteStore.normalize(post.dataset.subreddit) : postInfo(post).sub);
 
 function markTitle(post) {
   markPreset(post);
+  markScore(post);
+  const sub = postSub(post);
+  const tags = new Set();
+  let label = null;
+  const check = (kind, text, tag) => {
+    const hit = wordHit(wordMatchers[kind], text, sub);
+    if (!hit) return;
+    tags.add(hit.only ? 'only' : tag);
+    label ||= hit.text;
+  };
   const title = postTitle(post);
-  const hits = Object.keys(titleMatchers).filter((k) => titleMatchers[k]?.test(title));
-  if (hits.length) post.dataset.rmuteWords = hits.join(' ');
+  check('popularWords', title, 'popular');
+  check('subWords', title, 'subs');
+  if (wordMatchers.bodyWords) check('bodyWords', postBody(post), 'body');
+  if (wordMatchers.flairWords) check('flairWords', postFlair(post), 'flair');
+  if (tags.size) post.dataset.rmuteWords = [...tags].join(' ');
   else delete post.dataset.rmuteWords;
+  // Shown in place of the title when muted words rename instead of hide.
+  const link = titleLink(post);
+  if (label) link?.setAttribute('data-rmute-hit', `Muted word: “${label}”`);
+  else link?.removeAttribute('data-rmute-hit');
+}
+
+/* ---------- Minimum score ---------- */
+
+// Old Reddit's front page, r/all, r/popular and multireddits.
+const OLD_FEED_RE = /^\/(?:(?:hot|new|top|rising|controversial)\/?)?$|^\/r\/(?:all|popular)\b|^\/(?:me|user\/[^/]+)\/m\//i;
+
+// Only in feeds (home, r/popular, r/all, custom feeds), not on a sub's own page.
+function markScore(post) {
+  const min = Number(mutes.settings.minScore) || 0;
+  const inFeed = post.matches('.thing') ? OLD_FEED_RE.test(location.pathname) : post.getAttribute('view-context') === 'AggregateFeed';
+  const score = parseInt(post.getAttribute('score') ?? post.dataset.score, 10);
+  post.toggleAttribute('data-rmute-low', min > 0 && inFeed && Number.isFinite(score) && score < min);
+}
+
+/* ---------- Comment words ---------- */
+
+// A comment's own text, not its replies': Reddit ids it <thingid>-comment-rtjson-content.
+function commentText(c) {
+  if (c.matches('.thing')) return c.querySelector(':scope > .entry .usertext-body .md')?.textContent || '';
+  const id = c.getAttribute('thingid');
+  const own = (el) => el.closest('shreddit-comment') === c;
+  const body = (id && c.querySelector(`[id="${CSS.escape(id)}-comment-rtjson-content"]`)) ||
+    [...c.querySelectorAll('[slot="comment"], [id$="-comment-rtjson-content"]')].find(own);
+  return body?.textContent || '';
+}
+
+// The comment's sub, from its permalink (/r/<sub>/comments/…).
+function commentSub(c) {
+  if (c.matches('.thing')) return MuteStore.normalize(c.dataset.subreddit);
+  return MuteStore.normalize(c.getAttribute('permalink')?.match(/^\/r\/([^/]+)/i)?.[1]);
+}
+
+function markComment(c) {
+  const hit = wordHit(wordMatchers.commentWords, commentText(c), commentSub(c));
+  if (hit) c.dataset.rmuteCword = hit.text;
+  else delete c.dataset.rmuteCword;
+  // Hidden completely: no bar.
+  syncCommentBar(c, mutes.settings.commentAction === 'hide' ? null : hit?.text);
+}
+
+// The bar a muted-word comment shrinks to: click shows the comment (and
+// shrinks it again), pressing and holding hides its replies too, like
+// clicking Reddit's thread line.
+const LONG_PRESS_MS = 500;
+
+function syncCommentBar(c, word) {
+  let bar = c.querySelector(':scope > .rmute-cbar');
+  if (!word) {
+    bar?.remove();
+    c.removeAttribute('data-rmute-open');
+    c.removeAttribute('data-rmute-noreplies');
+    return;
+  }
+  const showWord = mutes.settings.commentShowWord !== false;
+  const names = mutes.settings.commentNames === 'show';
+  const key = `${word} ${showWord} ${names}`;
+  if (bar?.dataset.key === key) return;
+  bar?.remove();
+  // Replies start hidden too when the popup says so.
+  if (!bar && mutes.settings.commentHideReplies) c.setAttribute('data-rmute-noreplies', '');
+  bar = document.createElement('div');
+  bar.dataset.key = key;
+  bar.className = 'rmute-cbar';
+  bar.dataset.word = word;
+  bar.setAttribute('role', 'button');
+  bar.tabIndex = 0;
+  const author = names ? c.getAttribute('author') || c.dataset.author : null;
+  const label = document.createElement('span');
+  const update = () => {
+    const open = c.hasAttribute('data-rmute-open');
+    const noReplies = c.hasAttribute('data-rmute-noreplies');
+    const what = showWord ? `comment with “${word}”` : 'comment with a muted word';
+    label.textContent = `${author ? `u/${author}: ` : ''}${what}${noReplies ? ' and its replies' : ''} ${open ? 'shown' : 'hidden'}`;
+    bar.setAttribute('aria-expanded', String(open));
+    bar.title = noReplies ? 'Click to show the replies again' : `Click to ${open ? 'hide' : 'show'}. Press and hold to hide the replies too.`;
+  };
+  let timer = null;
+  let held = false;
+  bar.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    held = false;
+    timer = setTimeout(() => {
+      held = true;
+      c.removeAttribute('data-rmute-open');
+      c.setAttribute('data-rmute-noreplies', '');
+      update();
+    }, LONG_PRESS_MS);
+  });
+  for (const type of ['pointerup', 'pointerleave', 'pointercancel']) bar.addEventListener(type, () => clearTimeout(timer));
+  const toggle = () => {
+    if (c.hasAttribute('data-rmute-noreplies')) c.removeAttribute('data-rmute-noreplies');
+    else c.toggleAttribute('data-rmute-open');
+    update();
+  };
+  bar.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation(); // not Reddit's own comment handlers
+    if (held) held = false;
+    else toggle();
+  });
+  bar.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    toggle();
+  });
+  bar.addEventListener('contextmenu', (e) => { if (held) e.preventDefault(); }); // touch long-press
+  bar.append(label);
+  update();
+  c.prepend(bar);
 }
 
 /* ---------- Built-in recommendation filters ---------- */
@@ -1103,6 +1458,16 @@ function inList(list, name) {
   });
 }
 
+// A muted user (patterns too) whose scope covers this sub.
+function userMuted(author, sub) {
+  if (!author) return false;
+  return mutes.users.some((u) => {
+    if (!inList([u], author)) return false;
+    const scope = MuteStore.scopeOf(mutes, 'u', u);
+    return !scope || (scope.mode === '+') === (!!sub && scope.subs.includes(sub));
+  });
+}
+
 function matchesTopic(name, d) {
   return (mutes.settings.keepTopics || []).some((id) => {
     const t = d.topics[id];
@@ -1138,7 +1503,7 @@ function markPreset(post) {
   else delete post.dataset.rmutePreset;
   // No bar for posts the mute lists already hide.
   const muted = sub && (inList(mutes.subs, sub) || inList(mutes.recSubs, sub) ||
-    mutes.users.includes(author) || mutes.recUsers.includes(author));
+    userMuted(author, sub) || inList(mutes.recUsers, author));
   syncDecideBar(post, hits.includes('undecided') && !muted ? sub : null);
 }
 
@@ -1146,7 +1511,7 @@ function markPreset(post) {
 // lists already hide. The block filters and topics don't apply here.
 function markPopular(post) {
   const { sub, author } = mutes.settings.collapsePopular ? postInfo(post) : {};
-  const bar = sub && !inList(mutes.keepSubs, sub) && !inList(mutes.subs, sub) && !mutes.users.includes(author);
+  const bar = sub && !inList(mutes.keepSubs, sub) && !inList(mutes.subs, sub) && !userMuted(author, sub);
   if (bar) post.dataset.rmutePreset = 'undecided';
   else delete post.dataset.rmutePreset;
   syncDecideBar(post, bar ? sub : null, true);
@@ -1271,6 +1636,8 @@ async function keepSub(sub) {
   }
 }
 
+const COMMENT_SELECTOR = 'shreddit-comment, .thing.comment';
+
 function markTitles(root = document) {
   if (isOff()) {
     // Bars come off and their posts show again.
@@ -1278,17 +1645,25 @@ function markTitles(root = document) {
       if (bar.nextElementSibling) syncDecideBar(bar.nextElementSibling, null);
       else bar.remove();
     });
+    document.querySelectorAll('.rmute-cbar').forEach((bar) => syncCommentBar(bar.parentElement, null));
     return;
   }
   if (root.matches?.(`${POST_SELECTOR}, .thing.link`)) markTitle(root);
   root.querySelectorAll?.(`${POST_SELECTOR}, .thing.link`).forEach(markTitle);
+  if (!wordMatchers.commentWords && !document.querySelector('.rmute-cbar')) return;
+  if (root.matches?.(COMMENT_SELECTOR)) markComment(root);
+  root.querySelectorAll?.(COMMENT_SELECTOR).forEach(markComment);
 }
 
 function updateWords() {
-  titleMatchers = { popular: compileWords(mutes.popularWords), subs: compileWords(mutes.subWords) };
+  wordMatchers = Object.fromEntries(MuteStore.WORD_KINDS.map((k) => [k, compileScoped(mutes[k])]));
   markTitles();
   updatePageScope();
 }
+
+// Whether posts need marking at all as they load.
+const needsMarking = () => Object.values(wordMatchers).some(Boolean) || presetsOn() ||
+  mutes.settings.collapsePopular || Number(mutes.settings.minScore) > 0;
 
 // "popular" on r/popular, "subs" on the home page of a subreddit that isn't
 // joined or in any custom feed, otherwise nothing. Reddit navigates without reloading, so
@@ -1300,7 +1675,7 @@ function updatePageScope(force = true) {
   const sub = location.pathname.match(LISTING_RE)?.[1].toLowerCase();
   let scope = '';
   if (sub === 'popular') scope = 'popular';
-  else if (sub && sub !== 'all' && !sub.includes('+') && mutes.subWords.length) {
+  else if (sub && sub !== 'all' && !sub.includes('+') && (mutes.subWords.length || mutes.bodyWords.length)) {
     if (!feedSubs) loadFeedSubs();
     else if (!feedSubs.has(sub)) scope = 'subs';
   }
@@ -1416,14 +1791,21 @@ function observeTitles() {
   new MutationObserver((records) => {
     updatePageScope(false);
     if (isOff()) return;
-    if (!titleMatchers.popular && !titleMatchers.subs && !presetsOn() && !mutes.settings.collapsePopular) return;
+    if (!needsMarking()) return;
+    // A post's text or flair can arrive after the post itself.
+    const late = wordMatchers.bodyWords || wordMatchers.flairWords;
     for (const r of records) {
-      for (const node of r.addedNodes) if (node.nodeType === Node.ELEMENT_NODE) markTitles(node);
+      for (const node of r.addedNodes) {
+        if (node.nodeType !== Node.ELEMENT_NODE) continue;
+        markTitles(node);
+        const post = late && node.closest('shreddit-post-text-body, shreddit-post-flair, .expando')?.closest(`${POST_SELECTOR}, .thing.link`);
+        if (post) markTitle(post);
+      }
       if (r.type === 'attributes' && r.target.matches(`${POST_SELECTOR}, .thing.link`)) markTitle(r.target);
     }
   }).observe(document.documentElement, {
     childList: true, subtree: true, attributes: true,
-    attributeFilter: ['post-title', 'recommendation-source', 'subreddit-name', 'subreddit-prefixed-name']
+    attributeFilter: ['post-title', 'recommendation-source', 'subreddit-name', 'subreddit-prefixed-name', 'score']
   });
 }
 
@@ -1489,6 +1871,7 @@ function init() {
       requestAnimationFrame(() => {
         scheduled = false;
         processOld();
+        scheduleCount();
       });
     }).observe(document.body, { childList: true, subtree: true });
   } else {
@@ -1508,6 +1891,7 @@ function init() {
         addMuteButtons();
         watchToasts();
         syncNativeButton();
+        scheduleCount();
       });
     }).observe(document.body, { childList: true, subtree: true });
   }

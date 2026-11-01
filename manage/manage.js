@@ -8,7 +8,7 @@ document.body.classList.toggle('popup', isPopup);
 // tabs don't keep running code older than this page.
 try { chrome.runtime.sendMessage('rmute:checkBuild').catch(() => {}); } catch (_) { /* not loaded as an extension */ }
 
-const PREFIX = { subs: 'r/', users: 'u/', popularWords: '', subWords: '', commentWords: '', recSubs: 'r/', recUsers: 'u/', keepSubs: 'r/', skipSubs: 'r/' };
+const PREFIX = { subs: 'r/', users: 'u/', popularWords: '', subWords: '', commentWords: '', bodyWords: '', flairWords: '', recSubs: 'r/', recUsers: 'u/', keepSubs: 'r/', skipSubs: 'r/' };
 const EMPTY_TEXT = {
   subs: 'No subreddits muted. Use “Mute r/…” in a post’s ⋯ menu on Reddit, or add names above.',
   users: 'No users muted. Use “Mute u/…” in a post’s ⋯ menu on Reddit, or add names above.',
@@ -20,12 +20,14 @@ const EMPTY_TEXT = {
 const WHERE = { recSubs: ' in recommendations', recUsers: ' in recommendations' };
 const TEXT_HINT = {
   subs: 'One name per line. Links and r/ prefixes are fine. *cat* mutes every sub with “cat” in its name.',
-  users: 'One name per line. Links and r/ or u/ prefixes are fine.',
+  users: 'One name per line. Links and u/ prefixes are fine. *bot* mutes every user with “bot” in their name.',
   popularWords: 'One word or phrase per line. * matches any letters, as in spoil*.',
   subWords: 'One word or phrase per line. * matches any letters, as in spoil*.',
   commentWords: 'One word or phrase per line. * matches any letters, as in spoil*.',
+  bodyWords: 'One word or phrase per line. * matches any letters, as in spoil*.',
+  flairWords: 'One word or phrase per line. * matches any letters, as in spoil*.',
   recSubs: 'One name per line. Links and r/ prefixes are fine. *cat* matches every sub with “cat” in its name.',
-  recUsers: 'One name per line. Links and u/ prefixes are fine.',
+  recUsers: 'One name per line. Links and u/ prefixes are fine. *bot* matches every user with “bot” in their name.',
   keepSubs: 'One name per line. Links and r/ prefixes are fine. *cat* keeps every sub with “cat” in its name.'
 };
 const ALL_KINDS = MuteStore.ALL_KINDS;
@@ -38,10 +40,42 @@ let state = null;
 let kind = 'subs'; // selected tab: subs, users, words or rec
 let textKind = null; // list open in the text editor, if any
 
-function setStatus(message, isError = false) {
+// undo: adds an Undo button after the message.
+function setStatus(message, isError = false, undo = null) {
   const status = $('status');
   status.textContent = message;
   status.classList.toggle('error', isError);
+  if (!undo) return;
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'link';
+  button.textContent = 'Undo';
+  button.addEventListener('click', async () => {
+    button.remove();
+    if (await undo()) setStatus('Undone');
+  });
+  status.append(' ', button);
+}
+
+// Puts removed names back where they were in each list, with their scope and
+// subreddit notes. before: the state they were removed from.
+function restoreNames(kinds, names, before) {
+  const next = { ...state };
+  for (const k of kinds) {
+    const list = [...next[k]];
+    for (const name of names) {
+      const i = before[k].indexOf(name);
+      if (i >= 0 && !list.includes(name)) list.splice(Math.min(i, list.length), 0, name);
+    }
+    next[k] = list;
+  }
+  const mine = (entry) => names.some((n) => entry.split('\t')[1] === n || entry.startsWith(n + ':'));
+  for (const k of ['scopes', 'userSubs']) next[k] = [...next[k], ...before[k].filter((e) => mine(e) && !next[k].includes(e))];
+  // Named word lists: their entries from before, in place of any shrunk copy.
+  const lists = before.wordGroups.filter((e) => e.split('\t').slice(1).some((w) => names.includes(w)));
+  const listNames = new Set(lists.map((e) => e.split('\t')[0]));
+  next.wordGroups = [...next.wordGroups.filter((e) => !listNames.has(e.split('\t')[0])), ...lists];
+  return save(next);
 }
 
 async function save(next) {
@@ -62,7 +96,8 @@ function parseNames(text, k = kind) {
   const good = [];
   const bad = [];
   for (const part of parts) {
-    const name = MuteStore.isSubKind(k) ? MuteStore.normalizeSub(part) : MuteStore.normalize(part);
+    const name = MuteStore.isSubKind(k) ? MuteStore.normalizeSub(part)
+      : MuteStore.isUserKind(k) ? MuteStore.normalizeUser(part) : MuteStore.normalize(part);
     (name ? good : bad).push(name || part);
   }
   return { good, bad };
@@ -71,6 +106,81 @@ function parseNames(text, k = kind) {
 // Words are shown in quotes; names with their r/ or u/ prefix.
 function display(k, name) {
   return PREFIX[k] ? PREFIX[k] + name : `“${name}”`;
+}
+
+/* ---------- Scope (where a word or user applies) ---------- */
+
+function scopeText(scope) {
+  if (!scope) return 'everywhere';
+  const subs = scope.subs.map((s) => 'r/' + s).join(', ');
+  return scope.mode === '+' ? `only in ${subs}` : `everywhere except ${subs}`;
+}
+
+// A word or user's name is a button that opens the scope editor under its
+// row; a scope that's set shows under the name.
+function nameCell(type, name, text, extra) {
+  const scope = MuteStore.scopeOf(state, type, name);
+  const cell = document.createElement('div');
+  cell.className = 'name-cell';
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'name-btn';
+  button.textContent = text;
+  button.title = 'Choose the subreddits this applies in';
+  const toggle = () => {
+    const row = cell.closest('li');
+    if (row.nextElementSibling?.classList.contains('scope-edit')) row.nextElementSibling.remove();
+    else row.after(scopeEditor(type, name, scope));
+  };
+  button.addEventListener('click', toggle);
+  const label = document.createElement('span');
+  label.append(button);
+  if (extra) label.append(extra);
+  cell.append(label);
+  if (scope) {
+    const set = document.createElement('button');
+    set.type = 'button';
+    set.className = 'link scope set';
+    set.textContent = scopeText(scope);
+    set.addEventListener('click', toggle);
+    cell.append(set);
+  }
+  return cell;
+}
+
+function scopeEditor(type, name, scope) {
+  const li = document.createElement('li');
+  li.className = 'scope-edit';
+  const mode = document.createElement('select');
+  mode.setAttribute('aria-label', 'Where it applies');
+  for (const [value, text] of [['', 'Everywhere'], ['-', 'Everywhere except'], ['+', 'Only in']]) mode.add(new Option(text, value));
+  mode.value = scope?.mode || '';
+  const subs = document.createElement('input');
+  subs.type = 'text';
+  subs.placeholder = 'r/name, r/other';
+  subs.setAttribute('aria-label', 'Subreddits');
+  subs.value = scope ? scope.subs.map((s) => 'r/' + s).join(', ') : '';
+  subs.hidden = !mode.value;
+  mode.addEventListener('change', () => {
+    subs.hidden = !mode.value;
+    if (!subs.hidden) subs.focus();
+  });
+  const ok = document.createElement('button');
+  ok.type = 'button';
+  ok.textContent = 'Save';
+  const apply = async () => {
+    const { good, bad } = parseNames(mode.value ? subs.value : '', 'subs');
+    const names = good.filter((n) => !n.includes('*'));
+    if (bad.length || names.length < good.length) return setStatus(`Not valid subreddit names: ${[...bad, ...good.filter((n) => n.includes('*'))].join(', ')}`, true);
+    if (mode.value && !names.length) return setStatus('Add at least one subreddit.', true);
+    const what = type === 'w' ? `“${name}”` : `u/${name}`;
+    const next = MuteStore.withScope(state, type, name, mode.value, mode.value ? names : null);
+    if (await save(next)) setStatus(`${what} now applies ${scopeText(MuteStore.scopeOf(next, type, name))}`);
+  };
+  ok.addEventListener('click', apply);
+  subs.addEventListener('keydown', (e) => { if (e.key === 'Enter') apply(); });
+  li.append(mode, subs, ok);
+  return li;
 }
 
 // Muted users show the subreddit they were muted from; the filter matches it too.
@@ -93,21 +203,51 @@ function makeRow(k, name) {
   const verb = k === 'keepSubs' ? 'Stop keeping' : k === 'skipSubs' ? 'Take off the Mute all whitelist:' : 'Unmute';
   remove.setAttribute('aria-label', `${verb} ${display(k, name)}`);
   remove.addEventListener('click', async () => {
+    const before = state;
     if (await save({ ...state, [k]: state[k].filter((n) => n !== name) })) {
       setStatus(k === 'keepSubs' ? `Stopped keeping ${display(k, name)}`
         : k === 'skipSubs' ? `${display(k, name)} will be in Mute all again`
-        : `Unmuted ${display(k, name)}${WHERE[k] || ''}`);
+        : `Unmuted ${display(k, name)}${WHERE[k] || ''}`, false, () => restoreNames([k], [name], before));
     }
   });
-  li.append(label, remove);
+  if (k === 'users') {
+    li.append(nameCell('u', name, display(k, name), label.querySelector('.from')), remove);
+  } else {
+    li.append(label, remove);
+  }
   return li;
 }
+
+/* ---------- Sort ---------- */
+
+// A–Z, Z–A, or by date added: lists keep the order names were added in
+// (entries from before that were stored A–Z).
+const SORT_KEY = 'listSort';
+let sortOrder = 'az';
+
+// age(name): higher = added later.
+function sortNames(names, age) {
+  const byName = (a, b) => a.localeCompare(b);
+  const list = [...names];
+  if (sortOrder === 'za') return list.sort((a, b) => byName(b, a));
+  if (sortOrder === 'new') return list.sort((a, b) => age(b) - age(a) || byName(a, b));
+  if (sortOrder === 'old') return list.sort((a, b) => age(a) - age(b) || byName(a, b));
+  return list.sort(byName);
+}
+
+document.querySelectorAll('select.sort').forEach((select) => {
+  select.addEventListener('change', () => {
+    sortOrder = select.value;
+    chrome.storage.local.set({ [SORT_KEY]: sortOrder });
+    render();
+  });
+});
 
 // Names from an imported file are left out here and shown in its group (renderImports).
 function renderList(k, list, empty, filter) {
   const noteOf = (name) => (k === 'users' ? MuteStore.subNoteFor(state, name) : null);
   const imported = new Set(KINDS_IMPORTED.includes(k) ? imports.flatMap((g) => g[k] || []) : []);
-  const names = state[k].filter((n) => !imported.has(n) && (n.includes(filter) || noteOf(n)?.includes(filter)));
+  const names = sortNames(state[k].filter((n) => !imported.has(n) && (n.includes(filter) || noteOf(n)?.includes(filter))), (n) => state[k].indexOf(n));
   list.replaceChildren(...names.map((name) => makeRow(k, name)));
   const own = state[k].filter((n) => !imported.has(n)).length;
   empty.hidden = names.length > 0 || (!own && state[k].length > 0);
@@ -152,8 +292,9 @@ function renderImports(k, filter) {
     drop.textContent = `Unmute all ${all.length}`;
     drop.addEventListener('click', async () => {
       const gone = new Set(all);
+      const before = state;
       if (await save({ ...state, [k]: state[k].filter((n) => !gone.has(n)) })) {
-        setStatus(`Unmuted ${all.length} ${k === 'subs' ? 'subreddits' : 'users'} imported from ${g.file}`);
+        setStatus(`Unmuted ${all.length} ${k === 'subs' ? 'subreddits' : 'users'} imported from ${g.file}`, false, () => restoreNames([k], all, before));
       }
     });
     box.append(summary, list, drop);
@@ -175,6 +316,19 @@ function render() {
   document.body.classList.toggle('off', state.settings.enabled === false);
   $('enabled-label').textContent = state.settings.enabled === false ? 'Off' : 'On';
   $('hide-comments').checked = !!state.settings.hideComments;
+  $('hide-avatars').checked = !!state.settings.hideCommentAvatars;
+  $('comment-names').value = state.settings.commentNames || 'show';
+  $('hide-sections').checked = !!state.settings.hideCommentSections;
+  $('hidden-notice').checked = !!state.settings.hiddenNotice;
+  $('comment-action').value = state.settings.commentAction || 'bar';
+  $('comment-show-word').checked = state.settings.commentShowWord !== false;
+  $('comment-hide-replies').checked = !!state.settings.commentHideReplies;
+  renderSummary();
+  $('show-counter').checked = !!state.settings.showCounter;
+  if (document.activeElement !== $('min-score')) $('min-score').value = Number(state.settings.minScore) || 0;
+  $('word-action').value = state.settings.wordAction || 'hide';
+  document.querySelectorAll('select.sort').forEach((select) => { select.value = sortOrder; });
+  applyTheme(state.settings.theme);
   for (const [id, key] of PRESET_BOXES) $(id).checked = !!state.settings[key];
   $('keep-mode').checked = !!state.settings.keepMode;
   $('collapse-popular').checked = !!state.settings.collapsePopular;
@@ -192,7 +346,7 @@ function render() {
     for (const k of REC_LISTS) renderList(k, $('list-' + k), $('empty-' + k), filter);
     return;
   }
-  $('add-input').placeholder = kind === 'subs' ? 'r/name, *word*, or paste links' : 'u/name, or paste links';
+  $('add-input').placeholder = kind === 'subs' ? 'r/name, *word*, or paste links' : 'u/name, *bot*, or paste links';
   const filter = $('filter').value.trim().toLowerCase().replace(/^[ru]\//, '');
   renderList(kind, $('list'), $('empty'), filter);
   renderSkip(filter);
@@ -201,12 +355,21 @@ function render() {
 
 /* ---------- Muted words table ---------- */
 
-// Each word is one row: Comments (commentWords) and Title (popularWords and
-// subWords together; half-ticked when it's in only one of them).
+// Each word is one row: Comments (commentWords), Title (popularWords and
+// subWords together; half-ticked when it's in only one of them), Text
+// (bodyWords) and Flair (flairWords).
 const TITLE_KINDS = ['popularWords', 'subWords'];
 
 function allWords() {
   return [...new Set(MuteStore.WORD_KINDS.flatMap((k) => state[k]))].sort();
+}
+
+// How recently a word was added: new words go at the end of their lists.
+function wordAge(word) {
+  const fromEnd = MuteStore.WORD_KINDS
+    .map((k) => state[k].indexOf(word))
+    .map((i, j) => (i < 0 ? Infinity : state[MuteStore.WORD_KINDS[j]].length - i));
+  return -Math.min(...fromEnd);
 }
 
 function wordBox(label, checked, indeterminate, onChange) {
@@ -226,38 +389,245 @@ function setWord(word, kinds, on) {
   return save(next);
 }
 
+function wordRow(word) {
+  const li = document.createElement('li');
+  const label = document.createElement('span');
+  label.textContent = display('commentWords', word);
+  const cell = nameCell('w', word, label.textContent);
+  const inComments = state.commentWords.includes(word);
+  const titleIn = TITLE_KINDS.filter((k) => state[k].includes(word));
+  const comments = wordBox(`Mute ${label.textContent} in comments`, inComments, false, async (on) => {
+    if (await setWord(word, ['commentWords'], on)) setStatus(`${on ? 'Muted' : 'Unmuted'} ${label.textContent} in comments`);
+  });
+  const title = wordBox(`Mute ${label.textContent} in post titles`, titleIn.length === 2, titleIn.length === 1, async (on) => {
+    if (await setWord(word, TITLE_KINDS, on)) setStatus(`${on ? 'Muted' : 'Unmuted'} ${label.textContent} in post titles`);
+  });
+  if (titleIn.length === 1) title.title = titleIn[0] === 'popularWords' ? 'Only on r/popular' : 'Only on subreddit pages';
+  const body = wordBox(`Mute ${label.textContent} in post text`, state.bodyWords.includes(word), false, async (on) => {
+    if (await setWord(word, ['bodyWords'], on)) setStatus(`${on ? 'Muted' : 'Unmuted'} ${label.textContent} in post text`);
+  });
+  const flair = wordBox(`Mute ${label.textContent} in post flair`, state.flairWords.includes(word), false, async (on) => {
+    if (await setWord(word, ['flairWords'], on)) setStatus(`${on ? 'Muted' : 'Unmuted'} ${label.textContent} in flair`);
+  });
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.className = 'remove';
+  remove.textContent = '×';
+  remove.setAttribute('aria-label', `Unmute ${label.textContent}`);
+  remove.addEventListener('click', async () => {
+    const before = state;
+    if (await setWord(word, MuteStore.WORD_KINDS, false)) {
+      setStatus(`Unmuted ${label.textContent}`, false, () => restoreNames(MuteStore.WORD_KINDS, [word], before));
+    }
+  });
+  li.append(cell, comments, title, body, flair, remove);
+  return li;
+}
+
+// Words in a named list are shown in that list's group, not the main table.
 function renderWords(filter) {
   const all = allWords();
-  const words = all.filter((w) => w.includes(filter));
+  const grouped = new Set(groups().flatMap((g) => g.words));
+  const words = sortNames(all.filter((w) => !grouped.has(w) && w.includes(filter)), wordAge);
   $('count-words').textContent = all.length;
-  $('list-words').replaceChildren(...words.map((word) => {
+  $('list-words').replaceChildren(...words.map(wordRow));
+  $('word-table').hidden = !words.length;
+  const shown = words.length || [...grouped].some((w) => w.includes(filter));
+  $('empty-words').hidden = !!shown;
+  $('empty-words').textContent = all.length ? 'No matches.' : 'No words muted.';
+  renderGroups(filter);
+  renderSuggested();
+}
+
+/* ---------- Named word lists ---------- */
+
+// wordGroups entries ("Name<TAB>word<TAB>…") as { name, words }.
+const groups = () => state.wordGroups.map((e) => {
+  const [name, ...words] = e.split('\t');
+  return { name, words };
+});
+
+// The places ticked under the Mute box, where new words go.
+const WORD_BOX = { commentWords: 'word-comments', popularWords: 'word-popular', subWords: 'word-subs', bodyWords: 'word-body', flairWords: 'word-flair' };
+const tickedKinds = () => MuteStore.WORD_KINDS.filter((k) => $(WORD_BOX[k]).checked);
+
+// Adds (or adds to) a named list; its new words go to the ticked places.
+async function addList(name, words, removed = []) {
+  const targets = tickedKinds();
+  if (!targets.length) return setStatus('Tick at least one place to mute in.', true), false;
+  const next = { ...state };
+  const known = new Set(allWords());
+  for (const k of MuteStore.WORD_KINDS) {
+    next[k] = state[k].filter((w) => !removed.includes(w));
+    if (targets.includes(k)) next[k].push(...words.filter((w) => !known.has(w)));
+  }
+  const old = groups().find((g) => g.name.toLowerCase() === name.toLowerCase());
+  const merged = [...new Set([...(old?.words || []).filter((w) => !removed.includes(w)), ...words])];
+  next.wordGroups = [...state.wordGroups.filter((e) => e !== (old && [old.name, ...old.words].join('\t'))), [name, ...merged].join('\t')];
+  return save(next);
+}
+
+// "Name: word, word" (as Share copies it) or just words.
+function parseShared(text) {
+  const m = text.match(/^\s*([^:\n,]{1,40}):\s*([\s\S]*)$/);
+  return m ? { name: m[1].trim(), text: m[2] } : { name: '', text };
+}
+
+function renderGroups(filter) {
+  $('word-groups').replaceChildren(...groups().map((g) => {
+    const words = g.words.filter((w) => w.includes(filter));
+    if (filter && !words.length && !g.name.toLowerCase().includes(filter)) return '';
+    const box = document.createElement('details');
+    box.className = 'import-group';
+    if (filter && words.length) box.open = true;
+    const summary = document.createElement('summary');
+    summary.textContent = g.name + ' ';
+    const count = document.createElement('span');
+    count.className = 'count';
+    count.textContent = g.words.length;
+    summary.append(count);
+    const table = document.createElement('div');
+    table.className = 'word-table';
+    table.append($('word-table').querySelector('.word-head').cloneNode(true));
+    table.querySelector('.count')?.remove();
+    const list = document.createElement('ul');
+    list.className = 'list';
+    list.append(...sortNames(filter ? words : g.words, wordAge).map(wordRow));
+    table.append(list);
+    const actions = document.createElement('div');
+    actions.className = 'group-actions';
+    const button = (text, run) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'link';
+      b.textContent = text;
+      b.addEventListener('click', run);
+      actions.append(b);
+    };
+    button('Edit', () => box.replaceChildren(summary, groupEditor(g)));
+    button('Share', async () => {
+      const text = `${g.name}: ${g.words.join(', ')}`;
+      try {
+        await navigator.clipboard.writeText(text);
+        setStatus(`Copied “${g.name}”. Paste it into “New list” to add it, here or in another browser.`);
+      } catch (_) {
+        setStatus(text);
+      }
+    });
+    button(`Unmute all ${g.words.length}`, async () => {
+      const before = state;
+      const gone = new Set(g.words);
+      const next = { ...state };
+      for (const k of MuteStore.WORD_KINDS) next[k] = state[k].filter((w) => !gone.has(w));
+      if (await save(next)) setStatus(`Unmuted the list “${g.name}”`, false, () => restoreNames(MuteStore.WORD_KINDS, g.words, before));
+    });
+    box.append(summary, table, actions);
+    return box;
+  }));
+}
+
+function groupEditor(g) {
+  const wrap = document.createElement('div');
+  wrap.className = 'group-edit';
+  const name = document.createElement('input');
+  name.type = 'text';
+  name.value = g.name;
+  name.maxLength = 40;
+  name.setAttribute('aria-label', 'List name');
+  const words = document.createElement('textarea');
+  words.className = 'list-words';
+  words.value = g.words.join('\n');
+  words.setAttribute('aria-label', 'Words in the list');
+  const row = document.createElement('div');
+  row.className = 'row';
+  const ok = document.createElement('button');
+  ok.type = 'button';
+  ok.textContent = 'Save';
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.className = 'secondary';
+  cancel.textContent = 'Cancel';
+  cancel.addEventListener('click', render);
+  ok.addEventListener('click', async () => {
+    const { good, bad } = parseWords(words.value, /[,\n]+/);
+    if (bad.length) return setStatus(`Too short or long (2–100 characters): ${bad.join(', ')}`, true);
+    const newName = name.value.replace(/\s+/g, ' ').trim() || g.name;
+    const removed = g.words.filter((w) => !good.includes(w));
+    // The old entry goes first, so a rename isn't merged into the old list.
+    state = { ...state, wordGroups: state.wordGroups.filter((e) => e.split('\t')[0] !== g.name) };
+    if (await addList(newName, good, removed)) setStatus(`Saved the list “${newName}”`);
+  });
+  row.append(ok, cancel);
+  wrap.append(name, words, row);
+  return wrap;
+}
+
+$('list-add').addEventListener('click', async () => {
+  const shared = parseShared($('list-words').value);
+  const name = $('list-name').value.replace(/\s+/g, ' ').trim() || shared.name;
+  if (!name) return setStatus('Give the list a name.', true);
+  const { good, bad } = parseWords(shared.text, /[,\n]+/);
+  if (!good.length) return setStatus('Add some words to the list.', true);
+  if (await addList(name, good)) {
+    $('list-name').value = '';
+    $('list-words').value = bad.join(', ');
+    $('new-list').open = false;
+    setStatus(`Added the list “${name}” (${plural(good.length, 'word')})` + (bad.length ? `. Skipped: ${bad.join(', ')}` : ''), bad.length > 0);
+  }
+});
+
+// Suggested lists (presets/wordlists.js); one already added says so.
+function renderSuggested() {
+  const have = new Set(groups().map((g) => g.name.toLowerCase()));
+  $('suggested-list').replaceChildren(...WordPacks.map((pack) => {
     const li = document.createElement('li');
-    const label = document.createElement('span');
-    label.textContent = display('commentWords', word);
-    const inComments = state.commentWords.includes(word);
-    const titleIn = TITLE_KINDS.filter((k) => state[k].includes(word));
-    const comments = wordBox(`Mute ${label.textContent} in comments`, inComments, false, async (on) => {
-      if (await setWord(word, ['commentWords'], on)) setStatus(`${on ? 'Muted' : 'Unmuted'} ${label.textContent} in comments`);
+    const info = document.createElement('div');
+    info.className = 'pack';
+    info.textContent = pack.name;
+    const sample = document.createElement('small');
+    sample.textContent = pack.words.join(', ');
+    info.append(sample);
+    const add = document.createElement('button');
+    add.type = 'button';
+    const added = have.has(pack.name.toLowerCase());
+    add.textContent = added ? 'Added' : 'Add';
+    add.disabled = added;
+    add.addEventListener('click', async () => {
+      if (await addList(pack.name, pack.words.map(MuteStore.normalizeWord).filter(Boolean))) {
+        setStatus(`Added the list “${pack.name}” (${plural(pack.words.length, 'word')})`);
+      }
     });
-    const title = wordBox(`Mute ${label.textContent} in post titles`, titleIn.length === 2, titleIn.length === 1, async (on) => {
-      if (await setWord(word, TITLE_KINDS, on)) setStatus(`${on ? 'Muted' : 'Unmuted'} ${label.textContent} in post titles`);
-    });
-    if (titleIn.length === 1) title.title = titleIn[0] === 'popularWords' ? 'Only on r/popular' : 'Only on subreddit pages';
-    const remove = document.createElement('button');
-    remove.type = 'button';
-    remove.className = 'remove';
-    remove.textContent = '×';
-    remove.setAttribute('aria-label', `Unmute ${label.textContent}`);
-    remove.addEventListener('click', async () => {
-      if (await setWord(word, MuteStore.WORD_KINDS, false)) setStatus(`Unmuted ${label.textContent}`);
-    });
-    li.append(label, comments, title, remove);
+    li.append(info, add);
     return li;
   }));
-  $('word-table').hidden = !words.length;
-  $('empty-words').hidden = words.length > 0;
-  $('empty-words').textContent = all.length ? 'No matches.' : 'No words muted.';
 }
+
+/* ---------- Summary under the add box ---------- */
+
+// What muting the typed words will do, in one sentence.
+function renderSummary() {
+  const { good } = parseWords($('word-input').value, /[,\n]+/);
+  const what = good.length ? good.slice(0, 3).map((w) => `“${w}”`).join(', ') + (good.length > 3 ? ` and ${good.length - 3} more` : '') : 'A word';
+  const on = (k) => $(WORD_BOX[k]).checked;
+  const pages = on('popularWords') && on('subWords') ? 'on r/popular and on subreddits you haven’t joined'
+    : on('popularWords') ? 'on r/popular' : 'on subreddits you haven’t joined';
+  const fields = [on('popularWords') || on('subWords') ? 'title' : '', on('bodyWords') ? 'text' : ''].filter(Boolean).join(' or ');
+  const many = good.length > 1;
+  const it = many ? 'any of them' : 'it';
+  const s = many ? '' : 's';
+  const posts = [];
+  if (fields) posts.push(`posts with ${it} in the ${fields} ${pages}`);
+  if (on('flairWords')) posts.push(`posts with ${it} as flair, anywhere`);
+  const parts = [];
+  if (posts.length) parts.push(`${state?.settings.wordAction === 'rename' ? 'mark' : 'hide'}${s} ${posts.join(', and ')}`);
+  if (on('commentWords')) parts.push(state?.settings.commentAction === 'hide' ? `hide${s} comments with ${it}` : `shrink${s} comments with ${it} to one line`);
+  $('word-summary').hidden = !good.length;
+  $('word-summary').textContent = parts.length
+    ? `${what} ${parts.join(', and ')}. You can limit ${many ? 'each' : 'it'} to some subreddits after adding.`
+    : '';
+}
+
+for (const id of ['word-input', ...Object.values(WORD_BOX)]) $(id).addEventListener('input', renderSummary);
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -296,8 +666,14 @@ async function renderFeeds() {
 
 async function usage() {
   try {
+    if (await MuteStore.onDevice()) {
+      $('usage').textContent = 'On this device only';
+      $('usage').title = 'The list is over browser sync’s 100 KB, so it’s saved on this device and not synced. It goes back to sync once it fits.';
+      return;
+    }
     const bytes = await chrome.storage.sync.getBytesInUse(null);
     $('usage').textContent = `${(bytes / 1024).toFixed(1)} of 100 KB synced`;
+    $('usage').title = '';
   } catch (_) { /* not critical */ }
 }
 
@@ -340,18 +716,20 @@ function parseWords(text, separator) {
 
 $('word-form').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const BOX = { commentWords: 'word-comments', popularWords: 'word-popular', subWords: 'word-subs' };
-  const targets = MuteStore.WORD_KINDS.filter((k) => $(BOX[k]).checked);
+  const targets = tickedKinds();
   if (!targets.length) {
-    setStatus('Tick comments, titles, or both.', true);
+    setStatus('Tick at least one place to mute in.', true);
     return;
   }
   const { good, bad } = parseWords($('word-input').value, /[,\n]+/);
   if (!good.length && !bad.length) return;
   const next = { ...state };
   for (const k of targets) next[k] = [...state[k], ...good];
-  if (good.length && await save(next)) $('word-input').value = bad.join(', ');
-  const PLACE = { commentWords: 'comments', popularWords: 'r/popular titles', subWords: 'subreddit titles' };
+  if (good.length && await save(next)) {
+    $('word-input').value = bad.join(', ');
+    renderSummary();
+  }
+  const PLACE = { commentWords: 'comments', popularWords: 'r/popular titles', subWords: 'subreddit titles', bodyWords: 'post text', flairWords: 'flair' };
   const where = targets.map((k) => PLACE[k]).join(', ').replace(/, ([^,]*)$/, ' and $1');
   setStatus(bad.length
     ? `Too short or long (2–100 characters): ${bad.join(', ')}`
@@ -431,6 +809,7 @@ $('preset-list').value = PRESET_LISTS
 
 const SAVED_LABEL = {
   subs: 'subreddits', users: 'users', popularWords: 'words for r/popular titles', subWords: 'words for subreddit page titles', commentWords: 'words for comments',
+  bodyWords: 'words for post text', flairWords: 'words for flair',
   recSubs: 'subreddits for recommendations', recUsers: 'users for recommendations', keepSubs: 'kept subreddits'
 };
 
@@ -467,8 +846,64 @@ $('text-save').addEventListener('click', async () => {
 
 /* ---------- Settings ---------- */
 
-$('hide-comments').addEventListener('change', (e) => {
-  save({ ...state, settings: { ...state.settings, hideComments: e.target.checked } });
+const setSetting = (key, value) => save({ ...state, settings: { ...state.settings, [key]: value } });
+
+$('hide-comments').addEventListener('change', (e) => setSetting('hideComments', e.target.checked));
+$('hide-avatars').addEventListener('change', (e) => setSetting('hideCommentAvatars', e.target.checked));
+$('comment-names').addEventListener('change', (e) => setSetting('commentNames', e.target.value));
+$('hide-sections').addEventListener('change', (e) => setSetting('hideCommentSections', e.target.checked));
+$('hidden-notice').addEventListener('change', (e) => setSetting('hiddenNotice', e.target.checked));
+$('comment-action').addEventListener('change', (e) => setSetting('commentAction', e.target.value));
+$('comment-show-word').addEventListener('change', (e) => setSetting('commentShowWord', e.target.checked));
+$('comment-hide-replies').addEventListener('change', (e) => setSetting('commentHideReplies', e.target.checked));
+
+// Running total of posts hidden (background.js counts them), with Reset.
+const TOTAL_KEY = 'hiddenTotal';
+
+async function renderTotal() {
+  const total = (await chrome.storage.local.get(TOTAL_KEY))[TOTAL_KEY];
+  const line = $('hidden-total');
+  if (!total?.count) {
+    line.textContent = 'No posts hidden yet.';
+    return;
+  }
+  const since = new Date(total.since).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  line.textContent = `${total.count.toLocaleString()} posts hidden since ${since}. `;
+  const reset = document.createElement('button');
+  reset.type = 'button';
+  reset.className = 'link';
+  reset.textContent = 'Reset';
+  reset.addEventListener('click', () => chrome.storage.local.remove(TOTAL_KEY));
+  line.append(reset);
+}
+$('show-counter').addEventListener('change', (e) => setSetting('showCounter', e.target.checked));
+$('word-action').addEventListener('change', (e) => setSetting('wordAction', e.target.value));
+$('min-score').addEventListener('change', (e) => {
+  const n = Math.max(0, Math.floor(Number(e.target.value) || 0));
+  e.target.value = n;
+  setSetting('minScore', n).then((ok) => ok && setStatus(n ? `Hiding feed posts under ${n} upvotes` : 'Score filter off'));
+});
+
+/* ---------- Theme ---------- */
+
+// System, light or dark, in that order on each click. Also kept in
+// localStorage, so the next open starts in the right theme.
+const THEMES = { system: 'Theme: same as system', light: 'Theme: light', dark: 'Theme: dark' };
+
+function applyTheme(theme = 'system') {
+  if (theme === 'system') delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = theme;
+  $('theme').title = THEMES[theme] || THEMES.system;
+  try { localStorage.setItem('theme', theme); } catch (_) { /* not critical */ }
+}
+
+try { applyTheme(localStorage.getItem('theme') || 'system'); } catch (_) { /* no storage */ }
+
+$('theme').addEventListener('click', () => {
+  const order = Object.keys(THEMES);
+  const next = order[(order.indexOf(state.settings.theme || 'system') + 1) % order.length];
+  applyTheme(next);
+  setSetting('theme', next);
 });
 
 /* ---------- Import & export ---------- */
@@ -521,13 +956,17 @@ $('export').addEventListener('click', () => {
 $('backup').addEventListener('click', () => {
   const data = {
     app: 'reddit-mute-list',
-    version: 7,
+    version: 9,
     exportedAt: new Date().toISOString(),
     subs: state.subs,
     users: state.users,
     popularWords: state.popularWords,
     subWords: state.subWords,
     commentWords: state.commentWords,
+    bodyWords: state.bodyWords,
+    flairWords: state.flairWords,
+    scopes: state.scopes,
+    wordGroups: state.wordGroups,
     recSubs: state.recSubs,
     recUsers: state.recUsers,
     keepSubs: state.keepSubs,
@@ -569,7 +1008,7 @@ $('restore-file').addEventListener('change', async (e) => {
   }
 
   const replace = document.querySelector('input[name="restore-mode"]:checked').value === 'replace';
-  // Version 1 backups have no word lists; 1-2 no recommendation lists; 1-3 no keep list; 1-4 no comment words; 1-5 no user subreddit notes; 1-6 no Mute all whitelist.
+  // Version 1 backups have no word lists; 1-2 no recommendation lists; 1-3 no keep list; 1-4 no comment words; 1-5 no user subreddit notes; 1-6 no Mute all whitelist; 1-7 no text or flair words or scopes; 1-8 no word lists.
   const next = { settings: { ...state.settings, ...(data.settings || {}) } };
   for (const k of ALL_KINDS) {
     const restored = Array.isArray(data[k]) ? data[k] : [];
@@ -584,6 +1023,12 @@ $('restore-file').addEventListener('change', async (e) => {
 /* ---------- Mute all on this page (popup only) ---------- */
 
 const activeTab = () => chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => tab);
+
+// Pages that mix many subs (same as content.js's onFeed). Checked here too,
+// so a list saved from, or sent by, another page never shows.
+const SORT = '(?:(?:best|hot|new|top|rising|controversial)/?)?';
+const FEED_RE = new RegExp(`^/(?:${SORT}|r/(?:popular|all|[^/]+\\+[^/]+)/${SORT}|(?:user/[^/]+|me)/m/[^/]+/${SORT}|m/[^/]+/${SORT})$`, 'i');
+const isFeedPath = (path) => !!path && FEED_RE.test(path.replace(/\/?$/, '/'));
 
 let pageSubs = [];
 let pageOrigin = 'https://www.reddit.com';
@@ -667,7 +1112,7 @@ async function watchPageSubs() {
   const stale = Object.keys(all).filter((k) => k.startsWith('pageSubs.') && !(Date.now() - all[k].at < PAGE_SUBS_MAX_AGE));
   if (stale.length) chrome.storage.local.remove(stale);
   const saved = stale.includes(pageKey) ? null : all[pageKey];
-  if (saved?.subs.length) {
+  if (saved?.subs.length && isFeedPath(saved.path)) {
     ({ path: pagePath, origin: pageOrigin, subs: pageSubs } = saved);
     $('page-subs-details').open = saved.open;
     renderPageSubList();
@@ -682,12 +1127,13 @@ async function watchPageSubs() {
   // Subs are added as they turn up and kept, since the page's own list can
   // shrink while scrolling; only muting or keeping one takes it off.
   port.onMessage.addListener((res) => {
+    if (res.counts) return renderCounts(res.counts);
     if (res.path !== pagePath) { // another page in this tab: start over
       pageSubs = [];
     }
     pageOrigin = res.origin;
     pagePath = res.path;
-    pageSubs = [...new Set([...pageSubs, ...res.subs])];
+    pageSubs = isFeedPath(res.path) ? [...new Set([...pageSubs, ...res.subs])] : [];
     renderPageSubList();
   });
 }
@@ -709,6 +1155,13 @@ $('page-subs-mute').addEventListener('click', async () => {
   renderPageSubList();
 });
 
+// How many posts on the open Reddit page show, are one-line bars, or are hidden.
+function renderCounts({ shown, bar, hidden }) {
+  const parts = [`${shown} showing`, bar ? `${bar} as one line` : '', `${hidden} hidden`].filter(Boolean);
+  $('page-counts').textContent = `This page: ${parts.join(' · ')}`;
+  $('page-counts').hidden = !(shown + bar + hidden);
+}
+
 $('page-subs-details').addEventListener('toggle', savePageSubs);
 if (isPopup) watchPageSubs();
 
@@ -723,18 +1176,22 @@ MuteStore.onChange((list) => {
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && FEEDS_KEY in changes) renderFeeds();
+  if (area === 'local' && 'listOnDevice' in changes) usage();
+  if (area === 'local' && TOTAL_KEY in changes) renderTotal();
   if (area === 'local' && IMPORTS_KEY in changes) {
     imports = changes[IMPORTS_KEY].newValue || [];
     if (state) render();
   }
 });
 
-Promise.all([MuteStore.load(), chrome.storage.local.get(IMPORTS_KEY)]).then(([list, stored]) => {
+Promise.all([MuteStore.load(), chrome.storage.local.get([IMPORTS_KEY, SORT_KEY])]).then(([list, stored]) => {
   imports = stored[IMPORTS_KEY] || [];
+  sortOrder = stored[SORT_KEY] || 'az';
   state = list;
   render();
   usage();
   renderFeeds();
+  renderTotal();
   if (new URLSearchParams(location.search).has('restore')) $('restore-panel').hidden = false;
   if (new URLSearchParams(location.search).has('import')) setStatus('Click “Import list…” to pick the file.');
 });

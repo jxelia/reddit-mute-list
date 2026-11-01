@@ -20,7 +20,7 @@ html:not([data-rmute-off]) shreddit-feed-page-loading {
 }
 
 /* Switched off in the popup: what the extension already added goes away. */
-html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toast, .rmute-pop, .rmute-native) {
+html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toast, .rmute-pop, .rmute-native, .rmute-cbar, .rmute-notice) {
   display: none !important;
 }
 
@@ -226,4 +226,64 @@ html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toa
 .rmute-native span {
   font-size: 13px;
   color: var(--color-neutral-content-weak, #576f76);
+}
+
+/* A comment with a muted word, shrunk to one line (markComment). */
+.rmute-cbar {
+  display: flex;
+  align-items: center;
+  margin: 0.25rem 0;
+  padding: 0.3rem 0.75rem;
+  border-radius: 9999px;
+  color: var(--color-neutral-content-weak, #576f76);
+  font: italic 12px/16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  cursor: pointer;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.rmute-cbar:hover {
+  background: var(--color-secondary-background-hover, rgba(128, 128, 128, 0.12));
+}
+.rmute-cbar:focus-visible {
+  outline: 2px solid var(--color-neutral-content-strong, currentColor);
+  outline-offset: 1px;
+}
+.rmute-cbar span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* "12 posts hidden · Show" (syncNotice), bottom left, clear of the toast. */
+.rmute-notice {
+  position: fixed;
+  z-index: 2147482999;
+  left: 1rem;
+  bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.4rem 0.35rem 0.9rem;
+  border-radius: 9999px;
+  background: #1a1a1b;
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+.rmute-notice button {
+  border: 0;
+  border-radius: 9999px;
+  padding: 0.25rem 0.7rem;
+  background: #ff4500;
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.rmute-notice .rmute-notice-close {
+  padding: 0.15rem 0.5rem;
+  background: transparent;
+  font-size: 16px;
+  font-weight: 400;
 }

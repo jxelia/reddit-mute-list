@@ -10,7 +10,9 @@ const MuteStore = (() => {
   // Title words muted on r/popular, and on home pages of subreddits that
   // aren't joined or in any of the user's custom feeds; and words that
   // collapse comments containing them.
-  const WORD_KINDS = ['popularWords', 'subWords', 'commentWords'];
+  // bodyWords: post text, on the same pages as title words. flairWords: post
+  // flair, everywhere.
+  const WORD_KINDS = ['popularWords', 'subWords', 'commentWords', 'bodyWords', 'flairWords'];
   // Subs and users muted only where Reddit recommends them (home feed posts
   // from subreddits the user hasn't joined); see content.js.
   const REC_KINDS = ['recSubs', 'recUsers'];
@@ -21,8 +23,19 @@ const MuteStore = (() => {
   // Where each muted user was muted from: "user:sub" entries, one per user.
   // Entries for users no longer muted are dropped on save.
   const NOTE_KINDS = ['userSubs'];
-  const ALL_KINDS = [...KINDS, ...WORD_KINDS, ...REC_KINDS, ...KEEP_KINDS, ...SKIP_KINDS, ...NOTE_KINDS];
-  const SEP = { subs: ',', users: ',', popularWords: '\n', subWords: '\n', commentWords: '\n', recSubs: ',', recUsers: ',', keepSubs: ',', skipSubs: ',', userSubs: ',' };
+  // Where a word or user applies, by subreddit: "w<TAB>word<TAB>-<TAB>sub sub"
+  // (everywhere except those subs) or "+" (only in them); "u" for users.
+  // Entries for words and users no longer muted are dropped on save.
+  const SCOPE_KINDS = ['scopes'];
+  // Named word lists: "Name<TAB>word<TAB>word…". Only labels for grouping in
+  // the popup; the words themselves are in the word lists. Words no longer
+  // muted drop out on save, and an empty list goes.
+  const GROUP_KINDS = ['wordGroups'];
+  const ALL_KINDS = [...KINDS, ...WORD_KINDS, ...REC_KINDS, ...KEEP_KINDS, ...SKIP_KINDS, ...NOTE_KINDS, ...SCOPE_KINDS, ...GROUP_KINDS];
+  const SEP = {
+    subs: ',', users: ',', popularWords: '\n', subWords: '\n', commentWords: '\n', bodyWords: '\n', flairWords: '\n',
+    recSubs: ',', recUsers: ',', keepSubs: ',', skipSubs: ',', userSubs: ',', scopes: '\n', wordGroups: '\n'
+  };
   const CHUNK_CHARS = 7000;
   const NAME_RE = /^[a-z0-9_-]{2,32}$/;
   // preset*: built-in recommendation filters (presets/), all on by default.
@@ -31,8 +44,21 @@ const MuteStore = (() => {
     hideComments: true, presetPlaces: true, presetAirlines: true, presetIdentity: true, presetAsk: true, presetNews: true,
     keepMode: true, keepTopics: MutePresets.defaultTopics, // presets/presets.js loads first
     collapsePopular: true, // every r/popular post starts as a one-line bar
-    enabled: true // the popup's on/off switch
+    enabled: true, // the popup's on/off switch
+    wordAction: 'hide', // posts with a muted word: 'hide', or 'rename' (title replaced, text and media hidden)
+    minScore: 0, // feed posts under this many upvotes are hidden; 0 = off
+    hideCommentAvatars: false,
+    commentNames: 'show', // usernames in comments: 'show', 'replace' (with "Redditor") or 'hide'
+    commentAction: 'bar', // comments with a muted word: 'bar' (one line, click to show) or 'hide'
+    commentShowWord: true, // the bar says which word matched
+    commentHideReplies: false, // their replies go too
+    hideCommentSections: false, // no comments at all
+    showCounter: true, // hidden-post count on the toolbar icon
+    hiddenNotice: true, // a notice on the page when posts are hidden, with Show
+    theme: 'system' // the popup's own light/dark theme
   };
+  // Set in local storage when the list outgrew sync and is kept on this device.
+  const ON_DEVICE = 'listOnDevice';
 
   // Accepts "name", "r/name", "/u/name", "user/name" or a full reddit URL.
   function normalize(raw) {
@@ -57,6 +83,29 @@ const MuteStore = (() => {
     return s.replace(/\*/g, '').length >= 2 && s.length <= 100 ? s : null;
   }
 
+  // Users can be patterns too, as for subreddits: "*bot*", "auto*".
+  function normalizeUser(raw) {
+    const s = String(raw || '').trim().toLowerCase().replace(/^\/?(?:u|user)\//, '');
+    if (!s.includes('*')) return normalize(raw);
+    return /^\*?[a-z0-9_-]{2,32}\*?$/.test(s) ? s : null;
+  }
+
+  // "w<TAB>word<TAB>+|-<TAB>sub sub" or "u<TAB>user<TAB>…"; subs are plain names.
+  function normalizeScope(raw) {
+    const [type, name, mode, subs] = String(raw || '').split('\t');
+    const n = type === 'w' ? normalizeWord(name) : type === 'u' ? normalizeUser(name) : null;
+    const list = [...new Set(String(subs || '').split(/[\s,]+/).map(normalize).filter(Boolean))];
+    return n && (mode === '+' || mode === '-') && list.length ? [type, n, mode, list.join(' ')].join('\t') : null;
+  }
+
+  // "Name<TAB>word<TAB>word…"; the name is 1-40 characters.
+  function normalizeGroup(raw) {
+    const [name, ...words] = String(raw || '').split('\t');
+    const n = name.replace(/\s+/g, ' ').trim().slice(0, 40);
+    const list = [...new Set(words.map(normalizeWord).filter(Boolean))];
+    return n && list.length ? [n, ...list].join('\t') : null;
+  }
+
   // "user:sub", both plain names.
   function normalizeUserSub(raw) {
     const s = String(raw || '').trim().toLowerCase();
@@ -64,12 +113,34 @@ const MuteStore = (() => {
   }
 
   const isSubKind = (kind) => kind === 'subs' || kind === 'recSubs' || kind === 'keepSubs' || kind === 'skipSubs';
+  const isUserKind = (kind) => kind === 'users' || kind === 'recUsers';
 
+  // Lists keep the order names were added in (the popup sorts by name or date).
   function clean(names, kind = 'subs') {
     const norm = WORD_KINDS.includes(kind) ? normalizeWord
       : NOTE_KINDS.includes(kind) ? normalizeUserSub
-      : isSubKind(kind) ? normalizeSub : normalize;
-    return [...new Set((names || []).map(norm).filter(Boolean))].sort();
+      : SCOPE_KINDS.includes(kind) ? normalizeScope
+      : GROUP_KINDS.includes(kind) ? normalizeGroup
+      : isSubKind(kind) ? normalizeSub
+      : isUserKind(kind) ? normalizeUser : normalize;
+    return [...new Set((names || []).map(norm).filter(Boolean))];
+  }
+
+  // scopes entry for a word ('w') or user ('u'): { mode: '+' | '-', subs: [...] } or null.
+  function scopeOf(list, type, name) {
+    const prefix = `${type}\t${name}\t`;
+    const entry = list.scopes?.find((e) => e.startsWith(prefix));
+    if (!entry) return null;
+    const [, , mode, subs] = entry.split('\t');
+    return { mode, subs: subs.split(' ') };
+  }
+
+  // Sets (or with no subs, clears) the scope of a word or user in a list copy.
+  function withScope(list, type, name, mode, subs) {
+    const prefix = `${type}\t${name}\t`;
+    const scopes = (list.scopes || []).filter((e) => !e.startsWith(prefix));
+    if (subs?.length) scopes.push([type, name, mode, subs.join(' ')].join('\t'));
+    return { ...list, scopes };
   }
 
   function parse(all) {
@@ -86,10 +157,16 @@ const MuteStore = (() => {
   // Sub patterns added once, then editable like any other entry (the user asked).
   const SEED = { key: 'seeded.animals', subs: ['*cat*', '*dog*', '*bird*'] };
 
+  // The list is in sync storage, or in local storage once it outgrew sync's
+  // 100 KB (see save).
+  const onDevice = async () => !!(await chrome.storage.local.get(ON_DEVICE))[ON_DEVICE];
+  const area = async () => (await onDevice() ? chrome.storage.local : chrome.storage.sync);
+  const isListKey = (key) => key === 'settings' || key === ON_DEVICE || ALL_KINDS.includes(key.replace(/\.(?:count|\d+)$/, ''));
+
   async function load() {
-    const all = await chrome.storage.sync.get(null);
+    const all = await (await area()).get(null);
     const list = parse(all);
-    if (!all[SEED.key]) {
+    if (!all[SEED.key] && !(await chrome.storage.sync.get(SEED.key))[SEED.key]) {
       await chrome.storage.sync.set({ [SEED.key]: true }); // first, so onChange reloads don't seed again
       list.subs.push(...SEED.subs);
       await save(list);
@@ -98,21 +175,35 @@ const MuteStore = (() => {
   }
 
   async function save(list) {
-    const prev = await chrome.storage.sync.get(null);
+    const from = await area();
+    const prev = await from.get(null);
     const data = { settings: { ...DEFAULT_SETTINGS, ...(list.settings || {}) } };
-    const stale = [];
 
     // Entries already stored are kept even if this copy of the code can't
     // read them, so a stale tab can't wipe a newer format (as it did *cats*).
     const stored = parse(prev);
     const users = new Set(list.users || []);
+    const words = new Set(WORD_KINDS.flatMap((k) => list[k] || []));
     for (const kind of ALL_KINDS) {
       let kept = (list[kind] || []).filter((n) => stored[kind].includes(n));
-      if (kind === 'userSubs') kept = [];
+      if (kind === 'userSubs' || kind === 'scopes' || kind === 'wordGroups') kept = [];
       const chunks = [];
       let chunk = '';
-      let names = [...new Set([...clean(list[kind], kind), ...kept])].sort();
+      let names = [...new Set([...clean(list[kind], kind), ...kept])];
       if (kind === 'userSubs') names = names.filter((n) => users.has(n.split(':')[0]));
+      if (kind === 'wordGroups') {
+        names = names.map((n) => {
+          const [name, ...list] = n.split('\t');
+          const left = list.filter((w) => words.has(w));
+          return left.length ? [name, ...left].join('\t') : null;
+        }).filter(Boolean);
+      }
+      if (kind === 'scopes') {
+        names = names.filter((n) => {
+          const [type, name] = n.split('\t');
+          return type === 'w' ? words.has(name) : users.has(name);
+        });
+      }
       for (const name of names) {
         const next = chunk ? chunk + SEP[kind] + name : name;
         if (next.length > CHUNK_CHARS) {
@@ -126,17 +217,28 @@ const MuteStore = (() => {
 
       data[kind + '.count'] = chunks.length;
       chunks.forEach((c, i) => { data[kind + '.' + i] = c; });
-      for (let i = chunks.length; (kind + '.' + i) in prev; i++) stale.push(kind + '.' + i);
     }
 
+    // Too big for sync (100 KB): kept on this device instead, and moved back
+    // to sync by the first save that fits again.
+    const local = chrome.storage.local;
     try {
+      const syncPrev = from === chrome.storage.sync ? prev : await chrome.storage.sync.get(null);
       await chrome.storage.sync.set(data);
+      await removeStale(chrome.storage.sync, syncPrev, data);
+      if (from === local) await local.remove([...Object.keys(prev).filter(isListKey), ON_DEVICE]);
     } catch (err) {
-      throw new Error(/quota/i.test(err.message)
-        ? 'The mute list is too big for browser sync (100 KB limit).'
-        : err.message);
+      if (!/QUOTA_BYTES/.test(err.message)) throw err;
+      const localPrev = from === local ? prev : await local.get(null);
+      await local.set({ ...data, [ON_DEVICE]: true });
+      await removeStale(local, localPrev, data);
     }
-    if (stale.length) await chrome.storage.sync.remove(stale);
+  }
+
+  // Chunks a list no longer needs, e.g. subs.3 after the list shrank to 3 chunks.
+  function removeStale(store, prev, data) {
+    const stale = Object.keys(prev).filter((k) => /\.\d+$/.test(k) && isListKey(k) && !(k in data));
+    return stale.length ? store.remove(stale) : Promise.resolve();
   }
 
   // add/remove are queued and applied in batches (one load, one save), so
@@ -203,8 +305,8 @@ const MuteStore = (() => {
   // Changes still queued here are applied on top, so a save finishing
   // doesn't briefly undo mutes that haven't been saved yet.
   function onChange(callback) {
-    chrome.storage.onChanged.addListener((_changes, area) => {
-      if (area !== 'sync') return;
+    chrome.storage.onChanged.addListener((changes, where) => {
+      if (where !== 'sync' && !(where === 'local' && Object.keys(changes).some(isListKey))) return;
       load().then((list) => {
         [...inflight, ...pending].forEach((op) => op.fn(list));
         callback(list);
@@ -212,5 +314,8 @@ const MuteStore = (() => {
     });
   }
 
-  return { KINDS, WORD_KINDS, REC_KINDS, KEEP_KINDS, SKIP_KINDS, NOTE_KINDS, ALL_KINDS, subNoteFor, isSubKind, normalize, normalizeSub, normalizeWord, clean, load, save, add, remove, idle, onChange };
+  return {
+    KINDS, WORD_KINDS, REC_KINDS, KEEP_KINDS, SKIP_KINDS, NOTE_KINDS, SCOPE_KINDS, GROUP_KINDS, ALL_KINDS, subNoteFor, isSubKind, isUserKind,
+    normalize, normalizeSub, normalizeUser, normalizeWord, scopeOf, withScope, clean, load, save, add, remove, idle, onChange, onDevice
+  };
 })();
