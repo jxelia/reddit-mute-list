@@ -1,0 +1,14 @@
+# Identity subreddits: gender, sexuality, nationality, ethnicity, religion.
+# "names:" lines are exact subreddit names (same slugging as places.txt).
+# "ask:" lines are words for the ask/ex/true forms: r/askmen, r/askachinese,
+# r/AskAnAmerican, r/exmuslim, r/truechristian, plus a plural "s" and an
+# age like "over30" (r/askwomenover30). Indian and Australian forms are left
+# out on purpose (the user keeps that content).
+
+names: TwoXChromosomes, TrollXChromosomes, MensLib, MensRights, Feminism, AskFeminists, FemaleDatingStrategy, PurplePillDebate, RedPill, TheRedPill, MGTOW, WomenOver30, MenOver30, GirlsMirin, LadiesofScience, XXFitness, Divorce_Men, MaleLifestyle, malelivingspace, femalelivingspace
+names: LGBT, ainbow, gaybros, GayMen, ActualLesbians, lesbian, bisexual, asexuality, trans, transgender, asktransgender, ftm, mtf, traaaaaaannnnnnnnnns, egg_irl, NonBinary, LGBTeens, GayChristians, queer
+names: BlackPeopleTwitter, WhitePeopleTwitter, LatinoPeopleTwitter, ScottishPeopleTwitter, AsianAmerican, aznidentity, hapas, blackladies, BlackHair, blackfellas, Blackfellas, mixedrace, Natives, IndianCountry, AmericanIndian, Romani
+names: Christianity, Christian, TrueChristian, Catholicism, Catholic, OrthodoxChristianity, Protestant, Reformed, Lutheranism, Anglicanism, Methodism, Baptist, Bible, Pentecostal, LDS, Mormon, exmormon, JehovahsWitnesses, exjw, Islam, Muslim, MuslimLounge, progressive_islam, exmuslim, Judaism, Jewish, Sikh, Sikhism, Buddhism, Hinduism, Hindu, Atheism, atheism, TrueAtheism, DebateReligion, DebateAnAtheist, AskAChristian, religion, Theology, Paganism, Wicca, Satanism, exchristian, Deconstruction, excatholic, Quran, Shia, Sunni, Orthodox
+ask: men, man, guy, guys, male, males, women, woman, girl, girls, lady, ladies, female, females, gay, gaybros, lesbian, lesbians, bi, trans, transgender, nonbinary, queer, lgbt
+ask: american, americans, brit, brits, british, canadian, canadians, german, germans, french, frenchman, italian, italians, spaniard, spanish, dutch, swede, swedes, norwegian, dane, finn, russian, russians, ukrainian, turk, turkish, greek, israeli, arab, arabs, iranian, persian, pakistani, chinese, japanese, korean, koreans, vietnamese, thai, filipino, filipina, indonesian, malaysian, singaporean, african, africans, nigerian, kenyan, southafrican, mexican, mexicans, brazilian, argentinian, colombian, latino, latina, latinos, european, europeans, kiwi, irish, scot, scots, welsh
+ask: black, blackperson, blackpeople, white, whiteperson, asian, asians, hispanic, native, jew, jews, jewish, muslim, muslims, christian, christians, catholic, catholics, mormon, mormons, atheist, atheists, hindu, sikh, buddhist, pagan, protestant, orthodox, evangelical, rabbi, priest, imam

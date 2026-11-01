@@ -1,0 +1,165 @@
+# Cities, states and provinces, grouped by ISO country code. build.py turns
+# each name into a subreddit name (lowercase, letters and digits only, accents
+# dropped: "St. Louis" -> stlouis). "Name/alias/alias" adds the other common
+# subreddit names for the same place. IN and AU are listed so build.py can
+# drop every name they share with another country (they're never filtered).
+# Names that also mean something else are dropped by build.py (SKIP).
+
+US: Alabama, Alaska, Arizona, Arkansas, California/socal/norcal, Colorado, Connecticut, Delaware, Florida, Georgia, Hawaii, Idaho, Illinois, Indiana, Iowa, Kansas, Kentucky, Louisiana, Maine, Maryland, Massachusetts, Michigan, Minnesota, Mississippi, Missouri, Montana, Nebraska, Nevada, New Hampshire, New Jersey, New Mexico, New York/newyorkstate/upstateny, North Carolina, North Dakota, Ohio, Oklahoma, Oregon, Pennsylvania, Rhode Island, South Carolina, South Dakota, Tennessee, Texas, Utah, Vermont, Virginia, Washington/washingtonstate, West Virginia, Wisconsin, Wyoming, Puerto Rico, Guam
+US: New York City/nyc/newyorkcity/manhattan/brooklyn/queens/thebronx/statenisland/longisland, Los Angeles/losangeles/lacounty, Chicago/chicagosuburbs, Houston, Phoenix/phoenixaz, Philadelphia/philly, San Antonio, San Diego, Dallas/dfw, San Jose, Austin/atx, Jacksonville, Fort Worth, Columbus/columbusohio, Indianapolis/indy, Charlotte, San Francisco/sf/bayarea/eastbay/southbay, Seattle/seattlewa, Denver, Washington DC/washingtondc/nova/dmv, Nashville, Oklahoma City/okc, El Paso, Boston, Portland/portlandoregon, Las Vegas/vegas/vegaslocals, Detroit, Memphis, Louisville, Baltimore, Milwaukee, Albuquerque, Tucson, Fresno, Sacramento, Kansas City/kansascity, Mesa, Atlanta, Omaha, Colorado Springs, Raleigh/triangle, Long Beach, Virginia Beach, Miami/southflorida, Oakland, Minneapolis/twincities, Tulsa, Bakersfield, Wichita, Arlington, Tampa/tampabay, New Orleans/nola, Cleveland, Honolulu, Anaheim, Lexington, Stockton, Corpus Christi, Henderson, Riverside, Newark, Saint Paul/stpaul, Santa Ana, Cincinnati, Irvine, Orlando, Pittsburgh, St. Louis/stlouis, Greensboro, Jersey City, Anchorage, Lincoln, Plano, Durham, Buffalo, Chandler, Chula Vista, Toledo, Madison, Gilbert, Reno, Fort Wayne, North Las Vegas, St. Petersburg/stpetersburgfl, Lubbock, Irving, Laredo, Winston-Salem, Chesapeake, Glendale, Garland, Scottsdale, Norfolk, Boise, Fremont, Spokane, Santa Clarita, Baton Rouge, Richmond/rva, Hialeah, San Bernardino, Tacoma, Modesto, Huntsville, Des Moines, Yonkers, Rochester, Moreno Valley, Fayetteville, Fontana, Columbus, Worcester, Port St. Lucie, Little Rock, Augusta, Oxnard, Birmingham, Montgomery, Frisco, Amarillo, Salt Lake City/saltlakecity/slc, Grand Rapids, Huntington Beach, Overland Park, Glendale, Tallahassee, Grand Prairie, McKinney, Cape Coral, Sioux Falls, Peoria, Providence, Vancouver/vancouverwa, Knoxville, Akron, Shreveport, Mobile, Brownsville, Newport News, Fort Lauderdale, Chattanooga, Tempe, Aurora, Santa Rosa, Eugene, Elk Grove, Salem, Ontario, Cary, Rancho Cucamonga, Oceanside, Lancaster, Garden Grove, Pembroke Pines, Fort Collins, Palmdale, Springfield, Clarksville, Rockford, Alexandria, Corona, Killeen, Hayward, Joliet, Kansas City Kansas, Murfreesboro, Paterson, Savannah, Bridgeport, Bellevue, Syracuse, Torrance, Surprise, Lakewood, Pasadena, Macon, Mesquite, Denton, Naperville, Waco, Charleston/chs, Columbia, Gainesville, Hartford, New Haven, Ann Arbor, Albany, Allentown, Lansing, Kalamazoo, Dayton, Flint, Erie, Scranton, Harrisburg, Lancasterpa, Reading, Wilmington, Annapolis, Burlington, Manchester, Portland Maine/portlandme, Asheville, Wilmington NC/wilmingtonnc, Greenville, Myrtle Beach, Columbia SC, Pensacola, Sarasota, St Augustine, Daytona Beach, West Palm Beach/palmbeach, Boca Raton, Naples, Key West, Ocala, Lakeland, Clearwater, Orange County/orangecounty/oc, Inland Empire/inlandempire, San Fernando Valley/sanfernandovalley, Santa Barbara, Santa Cruz, San Luis Obispo/slo, Monterey, Palm Springs, Berkeley, Palo Alto, Sunnyvale, Santa Monica, Burbank, Ventura, Temecula, Redding, Chico, Eureka, Bend, Medford, Corvallis, Olympia, Bellingham, Everett, Yakima, Missoula, Bozeman, Billings, Cheyenne, Casper, Fargo, Bismarck, Rapid City, Duluth, Rochester MN/rochestermn, St Cloud, Green Bay, Appleton, Iowa City, Cedar Rapids, Davenport, Quad Cities/quadcities, Champaign/champaignurbana, Bloomington, Evansville, South Bend, Lafayette, Toledo, Youngstown, Canton, Pittsburgh, Ithaca, Binghamton, Hudson Valley/hudsonvalley, Long Island, Westchester, Stamford, New London, Springfield MA, Cape Cod/capecod, Providence, Portsmouth, Concord, Montpelier, Juneau, Fairbanks, Hilo, Maui, Kauai, Oahu, Santa Fe, Las Cruces, Flagstaff, Prescott, Yuma, Sedona, Provo, Ogden, St George, Logan, Pocatello, Idaho Falls, Coeur d'Alene, Boulder, Fort Collins, Pueblo, Grand Junction, Durango, Lawrence, Topeka, Manhattan KS, Columbia MO, Springfield MO, Joplin, Branson, Little Rock, Jonesboro, Tulsa, Norman, Stillwater, Shreveport, Lafayette LA, Lake Charles, Jackson, Biloxi, Hattiesburg, Tuscaloosa, Auburn, Dothan, Macon, Athens, Savannah, Roanoke, Charlottesville, Norfolk, Hampton Roads/hamptonroads, Blacksburg, Morgantown, Knoxville, Johnson City, Murfreesboro, Bowling Green, Cincinnati, Northern Kentucky/nky, Akron, Detroit, Traverse City, Marquette, Midland, Saginaw, Midwest, Pacific Northwest/pnw, Silicon Valley, Upper Peninsula/upperpeninsula, Central Florida, North Texas, South Texas, West Texas, East Texas, Hill Country
+
+CA: Ontario, Quebec, British Columbia/bc, Alberta, Manitoba, Saskatchewan, Nova Scotia, New Brunswick, Newfoundland/newfoundlandandlabrador, Prince Edward Island/pei, Yukon, Northwest Territories, Nunavut
+CA: Toronto/gta, Montreal, Vancouver, Calgary, Edmonton, Ottawa, Winnipeg, Quebec City/quebeccity, Hamilton, Kitchener/kitchenerwaterloo, Waterloo, London Ontario/londonontario, Victoria, Halifax, Oshawa, Windsor/windsorontario, Saskatoon, Regina, Sherbrooke, St. John's/stjohnsnl, Barrie, Kelowna, Abbotsford, Kingston/kingstonontario, Guelph, Moncton, Saint John, Thunder Bay, Sudbury, Peterborough, Lethbridge, Red Deer, Nanaimo, Kamloops, Fredericton, Charlottetown, Whitehorse, Yellowknife, Mississauga, Brampton, Markham, Vaughan, Burnaby, Surrey, Richmond Hill, Oakville, Burlington, Niagara/niagarafalls, St. Catharines, Cambridge, Brantford, Sarnia, Laval, Gatineau, Longueuil, Trois-Rivieres, Saguenay, Prince George, Chilliwack, Vernon, Penticton, Medicine Hat, Grande Prairie, Fort McMurray, Brandon, Cornwall, Belleville, Timmins, Sault Ste. Marie, North Bay, Durham Region/durhamregion
+
+MX: Mexico City/cdmx/mexicocity, Guadalajara, Monterrey, Puebla, Tijuana, Leon, Juarez/ciudadjuarez, Cancun, Merida, Queretaro, San Luis Potosi, Aguascalientes, Hermosillo, Chihuahua, Mexicali, Culiacan, Acapulco, Oaxaca, Morelia, Veracruz, Toluca, Saltillo, Torreon, Puerto Vallarta, Playa del Carmen, Mazatlan, Ensenada, Tulum, Cabo/loscabos, Jalisco, Nuevo Leon, Baja California/baja, Yucatan, Quintana Roo, Sonora, Sinaloa, Guanajuato, Michoacan, Chiapas, Tabasco, Tamaulipas, Coahuila, Durango, Zacatecas, Nayarit, Colima, Hidalgo, Morelos, Tlaxcala, Campeche, Guerrero
+
+GB: England, Scotland, Wales, Northern Ireland, Cornwall, Devon, Yorkshire, Kent, Essex, Surrey, Sussex, Norfolk, Suffolk, Lancashire, Cumbria, Somerset, Dorset, Hampshire, Wiltshire, Gloucestershire, Oxfordshire, Berkshire, Hertfordshire, Cheshire, Shropshire, Staffordshire, Derbyshire, Nottinghamshire, Leicestershire, Lincolnshire, Northumberland, Durham, Isle of Wight, Highlands
+GB: London, Birmingham/brum, Manchester, Liverpool, Leeds, Sheffield, Bristol, Glasgow, Edinburgh, Newcastle/newcastleupontyne, Cardiff, Belfast, Nottingham, Leicester, Coventry, Bradford, Southampton, Portsmouth, Plymouth, Brighton, Stoke/stokeontrent, Hull, Derby, Wolverhampton, Sunderland, Swansea, Aberdeen, Dundee, Norwich, Oxford, Cambridge, York, Exeter, Bath, Reading, Milton Keynes/miltonkeynes, Northampton, Luton, Swindon, Bournemouth, Ipswich, Peterborough, Gloucester, Cheltenham, Worcester, Canterbury, Chelmsford, Colchester, Southend, Middlesbrough, Huddersfield, Wakefield, Doncaster, Rotherham, Barnsley, Bolton, Stockport, Wigan, Preston, Blackpool, Blackburn, Lancaster, Carlisle, Chester, Warrington, Crewe, Telford, Shrewsbury, Hereford, Lincoln, Inverness, Stirling, Perth, Paisley, Newport, Wrexham, Bangor, Derry, Lisburn, Guildford, Crawley, Basingstoke, Slough, Watford, St Albans, Croydon, Harrogate, Durham, Salisbury, Winchester, Aylesbury, Maidstone
+
+IE: Ireland, Dublin, Cork, Galway, Limerick, Waterford, Kilkenny, Sligo, Kerry, Donegal, Wexford, Wicklow, Kildare, Meath, Mayo, Clare, Tipperary, Athlone, Drogheda, Dundalk
+
+DE: Bavaria/bayern, Berlin, Hamburg, Munich/muenchen, Cologne/koeln, Frankfurt, Stuttgart, Dusseldorf/duesseldorf, Leipzig, Dortmund, Essen, Bremen, Dresden, Hanover/hannover, Nuremberg/nuernberg, Duisburg, Bochum, Wuppertal, Bielefeld, Bonn, Munster/muenster, Karlsruhe, Mannheim, Augsburg, Wiesbaden, Monchengladbach, Gelsenkirchen, Braunschweig, Kiel, Chemnitz, Aachen, Halle, Magdeburg, Freiburg, Krefeld, Lubeck/luebeck, Mainz, Erfurt, Rostock, Kassel, Hagen, Potsdam, Saarbrucken/saarbruecken, Heidelberg, Darmstadt, Regensburg, Wurzburg/wuerzburg, Ingolstadt, Ulm, Heilbronn, Gottingen/goettingen, Tubingen/tuebingen, Jena, Konstanz, Oldenburg, Osnabruck, Paderborn, Trier, Baden-Wurttemberg/badenwuerttemberg, Hesse/hessen, Saxony/sachsen, Thuringia/thueringen, Brandenburg, Saarland, Rhineland-Palatinate/rheinlandpfalz, Lower Saxony/niedersachsen, North Rhine-Westphalia/nrw, Schleswig-Holstein, Mecklenburg-Vorpommern, Ruhrgebiet/ruhrpott
+
+AT: Vienna/wien, Graz, Linz, Salzburg, Innsbruck, Klagenfurt, Villach, Wels, Tyrol/tirol, Vorarlberg, Carinthia/kaernten, Styria/steiermark
+CH: Zurich/zuerich, Geneva/geneve, Basel, Bern, Lausanne, Lucerne/luzern, Lugano, St. Gallen, Winterthur, Ticino, Valais
+NL: Amsterdam, Rotterdam, The Hague/denhaag, Utrecht, Eindhoven, Groningen, Tilburg, Almere, Breda, Nijmegen, Haarlem, Arnhem, Maastricht, Leiden, Delft, Zwolle, Enschede, Den Bosch/denbosch, Amersfoort, Apeldoorn, Friesland, Limburg, Zeeland, Brabant, Gelderland, Overijssel, Drenthe, Flevoland
+BE: Brussels/bruxelles/brussel, Antwerp/antwerpen, Ghent/gent, Bruges/brugge, Leuven, Liege, Namur, Charleroi, Mechelen, Hasselt, Kortrijk, Flanders/vlaanderen, Wallonia/wallonie
+LU: Luxembourg City
+FR: Paris, Marseille, Lyon, Toulouse, Nice, Nantes, Strasbourg, Montpellier, Bordeaux, Lille, Rennes, Reims, Le Havre, Saint-Etienne, Toulon, Grenoble, Dijon, Angers, Nimes, Clermont-Ferrand, Le Mans, Aix-en-Provence/aixenprovence, Brest, Tours, Amiens, Limoges, Annecy, Perpignan, Metz, Besancon, Orleans, Rouen, Mulhouse, Caen, Nancy, Avignon, Cannes, La Rochelle, Bayonne, Biarritz, Ajaccio, Corsica/corse, Brittany/bretagne, Normandy/normandie, Provence, Alsace, Occitanie, Auvergne, Burgundy/bourgogne, Picardie, Lorraine, Champagne, Aquitaine, Ile-de-France/iledefrance, Martinique, Guadeloupe, Reunion
+ES: Madrid, Barcelona, Valencia, Seville/sevilla, Zaragoza, Malaga, Murcia, Palma/palmademallorca, Las Palmas, Bilbao, Alicante, Cordoba, Valladolid, Vigo, Gijon, Granada, A Coruna/coruna, Vitoria, Elche, Oviedo, Santander, Pamplona, San Sebastian/donostia, Salamanca, Burgos, Cadiz, Tarragona, Girona, Toledo, Leon, Logrono, Almeria, Huelva, Castellon, Badajoz, Caceres, Marbella, Ibiza, Mallorca, Menorca, Tenerife, Gran Canaria/grancanaria, Lanzarote, Fuerteventura, Canary Islands/canarias, Catalonia/catalunya, Andalusia/andalucia, Basque Country/euskadi, Galicia, Asturias, Cantabria, Aragon, Navarra, Extremadura, Castilla y Leon, Castilla-La Mancha, La Rioja
+PT: Lisbon/lisboa, Porto, Braga, Coimbra, Faro, Funchal, Aveiro, Setubal, Evora, Guimaraes, Algarve, Madeira, Azores/acores
+IT: Rome/roma, Milan/milano, Naples/napoli, Turin/torino, Palermo, Genoa/genova, Bologna, Florence/firenze, Bari, Catania, Venice/venezia, Verona, Messina, Padua/padova, Trieste, Brescia, Parma, Taranto, Prato, Modena, Reggio Calabria, Reggio Emilia, Perugia, Livorno, Ravenna, Cagliari, Rimini, Salerno, Ferrara, Sassari, Pisa, Bergamo, Trento, Bolzano, Udine, Lecce, Siena, Como, Pescara, Ancona, Sicily/sicilia, Sardinia/sardegna, Tuscany/toscana, Lombardy/lombardia, Piedmont/piemonte, Veneto, Liguria, Emilia-Romagna, Campania, Puglia, Calabria, Abruzzo, Umbria, Marche, Trentino, Friuli, Basilicata, Molise
+MT: Malta, Gozo, Valletta
+GR: Athens/athina, Thessaloniki, Patras, Heraklion, Larissa, Volos, Ioannina, Chania, Rhodes, Corfu, Crete, Santorini, Mykonos, Kalamata
+CY: Nicosia, Limassol, Larnaca, Paphos
+TR: Istanbul, Ankara, Izmir, Bursa, Antalya, Adana, Konya, Gaziantep, Mersin, Kayseri, Eskisehir, Diyarbakir, Samsun, Trabzon, Bodrum, Alanya, Fethiye
+DK: Copenhagen/kobenhavn, Aarhus, Odense, Aalborg, Esbjerg, Jutland, Faroe Islands/faroeislands
+SE: Stockholm, Gothenburg/goteborg, Malmo, Uppsala, Vasteras, Orebro, Linkoping, Helsingborg, Jonkoping, Norrkoping, Lund, Umea, Gavle, Lulea, Skane
+NO: Oslo, Bergen, Trondheim, Stavanger, Drammen, Kristiansand, Tromso, Fredrikstad, Bodo
+FI: Helsinki, Espoo, Tampere, Vantaa, Oulu, Turku, Jyvaskyla, Lahti, Kuopio
+IS: Reykjavik
+EE: Tallinn, Tartu
+LV: Riga
+LT: Vilnius, Kaunas, Klaipeda
+PL: Warsaw/warszawa, Krakow, Lodz, Wroclaw, Poznan, Gdansk, Szczecin, Bydgoszcz, Lublin, Bialystok, Katowice, Gdynia, Czestochowa, Radom, Torun, Kielce, Rzeszow, Olsztyn, Opole, Silesia/slask, Pomerania, Masovia
+CZ: Prague/praha, Brno, Ostrava, Plzen/pilsen, Liberec, Olomouc, Ceske Budejovice, Hradec Kralove, Moravia
+SK: Bratislava, Kosice, Presov, Zilina, Nitra
+HU: Budapest, Debrecen, Szeged, Miskolc, Pecs, Gyor
+RO: Bucharest/bucuresti, Cluj/clujnapoca, Timisoara, Iasi, Constanta, Craiova, Brasov, Galati, Ploiesti, Oradea, Sibiu, Transylvania
+BG: Sofia, Plovdiv, Varna, Burgas
+RS: Belgrade/beograd, Novi Sad, Nis, Kragujevac, Vojvodina
+HR: Zagreb, Split, Rijeka, Osijek, Zadar, Dubrovnik, Pula, Istria/istra, Dalmatia
+SI: Ljubljana, Maribor
+BA: Sarajevo, Banja Luka, Mostar, Tuzla
+ME: Podgorica, Kotor, Budva
+MK: Skopje, Ohrid
+AL: Tirana, Durres
+XK: Pristina/prishtina
+UA: Kyiv/kiev, Kharkiv, Odesa/odessa, Dnipro, Lviv, Zaporizhzhia, Mykolaiv, Vinnytsia, Kherson, Poltava, Chernihiv, Sumy, Zhytomyr, Crimea, Donbas
+BY: Minsk, Gomel, Brest
+MD: Chisinau
+RU: Moscow/moskva, Saint Petersburg/stpetersburg/spb, Novosibirsk, Yekaterinburg, Kazan, Nizhny Novgorod, Chelyabinsk, Samara, Omsk, Rostov, Ufa, Krasnoyarsk, Voronezh, Perm, Volgograd, Krasnodar, Sochi, Kaliningrad, Vladivostok, Irkutsk, Murmansk, Siberia
+GE: Tbilisi, Batumi, Kutaisi
+AM: Yerevan
+AZ: Baku
+KZ: Almaty, Astana, Shymkent
+UZ: Tashkent, Samarkand, Bukhara
+KG: Bishkek
+MN: Ulaanbaatar
+
+IL: Tel Aviv/telaviv, Jerusalem, Haifa, Beersheba, Eilat
+PS: Gaza, Ramallah, West Bank/westbank
+JO: Amman, Aqaba
+LB: Beirut
+SY: Damascus, Aleppo
+IQ: Baghdad, Erbil, Basra, Mosul, Kurdistan
+IR: Tehran, Mashhad, Isfahan, Tabriz, Shiraz
+SA: Riyadh, Jeddah, Mecca, Medina, Dammam
+AE: Dubai, Abu Dhabi/abudhabi, Sharjah, Ajman, Ras Al Khaimah
+QA: Doha
+KW: Kuwait City
+BH: Manama
+OM: Muscat
+YE: Sanaa, Aden
+EG: Cairo, Alexandria, Giza, Luxor, Aswan, Sharm El Sheikh, Hurghada
+MA: Casablanca, Rabat, Marrakech/marrakesh, Fes, Tangier, Agadir
+DZ: Algiers, Oran
+TN: Tunis
+LY: Tripoli, Benghazi
+NG: Lagos, Abuja, Ibadan, Kano, Port Harcourt
+GH: Accra, Kumasi
+KE: Nairobi, Mombasa, Kisumu
+ET: Addis Ababa
+TZ: Dar es Salaam, Zanzibar, Arusha
+UG: Kampala
+RW: Kigali
+SN: Dakar
+CI: Abidjan
+CM: Douala, Yaounde
+ZA: Johannesburg/joburg, Cape Town/capetown, Durban, Pretoria, Port Elizabeth/gqeberha, Bloemfontein, East London, Stellenbosch, Gauteng, KwaZulu-Natal/kzn, Western Cape
+ZW: Harare, Bulawayo
+ZM: Lusaka
+NA: Windhoek
+BW: Gaborone
+MZ: Maputo
+AO: Luanda
+CD: Kinshasa
+
+PK: Karachi, Lahore, Islamabad, Rawalpindi, Faisalabad, Multan, Peshawar, Quetta, Hyderabad, Sialkot, Gujranwala, Punjab, Sindh, Khyber Pakhtunkhwa, Balochistan
+BD: Dhaka, Chittagong/chattogram, Sylhet, Khulna, Rajshahi
+LK: Colombo, Kandy, Galle, Jaffna
+NP: Kathmandu, Pokhara, Lalitpur
+BT: Thimphu
+MV: Male
+AF: Kabul, Kandahar, Herat
+
+CN: Beijing, Shanghai, Guangzhou, Shenzhen, Chengdu, Chongqing, Tianjin, Wuhan, Hangzhou, Nanjing, Xi'an/xian, Suzhou, Qingdao, Dalian, Shenyang, Harbin, Changsha, Zhengzhou, Kunming, Xiamen, Fuzhou, Hefei, Jinan, Ningbo, Dongguan, Foshan, Nanning, Urumqi, Lhasa, Guilin, Sanya, Zhuhai, Guangdong, Sichuan, Yunnan, Fujian, Zhejiang, Jiangsu, Hubei, Hunan, Henan, Shandong, Hainan, Xinjiang, Tibet, Inner Mongolia
+HK: Hong Kong/hongkong/hk, Kowloon
+MO: Macau/macao
+TW: Taipei, Kaohsiung, Taichung, Tainan, Hsinchu, Taoyuan, Keelung, Hualien
+JP: Tokyo, Osaka, Kyoto, Yokohama, Nagoya, Sapporo, Fukuoka, Kobe, Kawasaki, Saitama, Hiroshima, Sendai, Chiba, Kitakyushu, Niigata, Hamamatsu, Kumamoto, Okayama, Kagoshima, Nagasaki, Nara, Kanazawa, Naha, Okinawa, Hokkaido, Kyushu, Shikoku, Kansai, Kanto, Tohoku, Hakone, Nikko
+KR: Seoul, Busan, Incheon, Daegu, Daejeon, Gwangju, Ulsan, Suwon, Jeju, Gangnam, Itaewon, Pyongyang
+VN: Hanoi, Ho Chi Minh City/saigon/hochiminhcity, Da Nang/danang, Hai Phong, Hue, Nha Trang, Can Tho, Hoi An, Da Lat/dalat, Vung Tau, Phu Quoc
+TH: Bangkok, Chiang Mai/chiangmai, Phuket, Pattaya, Chiang Rai, Hua Hin, Krabi, Koh Samui/kohsamui, Khon Kaen, Udon Thani, Hat Yai, Isan
+KH: Phnom Penh/phnompenh, Siem Reap, Sihanoukville
+LA: Vientiane, Luang Prabang
+MM: Yangon, Mandalay
+MY: Kuala Lumpur/kualalumpur/kl, Penang, Johor Bahru/johorbahru/jb, Ipoh, Malacca/melaka, Kota Kinabalu, Kuching, Shah Alam, Petaling Jaya, Selangor, Sabah, Sarawak, Johor, Kedah
+SG: Singapore
+ID: Jakarta, Surabaya, Bandung, Medan, Semarang, Makassar, Palembang, Denpasar, Yogyakarta/jogja, Malang, Bali, Lombok, Batam, Bogor, Depok, Bekasi, Tangerang, Java, Sumatra, Borneo, Sulawesi, Papua
+PH: Manila/metromanila, Quezon City, Cebu, Davao, Makati, Taguig, Pasig, Baguio, Iloilo, Bacolod, Cagayan de Oro/cdo, Zamboanga, Angeles, Palawan, Boracay, Mindanao, Luzon, Visayas
+BN: Bandar Seri Begawan
+
+NZ: Auckland, Wellington, Christchurch, Hamilton, Tauranga, Dunedin, Palmerston North, Napier, Nelson, Rotorua, New Plymouth, Whangarei, Invercargill, Queenstown, Hawke's Bay, Canterbury, Otago, Waikato, Northland, Taranaki, Southland, Marlborough
+FJ: Suva, Nadi
+
+BR: Sao Paulo/saopaulo, Rio de Janeiro/riodejaneiro/rio, Brasilia, Salvador, Fortaleza, Belo Horizonte/belohorizonte/bh, Manaus, Curitiba, Recife, Goiania, Belem, Porto Alegre/portoalegre, Guarulhos, Campinas, Sao Luis, Maceio, Natal, Teresina, Campo Grande, Joao Pessoa, Florianopolis/floripa, Santos, Vitoria, Cuiaba, Aracaju, Londrina, Juiz de Fora, Ribeirao Preto, Uberlandia, Sorocaba, Niteroi, Joinville, Blumenau, Minas Gerais/minasgerais, Bahia, Parana, Santa Catarina, Rio Grande do Sul, Pernambuco, Ceara, Goias, Para, Amazonas, Espirito Santo, Mato Grosso, Maranhao, Paraiba, Piaui, Alagoas, Sergipe, Rondonia, Tocantins, Acre, Amapa, Roraima
+AR: Buenos Aires/buenosaires, Cordoba, Rosario, Mendoza, La Plata, Mar del Plata, San Miguel de Tucuman/tucuman, Salta, Santa Fe, Neuquen, Bariloche, Ushuaia, Patagonia
+CL: Santiago, Valparaiso, Vina del Mar, Concepcion, Antofagasta, La Serena, Temuco, Puerto Montt, Iquique, Punta Arenas
+UY: Montevideo, Punta del Este
+PY: Asuncion
+BO: La Paz, Santa Cruz de la Sierra, Cochabamba, Sucre
+PE: Lima, Arequipa, Cusco/cuzco, Trujillo, Chiclayo, Iquitos, Piura
+EC: Quito, Guayaquil, Cuenca, Galapagos
+CO: Bogota, Medellin, Cali, Barranquilla, Cartagena, Bucaramanga, Santa Marta, Pereira, Manizales, Cucuta, Antioquia
+VE: Caracas, Maracaibo, Valencia, Barquisimeto, Maracay
+PA: Panama City/panamacity
+CR: San Jose, Guanacaste
+NI: Managua
+HN: Tegucigalpa, San Pedro Sula, Roatan
+SV: San Salvador
+GT: Guatemala City, Antigua Guatemala, Quetzaltenango
+BZ: Belize City
+CU: Havana/lahabana, Santiago de Cuba
+DO: Santo Domingo, Santiago de los Caballeros, Punta Cana/puntacana
+JM: Kingston, Montego Bay
+TT: Port of Spain
+BS: Nassau
+BB: Bridgetown
+HT: Port-au-Prince
+
+IN: Andhra Pradesh, Arunachal Pradesh, Assam, Bihar, Chhattisgarh, Goa, Gujarat, Haryana, Himachal Pradesh/himachal, Jharkhand, Karnataka, Kerala, Madhya Pradesh, Maharashtra, Manipur, Meghalaya, Mizoram, Nagaland, Odisha, Punjab, Rajasthan, Sikkim, Tamil Nadu/tamilnadu, Telangana, Tripura, Uttar Pradesh/up, Uttarakhand, West Bengal/westbengal, Delhi/newdelhi/ncr, Jammu, Kashmir, Ladakh, Puducherry/pondicherry, Chandigarh, Andaman
+IN: Mumbai/bombay, Bangalore/bengaluru, Hyderabad, Chennai/madras, Kolkata/calcutta, Pune, Ahmedabad, Surat, Jaipur, Lucknow, Kanpur, Nagpur, Indore, Thane, Bhopal, Visakhapatnam/vizag, Patna, Vadodara/baroda, Ghaziabad, Ludhiana, Agra, Nashik, Faridabad, Meerut, Rajkot, Varanasi, Srinagar, Aurangabad, Dhanbad, Amritsar, Navi Mumbai/navimumbai, Allahabad/prayagraj, Ranchi, Howrah, Coimbatore, Jabalpur, Gwalior, Vijayawada, Jodhpur, Madurai, Raipur, Kota, Guwahati, Solapur, Hubli, Mysore/mysuru, Tiruchirappalli/trichy, Bareilly, Aligarh, Tiruppur, Gurgaon/gurugram, Noida, Moradabad, Jalandhar, Bhubaneswar, Salem, Warangal, Thiruvananthapuram/trivandrum, Kochi/cochin, Kozhikode/calicut, Thrissur, Mangalore/mangaluru, Udaipur, Dehradun, Shimla, Manali, Rishikesh, Haridwar, Mohali, Panaji, Pondicherry, Belgaum/belagavi, Durgapur, Siliguri, Jamshedpur, Cuttack, Ajmer, Nellore, Tirupati, Vellore, Kolhapur, Jammu, Leh
+
+AU: New South Wales/nsw, Victoria, Queensland, Western Australia/westernaustralia, South Australia/southaustralia, Tasmania, Northern Territory, Australian Capital Territory/act
+AU: Sydney, Melbourne, Brisbane, Perth, Adelaide, Gold Coast/goldcoast, Newcastle, Canberra, Sunshine Coast/sunshinecoast, Wollongong, Geelong, Hobart, Townsville, Cairns, Darwin, Toowoomba, Ballarat, Bendigo, Albury, Launceston, Mackay, Rockhampton, Bunbury, Bundaberg, Coffs Harbour, Wagga Wagga, Hervey Bay, Mildura, Shepparton, Port Macquarie, Gladstone, Tamworth, Traralgon, Orange, Dubbo, Geraldton, Kalgoorlie, Alice Springs, Fremantle, Parramatta, Penrith, Central Coast/centralcoast, Blue Mountains, Byron Bay/byronbay, Illawarra, Hunter Valley, Ipswich, Logan, Frankston, Mandurah, Joondalup, Bathurst

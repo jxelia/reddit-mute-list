@@ -1,0 +1,244 @@
+:root {
+  --bg: #ffffff;
+  --surface: #f6f7f8;
+  --fg: #0f1a1c;
+  --muted: #576f76;
+  --line: #e5ebee;
+  --accent: #ff4500;
+  --accent-fg: #ffffff;
+  --danger: #d93a00;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1113;
+    --surface: #1a1f22;
+    --fg: #f2f4f5;
+    --muted: #8ba2ad;
+    --line: #2a3236;
+    --danger: #ff6a3d;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+
+/* Display rules below (e.g. .restore) would otherwise show hidden elements. */
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+body.popup { width: 360px; }
+
+.page {
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+body:not(.popup) .page { padding: 3rem 1rem; }
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+h1 { font-size: 1.25rem; margin: 0; }
+h2 { font-size: 0.95rem; margin: 0 0 0.5rem; }
+
+.usage, .hint, .note, .empty { color: var(--muted); font-size: 0.85rem; }
+.header .usage { margin-left: auto; }
+
+/* On/off switch in the header. */
+.switch { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.switch input {
+  appearance: none; position: relative; width: 32px; height: 18px; margin: 0;
+  border-radius: 9px; background: var(--line); cursor: pointer; transition: background 0.15s;
+}
+.switch input::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px;
+  border-radius: 50%; background: #fff; transition: transform 0.15s;
+}
+.switch input:checked { background: var(--accent); }
+.switch input:checked::after { transform: translateX(14px); }
+/* Off: the lists stay editable, just dimmed. */
+body.off .page > :not(.header) { opacity: 0.55; }
+.note { margin: 0.75rem 0 0; }
+
+button, input, textarea { font: inherit; color: inherit; }
+
+button {
+  border: 0;
+  border-radius: 9999px;
+  padding: 0.45rem 1rem;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:hover { filter: brightness(1.08); }
+button:focus-visible, input:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+button.secondary { background: var(--surface); color: var(--fg); border: 1px solid var(--line); }
+button.link { background: none; color: var(--muted); padding: 0.25rem 0.5rem; font-weight: 500; white-space: nowrap; }
+button.link:hover { color: var(--fg); }
+
+input[type="text"], input[type="search"], textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: var(--surface);
+}
+
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 0.75rem;
+}
+
+.tabs button {
+  background: none;
+  color: var(--muted);
+  border-radius: 0;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
+
+/* Four tabs fit the 360px popup only with tighter padding. */
+.popup .tabs { gap: 0; }
+.popup .tabs button { padding: 0.5rem 0.3rem; font-size: 13px; white-space: nowrap; }
+
+.count {
+  display: inline-block;
+  min-width: 1.5em;
+  padding: 0 0.4em;
+  border-radius: 9999px;
+  background: var(--surface);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.add, .toolbar, .row { display: flex; gap: 0.5rem; align-items: center; }
+.add { margin-bottom: 0.5rem; }
+.toolbar { margin-bottom: 0.5rem; }
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 16rem;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+}
+
+body:not(.popup) .list { max-height: 28rem; }
+.list:empty { display: none; }
+
+.list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.3rem 0.4rem 0.3rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.list li:last-child { border-bottom: 0; }
+.list .from { color: var(--muted); font-size: 0.85em; }
+
+.list .remove {
+  background: none;
+  color: var(--muted);
+  padding: 0 0.55rem;
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+.list .remove:hover { color: var(--danger); background: var(--surface); }
+
+.empty { margin: 0.5rem 0; }
+
+textarea { height: 14rem; resize: vertical; font-family: ui-monospace, Menlo, monospace; margin-bottom: 0.5rem; }
+
+.card {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+}
+
+.check { display: flex; gap: 0.5rem; align-items: center; cursor: pointer; }
+
+.restore { display: grid; gap: 0.4rem; margin-top: 0.75rem; }
+
+.status { min-height: 1.2em; margin: 0.75rem 0 0; font-size: 0.85rem; color: var(--muted); }
+.status.error { color: var(--danger); }
+
+.scopes { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.75rem; color: var(--muted); font-size: 0.85rem; }
+.scopes .check { color: var(--fg); }
+
+.word-section { margin-top: 0.75rem; }
+.word-section .hint { margin: 0 0 0.4rem; }
+.word-section #feeds-status { margin: 0.4rem 0 0; }
+
+/* Muted words: one row per word, [word] | Comments | Title | ×. */
+.word-table { --word-cols: minmax(0, 1fr) 4.6rem 3.2rem 2rem; }
+.word-head, .word-table .list li { display: grid; grid-template-columns: var(--word-cols); align-items: center; }
+.word-head { padding: 0 0.4rem 0.25rem 0.75rem; color: var(--muted); font-size: 0.8rem; }
+.word-head > span:nth-child(2), .word-head > span:nth-child(3), .word-table .list li > input { justify-self: center; }
+.word-table .list li > span { overflow-wrap: anywhere; }
+.word-table .list li > input { margin: 0; cursor: pointer; }
+.word-table .list .remove { justify-self: end; }
+body.popup .word-table .list { max-height: 14rem; }
+#words-view .hint { margin: 0.5rem 0 0; }
+.edit-links .link { font-size: inherit; padding: 0 0.15rem; }
+.section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem; }
+.section-head h2 { margin: 0; }
+body.popup .word-section .list { max-height: 10rem; }
+
+/* Built-in filters on the Recommended tab. */
+.presets { margin-bottom: 0.75rem; }
+.presets .check { margin-bottom: 0.3rem; }
+.presets .hint { margin-top: 0.4rem; }
+.presets summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; }
+.presets textarea { height: 10rem; margin-top: 0.4rem; }
+.topics { display: grid; grid-template-columns: 1fr 1fr; gap: 0.2rem 0.75rem; font-size: 0.9rem; }
+
+/* Imported lists: one collapsed group per file under the Subreddits / Users list. */
+.import-group { margin-top: 0.75rem; border: 1px solid var(--line); border-radius: 0.5rem; padding: 0.4rem 0.6rem; }
+.import-group summary { cursor: pointer; font-weight: 600; font-size: 0.9rem; }
+.import-group .list { margin-top: 0.4rem; }
+.import-group > .link { margin-top: 0.4rem; }
+.import-group > .hint { margin: 0.4rem 0 0; }
+
+/* Popup: mute every sub showing on the open Reddit tab. */
+.page-subs { position: relative; margin-bottom: 0.75rem; padding: 0.5rem 0.75rem; border: 1px solid var(--line); border-radius: 0.5rem; font-size: 0.85rem; }
+.page-subs summary { min-height: 2rem; padding: 0.25rem 6.5rem 0 0; cursor: pointer; }
+.page-subs > button { position: absolute; top: 0.5rem; right: 0.75rem; }
+.page-subs .hint { margin: 0.4rem 0 0; }
+.page-subs-list { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.4rem 0 0; padding: 0; list-style: none; }
+.page-subs-list li { display: inline-flex; align-items: center; gap: 0.15rem; padding: 0.1rem 0.1rem 0.1rem 0.5rem; border-radius: 1rem; background: var(--surface); overflow-wrap: anywhere; }
+.page-subs-list a { color: inherit; text-decoration: none; }
+.page-subs-list li.out a { color: var(--muted); text-decoration: line-through; }
+.page-subs-list button { width: 1.4rem; height: 1.4rem; padding: 0; border-radius: 50%; background: none; color: var(--muted); font-size: 0.75rem; font-weight: 400; line-height: 1; }
+.page-subs-list button:hover, .page-subs-list button[aria-pressed="true"] { color: var(--fg); background: var(--line); }
+.page-subs > button:disabled { opacity: 0.5; cursor: default; filter: none; }

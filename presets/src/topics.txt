@@ -1,0 +1,73 @@
+# Topics for the keep list. In keep mode, a recommended post is shown in full
+# only if its subreddit is kept, Indian or Australian, or matches a ticked
+# topic here; anything else shrinks to a one-line Keep / Mute bar.
+#   "id: Label"       starts a topic (the popup shows the label)
+#   "id words: ..."   matched anywhere in a subreddit name, so keep them
+#                     4+ letters and distinctive ("art" would hit "start")
+#   "id names: ..."   exact subreddit names, for short or risky ones
+# The built-in block filters still win (r/AskScience is an Ask sub).
+# DEFAULT_TOPICS in build.py says which are ticked at first.
+
+tech: Tech & programming
+tech words: programming, programmer, coding, developer, webdev, python, javascript, typescript, golang, linux, ubuntu, windows, android, iphone, ipad, macos, apple, pcmasterrace, buildapc, hardware, software, sysadmin, devops, homelab, selfhosted, gadget, technology, techsupport, computer, chatgpt, openai, claudeai, localllama, machinelearning, datascience, dataisbeautiful, database, cybersecurity, netsec, privacy, raspberry, arduino, electronics, engineering, firefox, chrome, google, microsoft, nvidia, keyboard, smarthome, homeautomation, cscareer
+tech names: ai, artificial, singularity, rust, java, css, sql, aws, vim, emacs, tech, mac, git, github
+
+science: Science & nature
+science words: science, physics, chemistry, biology, astronomy, astrophotography, space, nasa, spacex, cosmos, math, statistics, geology, nature, wildlife, animal, environment, climate, ecology, evolution, earthporn, botany, ornithology, birding, oceanography, marinebiology, paleontology, dinosaur, neuroscience, genetics, microbiology, weather, volcano, entomology, mycology, natureisfuckinglit
+science names: bio, insects, birds, fossils
+
+learning: History & learning
+learning words: history, historyporn, mapporn, maps, todayilearned, explainlikeimfive, education, learnprogramming, learning, linguistics, language, etymology, wikipedia, documentar, philosophy, archaeolog, museum, outoftheloop, coolguides, youshouldknow, lifeprotips, howto, tutorial, trivia, geography
+learning names: til, eli5, ysk, lpt
+
+money: Money & careers
+money words: money, finance, invest, stocks, stockmarket, dividend, bogleheads, personalfinance, budget, frugal, economics, business, entrepreneur, startup, smallbusiness, career, resume, salary, realestate, accounting, marketing, freelance, consulting, productmanagement, sidehustle, passiveincome, crypto, bitcoin, ethereum, fintech, banking, retire
+money names: fire, leanfire, fatfire, financialindependence, jobs, work, cscareerquestions
+
+health: Health & self-improvement
+health words: health, selfimprovement, productivity, getdisciplined, decidingtobebetter, getmotivated, motivation, meditation, mindful, sleep, nutrition, habit, stoic, psychology, biohack, longevity, wellness, therapy, adhd, anxiety
+health names: zenhabits, nofap, loseit, intermittentfasting
+
+food: Food & cooking
+food words: food, cooking, recipe, baking, bread, coffee, espresso, chef, kitchen, grill, bbq, cuisine, vegan, vegetarian, eatcheap, mealprep, spicy, pizza, sushi, ramen, cocktail, beer, wine
+food names: tea, eats
+
+fitness: Fitness & outdoors
+fitness words: fitness, workout, bodyweight, running, cycling, bicycl, hiking, camping, climbing, bouldering, yoga, swimming, triathlon, marathon, gym, weightlift, powerlifting, calisthenics, backpacking, ultralight, outdoor, surfing, skiing, snowboard, kayak, fishing
+fitness names: bjj, mma, crossfit, xxfitness
+
+diy: DIY & making
+diy words: diy, woodworking, woodwork, homeimprovement, crafts, 3dprinting, maker, sewing, knitting, crochet, pottery, metalworking, welding, blacksmith, electrical, plumbing, gardening, garden, houseplants, repair, fixit, tools
+diy names: lego, modelmakers
+
+cars: Cars & travel
+cars words: cars, autos, carporn, mechanic, motorcycle, motorbike, aviation, flying, pilot, travel, solotravel, backpack, digitalnomad, roadtrip, trains, transit, ebike, tesla, electricvehicles, cartalk, porsche, bmw, honda, toyota
+cars names: ev, f1, formula1, shittycarmods, justrolledintotheshop
+
+gaming: Gaming
+gaming words: gaming, games, gamer, nintendo, playstation, xbox, steam, boardgames, tabletop, dnd, minecraft, pokemon, zelda, retro, emulation, speedrun, esports, chess, puzzle
+gaming names: pcgaming, ps5, switch, deck, steamdeck
+
+media: Movies, TV & music
+media words: movie, film, television, tvshows, netflix, anime, manga, music, guitar, piano, drums, synth, vinyl, audiophile, headphone, hiphop, metal, jazz, classical, kpop, books, reading, fantasy, scifi, horror, comics, marvel, starwars, startrek, podcast, youtube, documentaries
+media names: tv, edm, rap, rock
+
+sports: Sports
+sports words: sports, cricket, football, soccer, premierleague, nba, nfl, baseball, basketball, tennis, golf, rugby, hockey, formula1, motorsport, cycling, boxing, ufc, wrestling, olympics, chess
+sports names: f1, ipl, afl, nrl, mlb, nhl
+
+memes: Memes & funny
+memes words: meme, funny, humor, humour, jokes, comedy, interesting, satisfying, oddlysatisfying, damnthatsinteresting, nextfuckinglevel, beamazed, wholesome, mademesmile, pics, gifs, videos, unexpected, therewasanattempt, facepalm, crappydesign, mildly, showerthoughts, tifu, perfecttiming, wellthatsucks, whatcouldgowrong
+memes names: aww, me_irl, meirl, wtf, nostalgia
+
+pets: Pets & animals
+pets words: aww, dogs, puppy, puppies, cats, kitten, rabbit, bunny, parrot, aquarium, reptile, horse, rescue, pets, animalsbeingderps, animalsbeingbros, wildlife, birb, rarepuppers, corgi
+pets names: eyebleach
+
+art: Art, design & photos
+art words: drawing, painting, illustration, design, graphicdesign, photography, photo, architecture, typography, sketch, pixelart, digitalart, artporn, artist, sculpt, calligraphy, watercolor, animation, blender, photoshop, cinematography
+art names: art, arts, pics, itookapicture
+
+home: Home & lifestyle
+home words: interiordesign, homedecor, cozyplaces, organization, minimalism, cleaning, fashion, malefashion, femalefashion, streetwear, sneakers, skincare, makeup, beauty, hair, watches, perfume, fragrance, buyitforlife, frugal
+home names: bifl, malefashionadvice, femalefashionadvice

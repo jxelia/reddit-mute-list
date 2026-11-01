@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "Mute List for Reddit",
+  "version": "1.1.0",
+  "description": "A synced mute list for subreddits, users and title words that hides them on Reddit, with mute options in each post's menu.",
+  "permissions": ["storage"],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Mute list",
+    "default_popup": "manage/manage.html"
+  },
+  "options_ui": {
+    "page": "manage/manage.html",
+    "open_in_tab": true
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.reddit.com/*",
+        "https://reddit.com/*",
+        "https://new.reddit.com/*",
+        "https://sh.reddit.com/*",
+        "https://old.reddit.com/*"
+      ],
+      "js": ["presets/presets.js", "storage.js", "content.js"],
+      "css": ["content.css"],
+      "run_at": "document_start"
+    }
+  ]
+}

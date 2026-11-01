@@ -1,0 +1,186 @@
+# Countries and country-specific subreddits, by ISO country code.
+# "CC: names" are exact subreddit names, same format as places.txt.
+# "CC parts: tokens" also match at the start or end of a subreddit name
+# (r/ukpolitics, r/personalfinancecanada). Short or risky tokens are left out
+# or only listed as exact names. IN and AU lines are the whitelist: a name
+# containing one of their parts is never filtered as a place (see build.py).
+
+US: USA/unitedstates/america, AskAnAmerican, AskAmericans, AmericanPolitics, uspolitics, politics, Conservative, democrats, Republican, AmericaBad, ShitAmericansSay, USCIS, VeteransBenefits, Medicare, SocialSecurity, IRS, PoliticalDiscussion
+US parts: usa, america, american, americans, unitedstates, murica
+CA: Canada/onguardforthee/canadapolitics/canadahousing/canadahousing2/personalfinancecanada/askacanadian/canadians/canadaguns/canadianinvestor/cdnpoli/cdnfinance/canadaimmigrant/legaladvicecanada/metacanada/canadianforces/canadapost/ontariocanada, Quebec/quebeccity, CanadaJobs
+CA parts: canada, canadian, canadians, canuck, cdn
+GB: UnitedKingdom/unitedkingdom/uk_/ukpolitics/casualuk/askuk/britishproblems/ukpersonalfinance/legaladviceuk/drivinguk/ukjobs/ukvisa/uktrains/britishsuccess/askbrits/scottishpeopletwitter/casualireland/ukmonarchy/tories/labouruk/nhs/doctorsuk/nursinguk/teachinguk/uktv/ukbike/ukweather/ukhousing/houseboughtuk/uksavings/ukinvesting/uklandlords/ukcarsales/ukparenting/ukhiking/ukgamers, britishtv, britishproblems, AskBrits
+GB parts: uk, britain, british, brits, england, scotland, scottish, wales, welsh, ulster, londoner
+IE: Ireland/casualireland/askireland/irishpersonalfinance/irishpolitics/irishtourism, Northern Ireland/northernireland
+IE parts: ireland, irish, eire
+NZ: New Zealand/newzealand/nz/auckland/thetron/nzpolitics/personalfinancenz/legaladvicenz/nzmusic/nzgaming
+NZ parts: newzealand, nz, kiwis, aotearoa
+DE: Germany/de/deutschland/fragreddit/finanzen/germanpolitics/germantrees/de_iama/ich_iel/kreiswichs/askagerman/germanpersonalfinance/arbeitsleben/wohnen/de_edv/germanrap/bundesliga
+DE parts: germany, german, germans, deutsch, deutschland
+AT: Austria/oesterreich/askanaustrian
+AT parts: austria, austrian, oesterreich
+CH: Switzerland/schweiz/askswitzerland/swisspersonalfinance
+CH parts: switzerland, schweiz, suisse, svizzera
+NL: Netherlands/thenetherlands/nl/nederlands/askthedutch/dutchfire/dutchpersonalfinance/geldzaken
+NL parts: netherlands, nederland, dutch, holland
+BE: Belgium/belgium2/belgica/belgie/askbelgium
+BE parts: belgium, belgian, belgie, belgique
+LU: Luxembourg
+FR: France/francais/rance/askfrance/vosfinances/conseiljuridique/frenchpolitics/paslegorafi
+FR parts: france, francais, french, francaise
+ES: Spain/spain/es/askspain/spainpolitics/esspain/espana/askspanish/vigoreddit/askaspaniard
+ES parts: spain, spanish, espana, spaniard
+PT: Portugal/portugal/portugueses/askportugal/tugas
+PT parts: portugal, portuguese, tuga, tugas
+IT: Italy/italy/italia/italians/askitalia/italiaadv/italiancars/italianpolitics/italyinformatica/commercialisti
+IT parts: italy, italia, italian, italians
+GR: Greece/greece/askgreece
+GR parts: greece, greek, greeks, hellas
+CY: Cyprus
+MT: Malta
+TR: Turkey/turkey/turkiye/askturkey/turkishvisa/turkishpeople
+TR parts: turkiye, turkish, turks
+DK: Denmark/denmark/askdenmark/dkfinance
+DK parts: denmark, danish, danmark
+SE: Sweden/sweden/sverige/swedes/swedishproblems/askswedes
+SE parts: sweden, swedish, sverige, swedes
+NO: Norway/norway/norge/asknorway
+NO parts: norway, norwegian, norge
+FI: Finland/finland/suomi/askfinland
+FI parts: finland, finnish, suomi
+IS: Iceland/iceland
+IS parts: iceland, icelandic
+EE: Estonia
+LV: Latvia
+LT: Lithuania
+PL: Poland/poland/polska/askpoland/polishpolitics
+PL parts: poland, polska
+CZ: Czech Republic/czechia/czechrepublic
+CZ parts: czech, czechia
+SK: Slovakia/slovakia/slovak
+HU: Hungary/hungary/askhungary
+HU parts: hungary, hungarian, magyar
+RO: Romania/romania/askromania
+RO parts: romania, romanian
+BG: Bulgaria/bulgaria
+RS: Serbia/serbia/askserbia
+HR: Croatia/croatia/hrvatska
+SI: Slovenia/slovenia
+BA: Bosnia/bih/bosniaandherzegovina
+ME: Montenegro
+MK: North Macedonia/macedonia/northmacedonia
+AL: Albania/albania
+XK: Kosovo
+UA: Ukraine/ukraine/ukrainianconflict/ukrainewarvideoreport/ukrainewarreport/askukraine
+UA parts: ukraine, ukrainian
+BY: Belarus
+MD: Moldova
+RU: Russia/russia/askarussian/russianwarvideos/russialago
+RU parts: russia, russian, russians
+GE: sakartvelo
+AM: Armenia/armenia
+AZ: Azerbaijan
+KZ: Kazakhstan
+UZ: Uzbekistan
+IL: Israel/israel/israelpalestine/israelexposed/askisrael/israeli
+IL parts: israel, israeli
+PS: Palestine/palestine/palestinian
+LB: Lebanon
+SY: Syria/syriancivilwar
+IQ: Iraq
+IR: Iran/iran/newiran/askiran
+IR parts: iran, iranian, persian
+SA: Saudi Arabia/saudiarabia/saudi
+AE: UAE/uae/dubai/abudhabi
+QA: Qatar
+KW: Kuwait
+YE: Yemen
+EG: Egypt/egypt/egyptian
+MA: Morocco/morocco/moroccan
+DZ: Algeria
+TN: Tunisia
+LY: Libya
+NG: Nigeria/nigeria/naija/nigerian
+GH: Ghana/ghana/ghanaian
+KE: Kenya/kenya/kenyan
+ET: Ethiopia/ethiopia/ethiopian
+TZ: Tanzania
+UG: Uganda
+RW: Rwanda
+SN: Senegal
+ZA: South Africa/southafrica/askasouthafrican/southafrican/saffa
+ZA parts: southafrica, southafrican
+ZW: Zimbabwe
+ZM: Zambia
+PK: Pakistan/pakistan/pakistani/askpakistan
+PK parts: pakistan, pakistani
+BD: Bangladesh/bangladesh/bangladeshi
+LK: Sri Lanka/srilanka/srilankan
+NP: Nepal/nepal
+AF: Afghanistan
+CN: China/china/sino/chinesehistory/askachinese/chinalife/chinapics
+CN parts: china, chinese
+HK: Hong Kong/hongkong/hkfinance
+TW: Taiwan/taiwan/taiwanese/asktaiwan
+TW parts: taiwan, taiwanese
+JP: Japan/japan/japanlife/japantravel/japanfinance/japanresidents/teachinginjapan/movingtojapan/askjapan/newsokur/japanesestreetwear
+JP parts: japan, japanese, nihon, nippon
+KR: South Korea/korea/southkorea/askkorea/koreatravel/hanguk/northkorea/livinginkorea
+KR parts: korea, korean, koreans, hanguk
+VN: Vietnam/vietnam/askvn
+VN parts: vietnam, vietnamese
+TH: Thailand/thailand/thaitravel/askthai
+TH parts: thailand, thai
+KH: Cambodia
+LA: Laos
+MM: Myanmar/myanmar/burma
+MY: Malaysia/malaysia/malaysians/malaysiauni
+MY parts: malaysia, malaysian
+SG: Singapore/singapore/askasingaporean/singaporefi/singaporeraw/nus/ntu
+SG parts: singapore, singaporean
+ID: Indonesia/indonesia/indonesians
+ID parts: indonesia, indonesian
+PH: Philippines/philippines/phinvest/phcareers/pinoy/pinoyunbound/phmoneysaving/phtravel/adultingph/askph/phgamers/peyups
+PH parts: philippines, filipino, filipina, pinoy, pinay
+BR: Brazil/brasil/brazil/brazilian/brasilivre/investimentos/futebol/conselhodecarreira/desabafos/perguntereddit/eu_nvr
+BR parts: brazil, brasil, brazilian, brasileiro
+AR: Argentina/argentina/argentine/republicaargentina/merval/dankgentina/argentinaenpareja
+AR parts: argentina, argentine, argentino
+CL: Chile/chile/chilean/chilecomparte
+CL parts: chilean
+UY: Uruguay
+PY: Paraguay
+BO: Bolivia
+PE: Peru/peru/peruvian
+EC: Ecuador
+CO: Colombia/colombia/colombian
+CO parts: colombia, colombian
+VE: Venezuela/venezuela/vzla
+MX: Mexico/mexico/mexicanos/mexican/askmexico/mexicofinanciero/mexicocity
+MX parts: mexico, mexican, mexicanos, mexicana
+PA: Panama
+CR: Costa Rica/costarica/pura vida
+NI: Nicaragua
+HN: Honduras
+SV: El Salvador/elsalvador
+GT: Guatemala
+CU: Cuba/cuba/cuban
+DO: Dominican Republic/dominicanrepublic/dominicana
+JM: Jamaica/jamaica/jamaican
+TT: Trinidad/trinidadandtobago
+PR: Puerto Rico/puertorico/boricua
+EU: Europe/europe/askeurope/europeans/european/eupersonalfinance/eutech/europeanunion/eu
+EU parts: europe, european, europeans
+LATAM: Latin America/latinamerica/latam/southamerica/centralamerica
+LATAM parts: latinamerica, latino, latina, latinx, hispanic
+ME_: Middle East/middleeast/arab/arabs
+ME_ parts: arab, arabs, arabian
+
+IN: India/india/indiaspeaks/indianews/indiadiscussion/indiainvestments/indianstreetbets/indiancinema/indiatech/desi/bharat/hindi/chodi/indiasocial/indiacricket/indianbikes/indiangaming/askindia/indiaplaces
+IN parts: india, indian, indians, bharat, hindustan, desi, desis
+AU: Australia/australia/aus/ausfinance/auslegal/ausproperty/auspol/ausunions/aussie/aussies/askanaustralian/australiancattledog/ausjobs/ausents/ausgaming/ausmemes/ausrenovation/ausbike/ausskincare/ausfrugal/ausvisa/auscorp/ausstocks/ausantiques/afl/nrl/ozbargain/straya
+AU parts: newsouthwales, australia, australian, australians, aussie, aussies, aus, oz, straya
+
+# Subreddits that a part above matches by accident; never filtered as places.
+# Plain language names (r/french, r/japanese) are language-learning subs.
+SKIP: french, spanish, japanese, korean, chinese, german, italian, portuguese, dutch, greek, russian, arabic, turkish, swedish, norwegian, danish, finnish, icelandic, polish, hungarian, romanian, persian, thai, vietnamese, ukrainian, indonesian, malaysian, filipino, tagalog, hebrew, czech, serbian, croatian, bulgarian, albanian, armenian, nepali, italianfood, greekfood, chinafood, ukfood, ukulele, ukuleles, nzxt, dutchoven, nailpolish, americanhorrorstory, americandad, americanidol, americanpsycho, americangods, americanbully, americanfootball, britishmilitaryhistory, frenchbulldogs, frenchtoast, frenchhorn, germanshepherds, greekmythology, persiancats, irishsetters, welshcorgis, scottishfold, turkishvan, dutchbros, thaiboxing, chinesecheckers, japaneseknives, koreanbeauty, asianbeauty, chilepeppers

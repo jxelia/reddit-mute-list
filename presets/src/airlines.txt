@@ -1,0 +1,66 @@
+# Airline subreddit names, one airline per line: "Name/alias/alias", tagged by
+# home country (IN and AU airlines are listed only so build.py can leave them
+# out). Names that also mean something else (Delta, United, Spirit, Frontier,
+# Emirates, Swiss...) are only included in their longer, unambiguous forms.
+US: American Airlines/americanair, United Airlines/unitedairlines, Delta Air Lines/deltaairlines/deltaair, Southwest Airlines/southwestair, JetBlue, Alaska Airlines/alaskaair, Hawaiian Airlines, Spirit Airlines, Frontier Airlines/flyfrontier, Allegiant/allegiantair, Sun Country/suncountryairlines, Breeze Airways/flybreeze, Avelo/aveloair, SkyWest, Envoy Air, Republic Airways, Mesa Airlines, Piedmont Airlines, PSA Airlines, Horizon Air, Endeavor Air, Atlas Air, Silver Airways, Cape Air, Mokulele
+CA: Air Canada/aircanada, WestJet, Porter Airlines, Flair Airlines, Air Transat/airtransat, Jazz Aviation, Sunwing, Lynx Air
+MX: Aeromexico, Volaris, VivaAerobus, Viva Aerobus
+GB: British Airways/ba_, Virgin Atlantic, easyJet, Jet2/jet2holidays, Loganair, TUI Airways
+IE: Ryanair, Aer Lingus
+DE: Lufthansa, Eurowings, Condor Airlines, Discover Airlines
+FR: Air France/airfrance, Transavia, Corsair
+NL: KLM
+BE: Brussels Airlines
+CH: Swiss International Air Lines/swissair, Edelweiss Air
+AT: Austrian Airlines
+ES: Iberia Airlines/iberiaairlines, Vueling, Air Europa, Volotea
+PT: TAP Air Portugal/tapairportugal/flytap
+IT: ITA Airways/itaairways, Alitalia
+GR: Aegean Airlines
+TR: Turkish Airlines, Pegasus Airlines, SunExpress, AJet
+SE: SAS Scandinavian/flysas, Norwegian Air/norwegianair, Finnair, Icelandair, PLAY Airlines/playairlines
+PL: LOT Polish Airlines/lotpolishairlines
+HU: Wizz Air/wizzair
+LV: airBaltic
+RS: Air Serbia
+HR: Croatia Airlines
+RO: TAROM
+RU: Aeroflot, S7 Airlines/s7airlines, Pobeda
+UA: Ukraine International Airlines
+IL: El Al/elal, Israir, Arkia
+AE: Emirates Airline/emiratesairline, Etihad/etihadairways, flydubai, Air Arabia/airarabia
+QA: Qatar Airways/qatarairways
+SA: Saudia/saudiairlines, flynas, flyadeal, Riyadh Air/riyadhair
+OM: Oman Air
+BH: Gulf Air
+KW: Kuwait Airways
+JO: Royal Jordanian
+EG: EgyptAir
+MA: Royal Air Maroc/royalairmaroc
+ET: Ethiopian Airlines
+KE: Kenya Airways
+ZA: South African Airways/flysaa, FlySafair
+NG: Air Peace
+RW: RwandAir
+PK: PIA/pakistaninternationalairlines
+BD: Biman Bangladesh
+LK: SriLankan Airlines
+CN: Air China, China Southern, China Eastern, Hainan Airlines, Xiamen Airlines, Sichuan Airlines, Spring Airlines
+HK: Cathay Pacific/cathay, HK Express
+TW: EVA Air, China Airlines, Starlux/starluxairlines
+JP: Japan Airlines/jal_, All Nippon Airways/ana_/flyana, Peach Aviation, Zipair
+KR: Korean Air, Asiana/asianaairlines, Jeju Air
+SG: Singapore Airlines/singaporeair, Scoot
+MY: Malaysia Airlines, AirAsia
+TH: Thai Airways, Bangkok Airways, Thai AirAsia
+VN: Vietnam Airlines, VietJet
+PH: Philippine Airlines, Cebu Pacific
+ID: Garuda Indonesia, Lion Air, Batik Air
+NZ: Air New Zealand
+FJ: Fiji Airways
+BR: LATAM/latamairlines, Azul Airlines/azullinhasaereas, GOL Airlines/voegol
+AR: Aerolineas Argentinas
+CO: Avianca
+PA: Copa Airlines
+IN: Air India, IndiGo/goindigo, SpiceJet, Vistara, Akasa Air, Air India Express
+AU: Qantas, Virgin Australia, Jetstar, Rex Airlines, Bonza

@@ -1,0 +1,8 @@
+# Personal data: saved Reddit pages (account ids, page dumps) and popup backups
+reddit-pages/
+reddit-mute-list-*.json
+# Changes on every edit (dev auto-reload stamp)
+build.txt
+# Local tooling
+.claude/
+.DS_Store

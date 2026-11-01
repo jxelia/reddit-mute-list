@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reddit Mute List</title>
+  <link rel="stylesheet" href="manage.css">
+</head>
+<body>
+  <main class="page">
+    <header class="header">
+      <h1>Mute list</h1>
+      <span class="usage" id="usage"></span>
+      <label class="switch" title="Turn the extension on or off on Reddit"><input type="checkbox" id="enabled" role="switch"> <span id="enabled-label">On</span></label>
+    </header>
+
+    <div class="page-subs" id="page-subs" hidden>
+      <details id="page-subs-details">
+        <summary id="page-subs-text"></summary>
+        <ul class="page-subs-list" id="page-subs-list"></ul>
+      </details>
+      <p class="hint" id="page-subs-done" hidden></p>
+      <p class="hint" id="page-subs-hint" hidden>Refresh the Reddit tab to keep adding subs.</p>
+      <button type="button" id="page-subs-mute"></button>
+    </div>
+
+    <nav class="tabs" role="tablist">
+      <button type="button" role="tab" data-kind="subs" aria-selected="true">Subreddits</button>
+      <button type="button" role="tab" data-kind="users" aria-selected="false">Users</button>
+      <button type="button" role="tab" data-kind="words" aria-selected="false">Muted words</button>
+      <button type="button" role="tab" data-kind="rec" aria-selected="false">Recommended</button>
+    </nav>
+
+    <section id="list-view">
+      <form class="add" id="add-form">
+        <input id="add-input" type="text" autocomplete="off" spellcheck="false" aria-label="Names to mute">
+        <button type="submit">Mute</button>
+      </form>
+
+      <div class="toolbar">
+        <input id="filter" type="search" placeholder="Filter" aria-label="Filter list">
+        <button type="button" class="link" id="edit-text">Edit as text</button>
+      </div>
+
+      <ul class="list" id="list"></ul>
+      <p class="empty" id="empty" hidden></p>
+      <details class="import-group" id="skip-group" hidden>
+        <summary>Mute all whitelist <span class="count" id="count-skipSubs">0</span></summary>
+        <p class="hint">Left out of “Mute all” with −. They won’t be listed again.</p>
+        <ul class="list" id="skip-list"></ul>
+      </details>
+      <div id="imports"></div>
+    </section>
+
+    <section id="words-view" hidden>
+      <form class="add" id="word-form">
+        <input id="word-input" type="text" autocomplete="off" spellcheck="false" placeholder="Word or phrase; commas for several" aria-label="Words to mute">
+        <button type="submit">Mute</button>
+      </form>
+      <div class="scopes">
+        <span>Mute in:</span>
+        <label class="check"><input type="checkbox" id="word-comments" checked> Comments</label>
+        <label class="check"><input type="checkbox" id="word-popular" checked> r/popular titles</label>
+        <label class="check"><input type="checkbox" id="word-subs" checked> Subreddit titles</label>
+      </div>
+
+      <div class="toolbar">
+        <input id="word-filter" type="search" placeholder="Filter" aria-label="Filter words">
+      </div>
+
+      <div class="word-table" id="word-table">
+        <div class="word-head" aria-hidden="true">
+          <span>Word <span class="count" id="count-words">0</span></span>
+          <span>Comments</span>
+          <span>Title</span>
+          <span></span>
+        </div>
+        <ul class="list" id="list-words"></ul>
+      </div>
+      <p class="empty" id="empty-words" hidden></p>
+      <p class="hint">Comments: the comment shrinks to a bar (click it to show; long-press to hide its replies too). Title: posts are hidden on r/popular and on pages of subreddits you haven’t joined and that aren’t in your custom feeds. A half-ticked Title box means only one of those two.</p>
+      <p class="hint edit-links">Edit as text:
+        <button type="button" class="link" data-edit="commentWords">Comments</button> ·
+        <button type="button" class="link" data-edit="popularWords">r/popular titles</button> ·
+        <button type="button" class="link" data-edit="subWords">Subreddit titles</button>
+      </p>
+      <p class="hint" id="feeds-status"></p>
+    </section>
+
+    <section id="rec-view" hidden>
+      <p class="hint">Hidden only when Reddit recommends them in your feed. Their own pages and subs you’ve joined are untouched.</p>
+      <div class="word-section presets">
+        <h2>Built-in filters</h2>
+        <label class="check"><input type="checkbox" id="preset-places"> Countries, cities, states and provinces</label>
+        <label class="check"><input type="checkbox" id="preset-identity"> Gender, nationality, ethnicity and religion</label>
+        <label class="check"><input type="checkbox" id="preset-ask"> Any r/Ask… subreddit</label>
+        <label class="check"><input type="checkbox" id="preset-news"> News and politics</label>
+        <label class="check"><input type="checkbox" id="preset-airlines"> Airlines</label>
+        <p class="hint">Matched by subreddit name. India and Australia are never filtered (r/AskIndia, r/AusFinance), and neither are place names that also mean something else (r/phoenix, r/reading…).</p>
+        <details>
+          <summary>See the lists</summary>
+          <textarea id="preset-list" readonly spellcheck="false" aria-label="Built-in filter lists"></textarea>
+        </details>
+      </div>
+
+      <div class="word-section presets">
+        <h2>Keep list</h2>
+        <label class="check"><input type="checkbox" id="keep-mode"> Shrink other recommended posts to one line</label>
+        <label class="check"><input type="checkbox" id="collapse-popular"> Shrink all r/popular posts to one line (except kept subreddits)</label>
+        <p class="hint">Shown in full: subreddits you keep, the topics ticked below, and India and Australia. Any other recommended post becomes one line with Keep and Mute. The filters above still hide their posts.</p>
+        <div class="topics" id="keep-topics"></div>
+      </div>
+
+      <form class="add" id="rec-form">
+        <input id="rec-input" type="text" autocomplete="off" spellcheck="false" placeholder="r/name, u/name, or paste links" aria-label="Subreddits or users to mute in recommendations">
+        <button type="submit">Mute</button>
+      </form>
+
+      <div class="toolbar">
+        <input id="rec-filter" type="search" placeholder="Filter" aria-label="Filter recommendation mutes">
+      </div>
+
+      <div class="word-section">
+        <div class="section-head">
+          <h2>Subreddits <span class="count" id="count-recSubs">0</span></h2>
+          <button type="button" class="link" data-edit="recSubs">Edit as text</button>
+        </div>
+        <ul class="list" id="list-recSubs"></ul>
+        <p class="empty" id="empty-recSubs" hidden></p>
+      </div>
+
+      <div class="word-section">
+        <div class="section-head">
+          <h2>Users <span class="count" id="count-recUsers">0</span></h2>
+          <button type="button" class="link" data-edit="recUsers">Edit as text</button>
+        </div>
+        <ul class="list" id="list-recUsers"></ul>
+        <p class="empty" id="empty-recUsers" hidden></p>
+      </div>
+
+      <div class="word-section">
+        <div class="section-head">
+          <h2>Kept subreddits <span class="count" id="count-keepSubs">0</span></h2>
+          <button type="button" class="link" data-edit="keepSubs">Edit as text</button>
+        </div>
+        <ul class="list" id="list-keepSubs"></ul>
+        <p class="empty" id="empty-keepSubs" hidden></p>
+      </div>
+    </section>
+
+    <section id="text-view" hidden>
+      <p class="hint" id="text-hint"></p>
+      <textarea id="text" spellcheck="false" aria-label="Mute list as text"></textarea>
+      <div class="row">
+        <button type="button" id="text-save">Save</button>
+        <button type="button" class="secondary" id="text-cancel">Cancel</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <label class="check">
+        <input type="checkbox" id="hide-comments">
+        Also hide comments from muted users
+      </label>
+    </section>
+
+    <section class="card">
+      <h2>Import / export</h2>
+      <div class="row">
+        <button type="button" id="import">Import list…</button>
+        <button type="button" class="secondary" id="export">Export list</button>
+      </div>
+      <input type="file" id="import-file" accept=".txt,text/plain" hidden>
+      <p class="note">A text file of subreddits and users (r/name, u/name, *word* or links; spaces, commas or new lines between them). Imported names are listed under “Imported from …” at the bottom of the Subreddits and Users tabs.</p>
+    </section>
+
+    <section class="card">
+      <h2>Backup</h2>
+      <div class="row">
+        <button type="button" id="backup">Download backup</button>
+        <button type="button" class="secondary" id="restore">Restore…</button>
+      </div>
+      <div class="restore" id="restore-panel" hidden>
+        <label class="check"><input type="radio" name="restore-mode" value="merge" checked> Merge with current list</label>
+        <label class="check"><input type="radio" name="restore-mode" value="replace"> Replace current list</label>
+        <input type="file" id="restore-file" accept="application/json,.json">
+      </div>
+      <p class="note">Coming later: back up to your own cloud storage (kept in sync), or restore from a web link such as a shared public drive file.</p>
+    </section>
+
+    <p class="status" id="status" role="status"></p>
+  </main>
+
+  <script src="../presets/presets.js"></script>
+  <script src="../storage.js"></script>
+  <script src="manage.js"></script>
+</body>
+</html>
