@@ -249,8 +249,21 @@ body.popup .word-section .list { max-height: 10rem; }
 .except { margin: 0 0 0.5rem 1.6rem; font-size: 0.85rem; }
 .except-label { color: var(--muted); margin-right: 0.25rem; }
 .except .chip { display: inline-flex; align-items: center; gap: 0.2rem; margin: 0 0.25rem 0.25rem 0; padding: 0.05rem 0.2rem 0.05rem 0.55rem; border: 1px solid var(--line); border-radius: 999px; }
-.except .chip button { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 0 0.25rem; font: inherit; }
-.except .chip button:hover { color: var(--fg); }
+/* A tiny dot: its two halves stretch out into an × on hover. */
+.except .chip button { position: relative; width: 1.1rem; height: 1.1rem; border: 0; background: none; color: var(--muted); cursor: pointer; padding: 0; }
+.except .chip button::before, .except .chip button::after {
+  content: ""; position: absolute; top: 50%; left: 50%; width: 5px; height: 5px;
+  border-radius: 3px; background: currentColor; transform: translate(-50%, -50%);
+  transition: width 0.15s ease-out, height 0.15s ease-out, transform 0.15s ease-out;
+}
+.except .chip button:hover, .except .chip button:focus-visible { color: var(--danger); }
+.except .chip button:hover::before, .except .chip button:focus-visible::before,
+.except .chip button:hover::after, .except .chip button:focus-visible::after { width: 11px; height: 1.5px; }
+.except .chip button:hover::before, .except .chip button:focus-visible::before { transform: translate(-50%, -50%) rotate(45deg); }
+.except .chip button:hover::after, .except .chip button:focus-visible::after { transform: translate(-50%, -50%) rotate(-45deg); }
+@media (prefers-reduced-motion: reduce) {
+  .except .chip button::before, .except .chip button::after { transition: none; }
+}
 .except input[type=text] { width: 100%; margin-top: 0.2rem; }
 .except:has(.chips:empty) .except-label { display: none; }
 .except details { margin-top: 0.15rem; }

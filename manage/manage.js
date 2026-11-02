@@ -952,7 +952,6 @@ function renderException(cfg) {
     chip.className = 'chip';
     const x = document.createElement('button');
     x.type = 'button';
-    x.textContent = '×';
     x.setAttribute('aria-label', `Filter ${label} again`);
     x.addEventListener('click', () => saveException(cfg, exceptTags(cfg).filter((t) => !group.includes(t))));
     chip.append(label, x);
