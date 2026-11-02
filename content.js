@@ -1922,91 +1922,75 @@ function updatePageScope(force = true) {
   // scope it was loaded with (postScope).
 }
 
-// On arriving at the home page, pick the default feed's tab once (a role=tab
-// button in faceplate-tabgroup, id feed-tab-N, no URL of its own; the selected
-// one has faceplate-tab-selected, no aria-selected). Already on it: nothing
-// happens. It waits for Reddit's scripts: :defined, and actioned on the button
-// once its click actions are attached. A tab the user clicks meanwhile, or
-// afterwards, stays.
+// On arriving at the home page, switch to the default feed's tab unless it's
+// already selected (faceplate-tab-selected). The feed stays hidden until then,
+// so the other tab never shows. Back and forward return to the feed as it was,
+// scroll included. Replaces don't count: Reddit can make one right after arriving.
 let feedDone = false;
-// Back and forward return to the feed as it was, scroll included. Replaces don't
-// count: Reddit can make one right after arriving.
 let lastNavigation = null;
 window.navigation?.addEventListener('navigate', (e) => {
   if (e.navigationType !== 'replace') lastNavigation = e.navigationType;
 });
 const cameBack = () => (lastNavigation ? lastNavigation === 'traverse' :
   performance.getEntriesByType('navigation')[0]?.type === 'back_forward');
+
+// A copy of the setting in the page's localStorage, since chrome.storage can't
+// answer before the page starts to draw.
+const FEED_COPY = 'rmute-default-feed';
+function saveFeedCopy() {
+  try { localStorage.setItem(FEED_COPY, isOff() ? 'last' : mutes.settings.defaultFeed); } catch {}
+}
+function holdFeed() {
+  try {
+    const feed = localStorage.getItem(FEED_COPY);
+    if (feed && feed !== 'last' && location.pathname === '/' && !cameBack()) document.documentElement.dataset.rmuteFeedHold = '';
+  } catch {}
+}
+const releaseFeed = () => delete document.documentElement.dataset.rmuteFeedHold;
+holdFeed();
+
 function openDefaultFeed() {
   if (feedDone) return;
   feedDone = true;
-  if (cameBack()) return;
-  const isTabEl = (el) => el.matches?.('[role="tab"]');
-  let userPicked = false;
-  const onClick = (e) => { if (e.isTrusted && e.composedPath().some(isTabEl)) userPicked = true; };
-  document.addEventListener('click', onClick, true);
+  if (cameBack()) return releaseFeed();
+  holdFeed();
   const started = performance.now();
-  let ticks = 0;
-  let clicked = -Infinity;
   const tick = () => {
-    ticks++;
     // Before the list loads the setting is missing; wait for it.
     const want = mutes.settings.defaultFeed;
-    const isTab = (el) => isTabEl(el) && el.textContent.trim().toLowerCase() === want;
-    // The tab is a slotted light-DOM button; shadow roots are searched once a second.
-    const tab = want && ([...document.querySelectorAll('[role="tab"]')].find(isTab) ||
-      (ticks % 10 === 0 ? [...walk(document)].find(isTab) : null));
-    const now = performance.now();
-    if (userPicked || location.pathname !== '/' || isOff() || want === 'last' ||
-        tab?.hasAttribute('faceplate-tab-selected') || now - started > 10000) {
-      document.removeEventListener('click', onClick, true);
-      return;
-    }
+    const tab = want && [...document.querySelectorAll('#feed-tab-group [role="tab"]')]
+      .find((el) => el.textContent.trim().toLowerCase() === want);
+    if (location.pathname !== '/' || isOff() || want === 'last' || tab?.hasAttribute('faceplate-tab-selected')) return releaseFeed();
     const feed = document.querySelector('shreddit-feed[reload-url*="feed="]');
-    const ready = tab?.parentElement?.matches(':defined') && feed?.matches(':defined') && tab.hasAttribute('actioned');
-    if (tab && now - clicked >= 3000 && (ready || now - started > 5000)) {
-      clicked = now;
-      switchFeed(tab, feed, want.replace(' ', '-'));
+    // actioned: Reddit's click actions are attached to the button.
+    if (tab?.hasAttribute('actioned') && tab.parentElement.matches(':defined') && document.readyState !== 'loading' && (!feed || feed.matches(':defined'))) {
+      return switchFeed(tab, feed, want.replace(' ', '-'));
     }
+    if (performance.now() - started > 5000) return releaseFeed();
     setTimeout(tick, 100);
   };
   tick();
 }
 
-// A scripted click on a tab moves the highlight, but Reddit can refetch the
-// feed from the URL it had before the switch, so the posts are the other tab's.
-// shreddit-feed keeps that URL in reload-url (read by a later Lit update, hence
-// the timeouts) and reloads on component-reload, cancelling a fetch in progress.
+// The tab's click can make Reddit reload the feed from the URL it had before the
+// switch, so the feed gets the right one first. shreddit-feed reads reload-url
+// in a later update, and on component-reload cancels any fetch and fetches it.
+// Reddit focuses the selected tab, which would draw a ring, so that comes off
+// before the feed shows.
 function switchFeed(tab, feed, feedName) {
-  if (!feed) return clickLikeUser(tab);
-  const url = new URL(feed.getAttribute('reload-url'), location.href);
-  url.searchParams.set('feed', feedName);
-  const reloadUrl = url.pathname + url.search;
-  feed.setAttribute('reload-url', reloadUrl);
+  if (feed) {
+    const url = new URL(feed.getAttribute('reload-url'), location.href);
+    url.searchParams.set('feed', feedName);
+    feed.setAttribute('reload-url', url.pathname + url.search);
+  }
   setTimeout(() => {
-    clickLikeUser(tab);
-    feed.setAttribute('reload-url', reloadUrl);
-    setTimeout(() => feed.dispatchEvent(new CustomEvent('component-reload')));
+    tab.click();
+    feed?.dispatchEvent(new CustomEvent('component-reload'));
+    setTimeout(() => {
+      tab.blur();
+      releaseFeed();
+    });
   });
-}
-
-// What a real click sends. Reddit focuses a selected tab, which draws a ring on
-// a page nobody has touched yet, so focus comes off again.
-function clickLikeUser(el) {
-  const opts = { bubbles: true, composed: true, cancelable: true, button: 0 };
-  el.dispatchEvent(new PointerEvent('pointerdown', opts));
-  el.dispatchEvent(new MouseEvent('mousedown', opts));
-  el.focus({ preventScroll: true });
-  el.dispatchEvent(new PointerEvent('pointerup', opts));
-  el.dispatchEvent(new MouseEvent('mouseup', opts));
-  el.click();
-  // Checked, not a focus listener: a tab in the background gets no focus event.
-  const started = performance.now();
-  const check = () => {
-    if (document.activeElement === el) el.blur();
-    if (performance.now() - started < 3000) setTimeout(check, 100);
-  };
-  check();
 }
 
 // The user's custom feeds and joined subs come from Reddit's own API (same
@@ -2176,6 +2160,7 @@ let timedTimer = null;
 function useList(list) {
   storedList = list;
   mutes = MuteStore.effective(list);
+  saveFeedCopy();
   clearTimeout(timedTimer);
   const end = MuteStore.nextEnd(list);
   if (!end) return;
