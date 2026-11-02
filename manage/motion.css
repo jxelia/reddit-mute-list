@@ -1,18 +1,21 @@
 /* Popup motion, copied from jxel.dev. Trial: nothing else depends on this file.
-   Undo one detail: delete its section. Undo all: delete this file's <link> in manage.html.
+   Undo one detail: delete its section. Undo all: delete this file's <link> and
+   motion.js's <script> in manage.html.
    With reduced motion on, none of it applies and manage.css looks as it did. */
 @media (prefers-reduced-motion: no-preference) {
   :root { --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1); }
 
-  /* 1. Tab underline: grows from the left, in place of manage.css's border. */
-  .tabs button { position: relative; transition: color 0.2s; }
-  .tabs button[aria-selected="true"] { border-bottom-color: transparent; }
-  .tabs button::after {
-    content: ""; position: absolute; inset: auto 0 -2px; height: 2px;
-    background: var(--accent); transform: scaleX(0); transform-origin: left;
-    transition: transform 0.35s var(--motion-ease);
+  /* 1. Tab underline: one line that slides to the clicked tab, in place of
+     manage.css's border. motion.js sets its place. */
+  .tabs { position: relative; }
+  .tabs button { transition: color 0.2s; }
+  .tabs[data-slide] button[aria-selected="true"] { border-bottom-color: transparent; }
+  .tabs[data-slide]::after {
+    content: ""; position: absolute; left: 0; bottom: -1px; height: 2px;
+    width: var(--tab-w); transform: translateX(var(--tab-x));
+    background: var(--accent);
   }
-  .tabs button[aria-selected="true"]::after { transform: scaleX(1); }
+  .tabs[data-slide="on"]::after { transition: width 0.35s var(--motion-ease), transform 0.35s var(--motion-ease); }
 
   /* 2. Button press: drops 1px. Not tabs, whose line would move off the rule. */
   button:active:not(:disabled, .tabs button) { transform: translateY(1px); }
