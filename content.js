@@ -1385,6 +1385,11 @@ function compilePresets() {
   return {
     places: new Set(words('places')),
     airlines: new Set(words('airlines')),
+    // sub name → [country code, airline id], for the airline exceptions
+    airlineOf: new Map(MutePresets.airlineItems.flatMap(([cc, , names]) => {
+      const list = names.split(' ');
+      return list.map((n) => [n, [cc, list[0]]]);
+    })),
     identity: new Set(words('identity')),
     news: new Set(words('news')),
     partSkip: new Set(words('partSkip')),
@@ -1448,6 +1453,9 @@ function presetsFor(sub) {
   const d = presetData ||= compilePresets();
   const name = sub.replace(/[_-]/g, '');
   if (d.keep.test(name) || d.keepPlaces.has(name) || inList(mutes.keepSubs, sub)) return [];
+  // An airline, or its country, ticked as an exception: shown like a kept sub.
+  const airline = d.airlineOf.get(name);
+  if (airline && airline.some((tag) => (mutes.settings.airlineExcept || []).includes(tag))) return [];
   const hits = [];
   if (isPlace(name, d)) hits.push('places');
   if (d.airlines.has(name)) hits.push('airlines');

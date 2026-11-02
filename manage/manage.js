@@ -342,6 +342,7 @@ function render() {
   for (const [id, key] of PRESET_BOXES) $(id).checked = !!state.settings[key];
   $('keep-mode').checked = !!state.settings.keepMode;
   $('collapse-popular').checked = !!state.settings.collapsePopular;
+  renderAirlineExcept();
   document.querySelectorAll('#keep-topics input').forEach((box) => {
     box.checked = (state.settings.keepTopics || []).includes(box.value);
   });
@@ -822,6 +823,88 @@ $('keep-topics').replaceChildren(...MutePresets.topics.map((t) => {
   label.append(box, ' ' + t.label);
   return label;
 }));
+
+// Airline exceptions (settings.airlineExcept): country codes ("US") or an
+// airline's first sub name. content.js shows those airlines' posts in full.
+const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
+const countryName = (cc) => { try { return regionNames.of(cc); } catch { return cc; } };
+const AIRLINES = MutePresets.airlineItems.map(([cc, label, names]) => ({ cc, label, id: names.split(' ')[0] }));
+const AIRLINE_COUNTRIES = [...new Set(AIRLINES.map((a) => a.cc))]
+  .sort((a, b) => countryName(a).localeCompare(countryName(b)));
+const isCountryTag = (tag) => /^[A-Z]{2}$/.test(tag);
+const airlineExcept = () => state.settings.airlineExcept || [];
+const saveAirlineExcept = (tags) => save({ ...state, settings: { ...state.settings, airlineExcept: [...new Set(tags)] } });
+
+// Typed or picked from the suggestions: "All Canada airlines" or "WestJet (Canada)".
+const airlineOptions = new Map([
+  ...AIRLINE_COUNTRIES.map((cc) => [`All ${countryName(cc)} airlines`, cc]),
+  ...AIRLINES.map((a) => [`${a.label} (${countryName(a.cc)})`, a.id])
+]);
+$('airline-options').replaceChildren(...[...airlineOptions.keys()].map((value) => Object.assign(document.createElement('option'), { value })));
+$('airline-add').addEventListener('input', (e) => {
+  const tag = airlineOptions.get(e.target.value);
+  if (!tag) return;
+  e.target.value = '';
+  setAirline(tag, true);
+});
+
+// Ticking a whole country replaces its single airlines; unticking one airline
+// of a ticked country keeps the rest; ticking its last airline ticks the country.
+function setAirline(tag, on) {
+  let tags = airlineExcept();
+  if (isCountryTag(tag)) {
+    tags = tags.filter((t) => t !== tag && AIRLINES.find((a) => a.id === t)?.cc !== tag);
+    if (on) tags.push(tag);
+    return saveAirlineExcept(tags);
+  }
+  const { cc } = AIRLINES.find((a) => a.id === tag);
+  const ids = AIRLINES.filter((a) => a.cc === cc).map((a) => a.id);
+  if (tags.includes(cc)) tags = [...tags.filter((t) => t !== cc), ...ids];
+  tags = on ? [...tags, tag] : tags.filter((t) => t !== tag);
+  if (ids.every((id) => tags.includes(id))) tags = [...tags.filter((t) => !ids.includes(t)), cc];
+  saveAirlineExcept(tags);
+}
+
+function airlineBox(label, tag, checked, className) {
+  const row = document.createElement('label');
+  row.className = 'check' + (className ? ' ' + className : '');
+  const box = document.createElement('input');
+  box.type = 'checkbox';
+  box.checked = checked;
+  box.addEventListener('change', () => setAirline(tag, box.checked));
+  row.append(box, ' ' + label);
+  return row;
+}
+
+function renderAirlineExcept() {
+  const tags = airlineExcept();
+  // Three or more single airlines from one country share a chip.
+  const chips = [];
+  for (const tag of tags) {
+    const cc = isCountryTag(tag) ? null : AIRLINES.find((a) => a.id === tag)?.cc;
+    const same = cc ? tags.filter((t) => AIRLINES.find((a) => a.id === t)?.cc === cc) : [];
+    if (same.length >= 3) {
+      if (same[0] === tag) chips.push([`${same.length} ${countryName(cc)} airlines`, same]);
+    } else {
+      chips.push([isCountryTag(tag) ? `All ${countryName(tag)}` : AIRLINES.find((a) => a.id === tag)?.label || tag, [tag]]);
+    }
+  }
+  $('airline-chips').replaceChildren(...chips.map(([label, group]) => {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    const x = document.createElement('button');
+    x.type = 'button';
+    x.textContent = '×';
+    x.setAttribute('aria-label', `Filter ${label} again`);
+    x.addEventListener('click', () => saveAirlineExcept(airlineExcept().filter((t) => !group.includes(t))));
+    chip.append(label, x);
+    return chip;
+  }));
+  $('airline-all').replaceChildren(...AIRLINE_COUNTRIES.flatMap((cc) => [
+    airlineBox(countryName(cc), cc, tags.includes(cc), 'country'),
+    ...AIRLINES.filter((a) => a.cc === cc).map((a) => airlineBox(a.label, a.id, tags.includes(cc) || tags.includes(a.id)))
+  ]));
+}
 
 const PRESET_LISTS = [
   ['Places', 'places', 'r/'], ['Also any name starting or ending with', 'placeParts', ''],

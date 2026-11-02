@@ -156,6 +156,16 @@
         <label class="check"><input type="checkbox" id="preset-ask"> Any r/Ask… subreddit</label>
         <label class="check"><input type="checkbox" id="preset-news"> News and politics</label>
         <label class="check"><input type="checkbox" id="preset-airlines"> Airlines</label>
+        <div class="except">
+          <span class="except-label">Except</span>
+          <span id="airline-chips"></span>
+          <input id="airline-add" type="text" list="airline-options" autocomplete="off" spellcheck="false" placeholder="Add an airline or country" aria-label="Airlines to let through">
+          <datalist id="airline-options"></datalist>
+          <details>
+            <summary>See all airlines</summary>
+            <div id="airline-all"></div>
+          </details>
+        </div>
         <p class="hint">Matched by subreddit name. India and Australia are never filtered (r/AskIndia, r/AusFinance), and neither are place names that also mean something else (r/phoenix, r/reading…).</p>
         <details>
           <summary>See the lists</summary>

@@ -93,6 +93,20 @@ keep_parts = sorted(n for n, ccs in parts.items() if ccs & KEEP_COUNTRIES)
 
 airlines = [n for n in filtered(by_country(airlines_src)) if n not in set(places)]
 
+# Each airline with its country and sub names, for the popup's exceptions
+# picker: [country code, display name, "name name ..."]. Same names as above.
+airline_items = []
+with open(os.path.join(SRC, 'airlines.txt'), encoding='utf-8') as f:
+    for line in f:
+        line = line.split('#', 1)[0].strip()
+        if not line:
+            continue
+        code, _, rest = line.partition(':')
+        for entry in rest.split(','):
+            names = [n for n in dict.fromkeys(slug(a) for a in entry.split('/')) if n in airlines]
+            if names:
+                airline_items.append([code.strip(), entry.split('/')[0].strip(), ' '.join(names)])
+
 identity_names = sorted(identity_src.get(('names', ''), set()) - set(keep_parts))
 # "ask" words can be short (r/askmen), so read them without the length limit.
 identity_parts = sorted(read(os.path.join(SRC, 'identity.txt'), min_len=1).get(('ask', ''), set()))
@@ -141,6 +155,7 @@ with open(os.path.join(HERE, 'presets.js'), 'w', encoding='utf-8') as f:
     f.write(f'  keepParts: {js_list(keep_parts)},\n')
     f.write(f'  partSkip: {js_list(sorted(part_skip))},\n')
     f.write(f'  airlines: {js_list(airlines)},\n')
+    f.write('  airlineItems: [\n' + ',\n'.join('    ' + json.dumps(a) for a in airline_items) + '\n  ],\n')
     f.write(f'  identity: {js_list(identity_names)},\n')
     f.write(f'  identityParts: {js_list(identity_parts)},\n')
     f.write(f'  news: {js_list(news)},\n')

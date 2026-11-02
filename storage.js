@@ -43,6 +43,7 @@ const MuteStore = (() => {
   const DEFAULT_SETTINGS = {
     hideComments: true, presetPlaces: true, presetAirlines: true, presetIdentity: true, presetAsk: true, presetNews: true,
     keepMode: true, keepTopics: MutePresets.defaultTopics, // presets/presets.js loads first
+    airlineExcept: [], // airlines let through: country codes ("US") or an airline's first sub name
     collapsePopular: true, // every r/popular post starts as a one-line bar
     enabled: true, // the popup's on/off switch
     wordAction: 'hide', // posts with a muted word: 'hide', or 'rename' (title replaced, text and media hidden)
