@@ -2,8 +2,8 @@
 # "CC: names" are exact subreddit names, same format as places.txt.
 # "CC parts: tokens" also match at the start or end of a subreddit name
 # (r/ukpolitics, r/personalfinancecanada). Short or risky tokens are left out
-# or only listed as exact names. IN and AU lines are the whitelist: a name
-# containing one of their parts is never filtered as a place (see build.py).
+# or only listed as exact names. RISKY_PARTS in build.py can let a sub through
+# when its country is ticked, but never hide one.
 
 US: USA/unitedstates/america, AskAnAmerican, AskAmericans, AmericanPolitics, uspolitics, politics, Conservative, democrats, Republican, AmericaBad, ShitAmericansSay, USCIS, VeteransBenefits, Medicare, SocialSecurity, IRS, PoliticalDiscussion
 US parts: usa, america, american, americans, unitedstates, murica
@@ -183,4 +183,4 @@ AU parts: newsouthwales, australia, australian, australians, aussie, aussies, au
 
 # Subreddits that a part above matches by accident; never filtered as places.
 # Plain language names (r/french, r/japanese) are language-learning subs.
-SKIP: french, spanish, japanese, korean, chinese, german, italian, portuguese, dutch, greek, russian, arabic, turkish, swedish, norwegian, danish, finnish, icelandic, polish, hungarian, romanian, persian, thai, vietnamese, ukrainian, indonesian, malaysian, filipino, tagalog, hebrew, czech, serbian, croatian, bulgarian, albanian, armenian, nepali, italianfood, greekfood, chinafood, ukfood, ukulele, ukuleles, nzxt, dutchoven, nailpolish, americanhorrorstory, americandad, americanidol, americanpsycho, americangods, americanbully, americanfootball, britishmilitaryhistory, frenchbulldogs, frenchtoast, frenchhorn, germanshepherds, greekmythology, persiancats, irishsetters, welshcorgis, scottishfold, turkishvan, dutchbros, thaiboxing, chinesecheckers, japaneseknives, koreanbeauty, asianbeauty, chilepeppers
+SKIP: french, spanish, japanese, korean, chinese, german, italian, portuguese, dutch, greek, russian, arabic, turkish, swedish, norwegian, danish, finnish, icelandic, polish, hungarian, romanian, persian, thai, vietnamese, ukrainian, indonesian, malaysian, filipino, tagalog, hebrew, czech, serbian, croatian, bulgarian, albanian, armenian, nepali, italianfood, greekfood, chinafood, ukfood, ukulele, ukuleles, nzxt, dutchoven, nailpolish, americanhorrorstory, americandad, americanidol, americanpsycho, americangods, americanbully, americanfootball, britishmilitaryhistory, frenchbulldogs, frenchtoast, frenchhorn, germanshepherds, greekmythology, persiancats, irishsetters, welshcorgis, scottishfold, turkishvan, dutchbros, thaiboxing, chinesecheckers, japaneseknives, koreanbeauty, asianbeauty, chilepeppers, indiana, indianajones, indianmotorcycle, indianapolis, amerindian

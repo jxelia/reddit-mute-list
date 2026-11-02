@@ -342,7 +342,7 @@ function render() {
   for (const [id, key] of PRESET_BOXES) $(id).checked = !!state.settings[key];
   $('keep-mode').checked = !!state.settings.keepMode;
   $('collapse-popular').checked = !!state.settings.collapsePopular;
-  renderAirlineExcept();
+  EXCEPTIONS.forEach(renderException);
   document.querySelectorAll('#keep-topics input').forEach((box) => {
     box.checked = (state.settings.keepTopics || []).includes(box.value);
   });
@@ -824,96 +824,157 @@ $('keep-topics').replaceChildren(...MutePresets.topics.map((t) => {
   return label;
 }));
 
-// Airline exceptions (settings.airlineExcept): country codes ("US") or an
-// airline's first sub name. content.js shows those airlines' posts in full.
+// Exceptions under each built-in filter (settings.*Except): whole groups (a
+// country "US", or "g:<id>") or single items (a place, airline or sub name).
+// content.js isException shows them in full. One picker for all five.
 const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
 const countryName = (cc) => { try { return regionNames.of(cc); } catch { return cc; } };
-const AIRLINES = MutePresets.airlineItems.map(([cc, label, names]) => ({ cc, label, id: names.split(' ')[0] }));
-const AIRLINE_COUNTRIES = [...new Set(AIRLINES.map((a) => a.cc))]
-  .sort((a, b) => countryName(a).localeCompare(countryName(b)));
-const isCountryTag = (tag) => /^[A-Z]{2}$/.test(tag);
-const airlineExcept = () => state.settings.airlineExcept || [];
-const saveAirlineExcept = (tags) => save({ ...state, settings: { ...state.settings, airlineExcept: [...new Set(tags)] } });
 
-// Typed or picked from the suggestions: "All Canada airlines" or "WestJet (Canada)".
-const airlineOptions = new Map([
-  ...AIRLINE_COUNTRIES.map((cc) => [`All ${countryName(cc)} airlines`, cc]),
-  ...AIRLINES.map((a) => [`${a.label} (${countryName(a.cc)})`, a.id])
-]);
-$('airline-options').replaceChildren(...[...airlineOptions.keys()].map((value) => Object.assign(document.createElement('option'), { value })));
-$('airline-add').addEventListener('input', (e) => {
-  const tag = airlineOptions.get(e.target.value);
-  if (!tag) return;
-  e.target.value = '';
-  setAirline(tag, true);
-});
-
-// Ticking a whole country replaces its single airlines; unticking one airline
-// of a ticked country keeps the rest; ticking its last airline ticks the country.
-function setAirline(tag, on) {
-  let tags = airlineExcept();
-  if (isCountryTag(tag)) {
-    tags = tags.filter((t) => t !== tag && AIRLINES.find((a) => a.id === t)?.cc !== tag);
-    if (on) tags.push(tag);
-    return saveAirlineExcept(tags);
+// One group per country from [code, label, names] items, A–Z.
+function byCountry(items, kind) {
+  const groups = new Map();
+  for (const [cc, label, names] of items) {
+    const name = countryName(cc);
+    if (!groups.has(cc)) {
+      groups.set(cc, { tag: cc, label: name, option: `All ${name} ${kind}`, chip: `All ${name}`, many: (n) => `${n} ${name} ${kind}`, items: [] });
+    }
+    groups.get(cc).items.push({ tag: names.split(' ')[0], label, option: `${label} (${name})` });
   }
-  const { cc } = AIRLINES.find((a) => a.id === tag);
-  const ids = AIRLINES.filter((a) => a.cc === cc).map((a) => a.id);
-  if (tags.includes(cc)) tags = [...tags.filter((t) => t !== cc), ...ids];
-  tags = on ? [...tags, tag] : tags.filter((t) => t !== tag);
-  if (ids.every((id) => tags.includes(id))) tags = [...tags.filter((t) => !ids.includes(t)), cc];
-  saveAirlineExcept(tags);
+  return [...groups.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
 
-function airlineBox(label, tag, checked, className) {
+// Groups from presets' {id, label, names}, plus an "other" group for subs in none.
+function byGroup(groups, other, withItems = true) {
+  const list = groups.map((g) => ({
+    tag: 'g:' + g.id, label: g.label, option: `Group: ${g.label}`, chip: g.label, many: (n) => `${g.label}: ${n} subreddits`,
+    items: withItems && g.names ? g.names.split(' ').map((n) => ({ tag: n, label: 'r/' + n, option: `r/${n} (${g.label})` })) : []
+  }));
+  if (other) list.push({ tag: 'g:other', label: other, option: `Group: ${other}`, chip: other, items: [] });
+  return list;
+}
+
+const EXCEPTIONS = [
+  { filter: 'places', key: 'placeExcept', add: 'Add a country, city or subreddit', all: 'See all places', groups: byCountry(MutePresets.placeItems, 'places') },
+  { filter: 'identity', key: 'identityExcept', add: 'Add a group or subreddit', all: 'See all groups', groups: byGroup(MutePresets.identityGroups) },
+  { filter: 'ask', key: 'askExcept', add: 'Add a topic or subreddit', all: 'See all topics', groups: byGroup(MutePresets.topics, 'Other topics', false) },
+  { filter: 'news', key: 'newsExcept', add: 'Add a group or subreddit', all: 'See all groups', groups: byGroup(MutePresets.newsGroups, 'Other news and politics') },
+  { filter: 'airlines', key: 'airlineExcept', add: 'Add an airline or country', all: 'See all airlines', groups: byCountry(MutePresets.airlineItems, 'airlines') }
+];
+
+// r/Name, a reddit link or a bare name → the name content.js compares (no _ or -).
+function exceptName(text) {
+  const name = text.trim().replace(/^.*\/r\//i, '').replace(/^r\//i, '').replace(/\/.*$/, '').toLowerCase();
+  return /^[a-z0-9_-]{2,32}$/.test(name) ? name.replace(/[_-]/g, '') : null;
+}
+
+function setupException(cfg) {
+  const box = document.querySelector(`.except[data-filter="${cfg.filter}"]`);
+  box.innerHTML = `<span class="except-label">Except</span> <span class="chips"></span>
+    <details class="except-add"><summary>Add exception</summary>
+      <input type="text" list="except-${cfg.filter}" autocomplete="off" spellcheck="false">
+      <datalist id="except-${cfg.filter}"></datalist>
+      <details class="see-all"><summary></summary><div class="all"></div></details>
+    </details>`;
+  const input = box.querySelector('input');
+  input.placeholder = cfg.add;
+  input.setAttribute('aria-label', cfg.add);
+  box.querySelector('.see-all summary').textContent = cfg.all;
+  cfg.box = box;
+  cfg.groupOf = new Map();
+  cfg.labelOf = new Map(cfg.groups.map((g) => [g.tag, g.chip]));
+  for (const g of cfg.groups) for (const item of g.items) {
+    if (!cfg.groupOf.has(item.tag)) cfg.groupOf.set(item.tag, g);
+    cfg.labelOf.set(item.tag, item.label);
+  }
+  const options = new Map(cfg.groups.flatMap((g) => [[g.option, g.tag], ...g.items.map((item) => [item.option, item.tag])]));
+  box.querySelector('datalist').replaceChildren(...[...options.keys()].map((value) => Object.assign(document.createElement('option'), { value })));
+  // A picked suggestion adds at once; any other subreddit name on Enter.
+  input.addEventListener('input', () => {
+    const tag = options.get(input.value);
+    if (tag) { input.value = ''; setException(cfg, tag, true); }
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const name = exceptName(input.value);
+    if (name) { input.value = ''; setException(cfg, name, true); }
+  });
+  box.querySelector('.see-all').addEventListener('toggle', () => renderException(cfg));
+}
+
+const exceptTags = (cfg) => state.settings[cfg.key] || [];
+const saveException = (cfg, tags) => save({ ...state, settings: { ...state.settings, [cfg.key]: [...new Set(tags)] } });
+
+// Ticking a group replaces its single items; unticking one item of a ticked
+// group keeps the rest; ticking its last item ticks the group.
+function setException(cfg, tag, on) {
+  let tags = exceptTags(cfg);
+  const group = cfg.groups.find((g) => g.tag === tag);
+  if (group) {
+    const ids = group.items.map((item) => item.tag);
+    tags = tags.filter((t) => t !== tag && !ids.includes(t));
+    return saveException(cfg, on ? [...tags, tag] : tags);
+  }
+  const owner = cfg.groupOf.get(tag);
+  const ids = owner ? owner.items.map((item) => item.tag) : [];
+  if (owner && tags.includes(owner.tag)) tags = [...tags.filter((t) => t !== owner.tag), ...ids];
+  tags = on ? [...tags, tag] : tags.filter((t) => t !== tag);
+  if (owner && ids.length > 1 && ids.every((id) => tags.includes(id))) tags = [...tags.filter((t) => !ids.includes(t)), owner.tag];
+  saveException(cfg, tags);
+}
+
+function exceptBox(cfg, label, tag, checked, className) {
   const row = document.createElement('label');
   row.className = 'check' + (className ? ' ' + className : '');
   const box = document.createElement('input');
   box.type = 'checkbox';
   box.checked = checked;
-  box.addEventListener('change', () => setAirline(tag, box.checked));
+  box.addEventListener('change', () => setException(cfg, tag, box.checked));
   row.append(box, ' ' + label);
   return row;
 }
 
-function renderAirlineExcept() {
-  const tags = airlineExcept();
-  // Three or more single airlines from one country share a chip.
+function renderException(cfg) {
+  const tags = exceptTags(cfg);
+  // Three or more single items from one group share a chip.
   const chips = [];
   for (const tag of tags) {
-    const cc = isCountryTag(tag) ? null : AIRLINES.find((a) => a.id === tag)?.cc;
-    const same = cc ? tags.filter((t) => AIRLINES.find((a) => a.id === t)?.cc === cc) : [];
+    const owner = cfg.groupOf.get(tag);
+    const same = owner ? tags.filter((t) => cfg.groupOf.get(t) === owner) : [];
     if (same.length >= 3) {
-      if (same[0] === tag) chips.push([`${same.length} ${countryName(cc)} airlines`, same]);
+      if (same[0] === tag) chips.push([owner.many(same.length), same]);
     } else {
-      chips.push([isCountryTag(tag) ? `All ${countryName(tag)}` : AIRLINES.find((a) => a.id === tag)?.label || tag, [tag]]);
+      chips.push([cfg.labelOf.get(tag) || 'r/' + tag, [tag]]);
     }
   }
-  $('airline-chips').replaceChildren(...chips.map(([label, group]) => {
+  cfg.box.querySelector('.chips').replaceChildren(...chips.map(([label, group]) => {
     const chip = document.createElement('span');
     chip.className = 'chip';
     const x = document.createElement('button');
     x.type = 'button';
     x.textContent = '×';
     x.setAttribute('aria-label', `Filter ${label} again`);
-    x.addEventListener('click', () => saveAirlineExcept(airlineExcept().filter((t) => !group.includes(t))));
+    x.addEventListener('click', () => saveException(cfg, exceptTags(cfg).filter((t) => !group.includes(t))));
     chip.append(label, x);
     return chip;
   }));
-  $('airline-all').replaceChildren(...AIRLINE_COUNTRIES.flatMap((cc) => [
-    airlineBox(countryName(cc), cc, tags.includes(cc), 'country'),
-    ...AIRLINES.filter((a) => a.cc === cc).map((a) => airlineBox(a.label, a.id, tags.includes(cc) || tags.includes(a.id)))
+  // The full list is long (places: about 2,000), so it's only built while open.
+  const all = cfg.box.querySelector('.all');
+  if (!cfg.box.querySelector('.see-all').open) return all.replaceChildren();
+  all.replaceChildren(...cfg.groups.flatMap((g) => [
+    exceptBox(cfg, g.label, g.tag, tags.includes(g.tag), 'group'),
+    ...g.items.map((item) => exceptBox(cfg, item.label, item.tag, tags.includes(g.tag) || tags.includes(item.tag)))
   ]));
 }
 
+EXCEPTIONS.forEach(setupException);
+
 const PRESET_LISTS = [
   ['Places', 'places', 'r/'], ['Also any name starting or ending with', 'placeParts', ''],
-  ['Never filtered: names starting or ending with', 'keepParts', ''],
   ['Gender, nationality, ethnicity, religion', 'identity', 'r/'],
   ['Also r/ask…, r/ex…, r/true… followed by', 'identityParts', ''],
   ['News and politics', 'news', 'r/'], ['Also any name containing', 'newsParts', ''],
   ['Airlines', 'airlines', 'r/'], ['Not matched by the name parts above', 'partSkip', 'r/'],
-  ['Indian and Australian places (shown in full in keep mode)', 'keepPlaces', 'r/']
 ];
 $('preset-list').value = PRESET_LISTS
   .map(([title, key, prefix]) => [title + ':', ...MutePresets[key].split(' ').map((n) => prefix + n)].join('\n'))

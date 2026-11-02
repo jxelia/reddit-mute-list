@@ -1,5 +1,5 @@
 # Topics for the keep list. In keep mode, a recommended post is shown in full
-# only if its subreddit is kept, Indian or Australian, or matches a ticked
+# only if its subreddit is kept, an exception, or matches a ticked
 # topic here; anything else shrinks to a one-line Keep / Mute bar.
 #   "id: Label"       starts a topic (the popup shows the label)
 #   "id words: ..."   matched anywhere in a subreddit name, so keep them

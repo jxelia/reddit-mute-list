@@ -1,6 +1,5 @@
 # Airline subreddit names, one airline per line: "Name/alias/alias", tagged by
-# home country (IN and AU airlines are listed only so build.py can leave them
-# out). Names that also mean something else (Delta, United, Spirit, Frontier,
+# home country. Names that also mean something else (Delta, United, Spirit, Frontier,
 # Emirates, Swiss...) are only included in their longer, unambiguous forms.
 US: American Airlines/americanair, United Airlines/unitedairlines, Delta Air Lines/deltaairlines/deltaair, Southwest Airlines/southwestair, JetBlue, Alaska Airlines/alaskaair, Hawaiian Airlines, Spirit Airlines, Frontier Airlines/flyfrontier, Allegiant/allegiantair, Sun Country/suncountryairlines, Breeze Airways/flybreeze, Avelo/aveloair, SkyWest, Envoy Air, Republic Airways, Mesa Airlines, Piedmont Airlines, PSA Airlines, Horizon Air, Endeavor Air, Atlas Air, Silver Airways, Cape Air, Mokulele
 CA: Air Canada/aircanada, WestJet, Porter Airlines, Flair Airlines, Air Transat/airtransat, Jazz Aviation, Sunwing, Lynx Air

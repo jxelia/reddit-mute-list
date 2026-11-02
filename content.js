@@ -1380,27 +1380,50 @@ const words = (key) => MutePresets[key].split(' ');
 // Longest first, so "american" wins over "america".
 const alternation = (list) => [...list].sort((a, b) => b.length - a.length).join('|');
 
+// [code, label, "name name"] items → name → its tags (code, and the item's
+// first name), for the exceptions pickers.
+function tagMap(items) {
+  const map = new Map();
+  for (const [cc, , names] of items) {
+    const list = names.split(' ');
+    for (const n of list) map.set(n, [...(map.get(n) || []), cc, list[0]]);
+  }
+  return map;
+}
+
+const compileGroups = (groups, form) => groups.map((g) => ({
+  id: g.id,
+  names: new Set(g.names.split(' ')),
+  words: g.words ? form(alternation(g.words.split(' '))) : null
+}));
+
 function compilePresets() {
   const geo = alternation(words('placeParts'));
+  const partCC = new Map();
+  for (const [cc, parts] of Object.entries(MutePresets.countryParts)) {
+    for (const p of parts.split(' ')) partCC.set(p, [...(partCC.get(p) || []), cc]);
+  }
+  const allParts = alternation(partCC.keys());
   return {
     places: new Set(words('places')),
     airlines: new Set(words('airlines')),
-    // sub name → [country code, airline id], for the airline exceptions
-    airlineOf: new Map(MutePresets.airlineItems.flatMap(([cc, , names]) => {
-      const list = names.split(' ');
-      return list.map((n) => [n, [cc, list[0]]]);
-    })),
+    airlineOf: tagMap(MutePresets.airlineItems),
+    placeOf: tagMap(MutePresets.placeItems),
+    partCC,
+    // "aus" isn't Austria or Austin.
+    partStart: new RegExp(`^(${allParts.replace(/\baus\b/, 'aus(?!tri|tin)')})`),
+    partEnd: new RegExp(`(${allParts})$`),
+    identityGroups: compileGroups(MutePresets.identityGroups,
+      (alt) => new RegExp(`^(?:ask|ex|true)(?:an?)?(?:${alt})s?(?:over\\d+|\\d+)?$`)),
+    newsGroups: compileGroups(MutePresets.newsGroups, (alt) => new RegExp(alt)),
     identity: new Set(words('identity')),
     news: new Set(words('news')),
     partSkip: new Set(words('partSkip')),
     geoStart: new RegExp(`^(${geo})(.*)$`),
     geoEnd: new RegExp(`^(.*?)(${geo})$`),
-    // India and Australia: never filtered. "aus" isn't Austria or Austin.
-    keep: new RegExp(`^(?:${alternation(words('keepParts')).replace(/\baus\b/, 'aus(?!tri|tin)')})|(?:${alternation(words('keepParts'))})$`),
     // r/askmen, r/askachinese, r/AskAnAmerican, r/exmuslim, r/askwomenover30
     identityForm: new RegExp(`^(?:ask|ex|true)(?:an?)?(?:${alternation(words('identityParts'))})s?(?:over\\d+|\\d+)?$`),
     newsParts: new RegExp(alternation(words('newsParts'))),
-    keepPlaces: new Set(words('keepPlaces')),
     topics: Object.fromEntries(MutePresets.topics.map((t) => [t.id, {
       names: new Set(t.names.split(' ')),
       words: t.words ? new RegExp(alternation(t.words.split(' '))) : null
@@ -1447,21 +1470,52 @@ function matchesTopic(name, d) {
   });
 }
 
+// Country codes a sub belongs to: an exact place (or one with ask/jobs/…
+// around it), a country word at its start or end, or an airline's country.
+function countryTags(name, d) {
+  const tags = [...(d.placeOf.get(name) || []), ...(d.airlineOf.get(name) || [])];
+  const bare = name.replace(PLACE_PREFIX, '').replace(PLACE_SUFFIX, '');
+  if (bare !== name) tags.push(...(d.placeOf.get(bare) || []));
+  const start = name.match(d.partStart)?.[1];
+  const end = name.match(d.partEnd)?.[1];
+  for (const part of [start, end]) if (part) tags.push(...(d.partCC.get(part) || []));
+  return tags;
+}
+
+// Groups (as "g:<id>") a sub is in; "g:other" when it's in none.
+function groupTags(name, groups) {
+  const ids = groups.filter((g) => g.names.has(name) || !!g.words?.test(name)).map((g) => 'g:' + g.id);
+  return ids.length ? ids : ['g:other'];
+}
+
+// A sub picked as an exception in any filter's picker (settings.*Except):
+// a country, place, airline, group or exact name. It shows in full.
+function isException(name, d) {
+  const s = mutes.settings;
+  const picked = (key, tags) => (s[key] || []).some((t) => t === name || tags.includes(t));
+  if (picked('placeExcept', countryTags(name, d))) return true;
+  if (d.airlineOf.has(name) && picked('airlineExcept', d.airlineOf.get(name))) return true;
+  if ((d.identity.has(name) || d.identityForm.test(name)) &&
+    picked('identityExcept', groupTags(name, d.identityGroups))) return true;
+  if (name.startsWith('ask') && picked('askExcept', topicTags(name, d))) return true;
+  return isNews(name, d) && picked('newsExcept', groupTags(name, d.newsGroups));
+}
+
+const isNews = (name, d) => d.news.has(name) || (!d.partSkip.has(name) && d.newsParts.test(name));
+const topicTags = (name, d) => groupTags(name, Object.entries(d.topics).map(([id, t]) => ({ id, ...t })));
+
 // Filters that hide this recommended sub, or ['undecided'] in keep mode when
-// nothing says to show it. Kept subs and India/Australia always show.
+// nothing says to show it. Kept subs and exceptions always show.
 function presetsFor(sub) {
   const d = presetData ||= compilePresets();
   const name = sub.replace(/[_-]/g, '');
-  if (d.keep.test(name) || d.keepPlaces.has(name) || inList(mutes.keepSubs, sub)) return [];
-  // An airline, or its country, ticked as an exception: shown like a kept sub.
-  const airline = d.airlineOf.get(name);
-  if (airline && airline.some((tag) => (mutes.settings.airlineExcept || []).includes(tag))) return [];
+  if (inList(mutes.keepSubs, sub) || isException(name, d)) return [];
   const hits = [];
   if (isPlace(name, d)) hits.push('places');
   if (d.airlines.has(name)) hits.push('airlines');
   if (d.identity.has(name) || d.identityForm.test(name)) hits.push('identity');
   if (name.startsWith('ask')) hits.push('ask');
-  if (d.news.has(name) || (!d.partSkip.has(name) && d.newsParts.test(name))) hits.push('news');
+  if (isNews(name, d)) hits.push('news');
   if (!hits.length && mutes.settings.keepMode && !matchesTopic(name, d)) hits.push('undecided');
   return hits;
 }

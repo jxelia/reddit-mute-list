@@ -245,18 +245,19 @@ body.popup .word-section .list { max-height: 10rem; }
 .presets .hint { margin-top: 0.4rem; }
 .presets summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; }
 .presets textarea { height: 10rem; margin-top: 0.4rem; }
-/* Exceptions under a built-in filter: chips, an add box and a full list */
+/* Exceptions under each built-in filter (manage.js EXCEPTIONS): chips, an add box and a full list */
 .except { margin: 0 0 0.5rem 1.6rem; font-size: 0.85rem; }
 .except-label { color: var(--muted); margin-right: 0.25rem; }
-.except .chip { display: inline-flex; align-items: center; gap: 0.2rem; margin: 0 0.25rem 0.25rem 0; padding: 0.05rem 0.2rem 0.05rem 0.55rem; border: 1px solid var(--border); border-radius: 999px; }
+.except .chip { display: inline-flex; align-items: center; gap: 0.2rem; margin: 0 0.25rem 0.25rem 0; padding: 0.05rem 0.2rem 0.05rem 0.55rem; border: 1px solid var(--line); border-radius: 999px; }
 .except .chip button { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 0 0.25rem; font: inherit; }
 .except .chip button:hover { color: var(--fg); }
 .except input[type=text] { width: 100%; margin-top: 0.2rem; }
-.except details { margin-top: 0.3rem; }
-#airline-all { max-height: 14rem; overflow-y: auto; margin-top: 0.3rem; }
-#airline-all .country { font-weight: 600; margin-top: 0.4rem; }
-#airline-all .check { margin: 0.1rem 0 0.1rem 1.4rem; }
-#airline-all .country.check { margin-left: 0; }
+.except:has(.chips:empty) .except-label { display: none; }
+.except details { margin-top: 0.15rem; }
+.except .all { max-height: 14rem; overflow-y: auto; margin-top: 0.3rem; }
+.except .all .group { font-weight: 600; margin-top: 0.4rem; }
+.except .all .check { margin: 0.1rem 0 0.1rem 1.4rem; }
+.except .all .group.check { margin-left: 0; }
 .topics { display: grid; grid-template-columns: 1fr 1fr; gap: 0.2rem 0.75rem; font-size: 0.9rem; }
 
 /* Imported lists: one collapsed group per file under the Subreddits / Users list. */

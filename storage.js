@@ -43,7 +43,9 @@ const MuteStore = (() => {
   const DEFAULT_SETTINGS = {
     hideComments: true, presetPlaces: true, presetAirlines: true, presetIdentity: true, presetAsk: true, presetNews: true,
     keepMode: true, keepTopics: MutePresets.defaultTopics, // presets/presets.js loads first
-    airlineExcept: [], // airlines let through: country codes ("US") or an airline's first sub name
+    // Exceptions per built-in filter, shown in full (content.js isException):
+    // country codes ("US"), groups ("g:men"), or sub names without _ or -.
+    placeExcept: [], airlineExcept: [], identityExcept: [], askExcept: [], newsExcept: [],
     collapsePopular: true, // every r/popular post starts as a one-line bar
     enabled: true, // the popup's on/off switch
     wordAction: 'hide', // posts with a muted word: 'hide', or 'rename' (title replaced, text and media hidden)
@@ -175,6 +177,9 @@ const MuteStore = (() => {
 
   function parse(all) {
     const list = { settings: { ...DEFAULT_SETTINGS, ...(all.settings || {}) } };
+    // India and Australia were built in as never filtered before the country
+    // picker; lists saved back then keep them ticked.
+    if (all.settings && !('placeExcept' in all.settings)) list.settings.placeExcept = ['IN', 'AU'];
     for (const kind of ALL_KINDS) {
       const count = all[kind + '.count'] || 0;
       const chunks = [];

@@ -3,8 +3,8 @@
 
 Run after editing a list: python3 presets/build.py
 Lines are "CC: Name/alias, Name, ..."; see the notes at the top of each src
-file. Places and airlines from India and Australia are never filtered, and
-neither is any name they share with another country.
+file. Each filter's exceptions (countries, places, airlines, groups) are
+picked in the popup; nothing is whitelisted here.
 """
 import json
 import os
@@ -13,7 +13,6 @@ import unicodedata
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, 'src')
-KEEP_COUNTRIES = {'IN', 'AU'}
 
 # Subreddit names that also mean something else (a word, a brand, a show...),
 # so a sub by that name may not be about the place or airline at all.
@@ -68,7 +67,44 @@ def by_country(groups, kind=''):
 
 
 def filtered(names, skip=()):
-    return sorted(n for n, ccs in names.items() if not ccs & KEEP_COUNTRIES and n not in SKIP and n not in skip)
+    return sorted(n for n, ccs in names.items() if n not in SKIP and n not in skip)
+
+
+def items(path, valid, min_len=3):
+    """[country code, display name, "name name ..."] per entry, for the
+    popup's exceptions pickers. Only names in valid (the filter's own list)."""
+    out = []
+    with open(path, encoding='utf-8') as f:
+        for line in f:
+            line = line.split('#', 1)[0].strip()
+            head, _, rest = line.partition(':')
+            code, _, kind = head.strip().partition(' ')
+            if not line or kind or code == 'SKIP':
+                continue
+            for entry in rest.split(','):
+                names = [n for n in dict.fromkeys(slug(a) for a in entry.split('/')) if len(n) >= min_len and n in valid]
+                if names:
+                    out.append([code, entry.split('/')[0].strip(), ' '.join(names)])
+    return out
+
+
+def groups(path, word_kind):
+    """[{id, label, names, words}] from "group ID: Label", "names ID: ..." and
+    "<word_kind> ID: ..." lines."""
+    out = {}
+    with open(path, encoding='utf-8') as f:
+        for line in f:
+            line = line.split('#', 1)[0].strip()
+            head, _, rest = line.partition(':')
+            kind, _, gid = head.strip().partition(' ')
+            if not line or not gid or kind not in ('group', 'names', word_kind):
+                continue
+            g = out.setdefault(gid, {'id': gid, 'label': gid, 'names': '', 'words': ''})
+            if kind == 'group':
+                g['label'] = rest.strip()
+            else:
+                g['names' if kind == 'names' else 'words'] = ' '.join(sorted({slug(w) for w in rest.split(',') if slug(w)}))
+    return list(out.values())
 
 
 places_src = read(os.path.join(SRC, 'places.txt'))
@@ -88,28 +124,27 @@ place_names = {n: ccs - {'SKIP'} for n, ccs in place_names.items() if ccs - {'SK
 places = filtered(place_names)
 
 parts = by_country(countries_src, 'parts')
-place_parts = filtered(parts)
-keep_parts = sorted(n for n, ccs in parts.items() if ccs & KEEP_COUNTRIES)
+# Too short to hide anything by (r/design, r/ozempic), though a ticked country
+# still lets them through (country_parts below). Exact names still match.
+RISKY_PARTS = {'oz', 'aus', 'desi', 'desis'}
+place_parts = filtered(parts, RISKY_PARTS)
+# {country code: "part part ..."}, so a ticked country lets r/ukpolitics through.
+country_parts = {}
+for n, ccs in parts.items():
+    for cc in ccs:
+        country_parts.setdefault(cc, []).append(n)
+country_parts = {cc: ' '.join(sorted(ns)) for cc, ns in sorted(country_parts.items())}
+place_items = items(os.path.join(SRC, 'places.txt'), set(places)) + items(os.path.join(SRC, 'countries.txt'), set(places), 2)
 
 airlines = [n for n in filtered(by_country(airlines_src)) if n not in set(places)]
 
-# Each airline with its country and sub names, for the popup's exceptions
-# picker: [country code, display name, "name name ..."]. Same names as above.
-airline_items = []
-with open(os.path.join(SRC, 'airlines.txt'), encoding='utf-8') as f:
-    for line in f:
-        line = line.split('#', 1)[0].strip()
-        if not line:
-            continue
-        code, _, rest = line.partition(':')
-        for entry in rest.split(','):
-            names = [n for n in dict.fromkeys(slug(a) for a in entry.split('/')) if n in airlines]
-            if names:
-                airline_items.append([code.strip(), entry.split('/')[0].strip(), ' '.join(names)])
+airline_items = items(os.path.join(SRC, 'airlines.txt'), set(airlines))
 
-identity_names = sorted(identity_src.get(('names', ''), set()) - set(keep_parts))
+identity_names = sorted(set().union(*(ns for (k, _), ns in identity_src.items() if k == 'names')))
 # "ask" words can be short (r/askmen), so read them without the length limit.
-identity_parts = sorted(read(os.path.join(SRC, 'identity.txt'), min_len=1).get(('ask', ''), set()))
+identity_parts = sorted(set().union(*(ns for (k, _), ns in read(os.path.join(SRC, 'identity.txt'), min_len=1).items() if k == 'ask')))
+identity_groups = groups(os.path.join(SRC, 'identity.txt'), 'ask')
+news_groups = groups(os.path.join(SRC, 'news.txt'), 'words')
 
 
 # Topics for the keep list (src/topics.txt): ticked at first in the popup.
@@ -130,13 +165,6 @@ for t in topics:
     t['words'] = ' '.join(t['words'])
     t['names'] = ' '.join(t['names'])
 
-# Indian and Australian places and airlines: shown in full in keep mode.
-keep_places = set()
-for src in (places_src, countries_src, airlines_src):
-    for n, ccs in by_country(src).items():
-        if ccs & KEEP_COUNTRIES:
-            keep_places.add(n)
-
 news = sorted(news_src.get(('names', ''), set()))
 news_parts = sorted(news_src.get(('parts', ''), set()))
 part_skip |= news_src.get(('skip', ''), set())
@@ -152,19 +180,21 @@ with open(os.path.join(HERE, 'presets.js'), 'w', encoding='utf-8') as f:
     f.write('const MutePresets = {\n')
     f.write(f'  places: {js_list(places)},\n')
     f.write(f'  placeParts: {js_list(place_parts)},\n')
-    f.write(f'  keepParts: {js_list(keep_parts)},\n')
+    f.write(f'  countryParts: {json.dumps(country_parts)},\n')
+    f.write('  placeItems: [\n' + ',\n'.join('    ' + json.dumps(a) for a in place_items) + '\n  ],\n')
     f.write(f'  partSkip: {js_list(sorted(part_skip))},\n')
     f.write(f'  airlines: {js_list(airlines)},\n')
     f.write('  airlineItems: [\n' + ',\n'.join('    ' + json.dumps(a) for a in airline_items) + '\n  ],\n')
     f.write(f'  identity: {js_list(identity_names)},\n')
     f.write(f'  identityParts: {js_list(identity_parts)},\n')
+    f.write('  identityGroups: [\n' + ',\n'.join('    ' + json.dumps(g) for g in identity_groups) + '\n  ],\n')
     f.write(f'  news: {js_list(news)},\n')
     f.write(f'  newsParts: {js_list(news_parts)},\n')
-    f.write(f'  keepPlaces: {js_list(sorted(keep_places))},\n')
+    f.write('  newsGroups: [\n' + ',\n'.join('    ' + json.dumps(g) for g in news_groups) + '\n  ],\n')
     f.write(f'  defaultTopics: {json.dumps(DEFAULT_TOPICS)},\n')
     f.write('  topics: [\n' + ',\n'.join('    ' + json.dumps(t) for t in topics) + '\n  ]\n')
     f.write('};\n')
 
-print(f'{len(places)} places, {len(place_parts)} place parts, {len(keep_parts)} kept parts, '
+print(f'{len(places)} places, {len(place_parts)} place parts, {len(place_items)} place entries, '
       f'{len(airlines)} airlines, {len(identity_names)} identity subs, {len(identity_parts)} identity words, '
-      f'{len(news)} news subs, {len(news_parts)} news words, {len(keep_places)} kept places, {len(topics)} topics')
+      f'{len(news)} news subs, {len(news_parts)} news words, {len(identity_groups)} identity groups, {len(news_groups)} news groups, {len(topics)} topics')

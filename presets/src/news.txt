@@ -7,3 +7,27 @@
 names: news, worldnews, politics, inthenews, nottheonion, upliftingnews, neutralnews, truenews, geopolitics, worldevents, anime_titties, europe, ukpolitics, canadapolitics, auspol, politicaldiscussion, ask_politics, politicalhumor, politicalcompassmemes, politicalcompass, politicalmemes, conspiracy, conspiracytheories, conservative, conservatives, conservativememes, askconservatives, askaliberal, liberal, progressive, democrats, republican, republicans, socialism, communism, libertarian, anarchism, anarchocapitalism, latestagecapitalism, enoughtrumpspam, trump, donaldtrump, the_donald, conservativesonly, maga, leopardsatemyface, murderedbyaoc, qult_headquarters, fuckthealtright, shitpoliticssays, moderatepolitics, centrist, stupidpol, tuesday, neoliberal, voteblue, joebiden, kamalaharris, bernie, sandersforpresident, therightcantmeme, theleftcantmeme, aboringdystopia, antiwork, workreform, whitepeopletwitter, coronavirus, ukraine, ukrainianconflict, ukrainewarvideoreport, combatfootage, israelpalestine, palestine, israel, iran, worldpolitics, war, warcollege, credibledefense, noncredibledefense, breakingnews, newsofthestupid, floridaman, offbeat, energy_news, technews, economicsnews
 parts: news, politic, election, elections, conservative, liberal, democrat, republican, socialis, communis, libertarian, leftist, rightwing, leftwing, geopolit, anarchis, capitalis, marxis, trump, biden, senate, congress, parliament, propaganda, protest
 skip: trumpet, trumpets, newsouthwales, newschool, newsom, congressionalbaseball
+
+# Groups the popup offers as exceptions ("group ID: Label", then exact
+# "names ID:" and "words ID:" matched anywhere). A news or politics sub in no
+# group counts as "Other". Country politics (r/ukpolitics, r/auspol) follow
+# the countries picker.
+group world: World news
+group good: Good and odd news
+group tech: Tech, science and economy news
+group debate: Political discussion
+group humor: Political memes and humor
+group war: Wars and conflicts
+group us: US parties and politicians
+names world: news, worldnews, inthenews, neutralnews, truenews, worldevents, anime_titties, breakingnews, geopolitics, worldpolitics, europe
+words world: worldnews, geopolit
+names good: upliftingnews, nottheonion, offbeat, newsofthestupid, floridaman
+words good: uplifting, goodnews
+names tech: technews, energy_news, economicsnews
+words tech: technews, sciencenews, technology, econom, energy, business
+names debate: politicaldiscussion, ask_politics, askconservatives, askaliberal, moderatepolitics, centrist, debatepolitics, neutralpolitics
+names humor: politicalhumor, politicalcompassmemes, politicalcompass, politicalmemes, conservativememes, therightcantmeme, theleftcantmeme, leopardsatemyface, murderedbyaoc, shitpoliticssays, aboringdystopia
+words humor: memes, humor, cantmeme
+names war: ukraine, ukrainianconflict, ukrainewarvideoreport, combatfootage, israelpalestine, palestine, israel, iran, war, warcollege, credibledefense, noncredibledefense
+names us: politics, conservative, conservatives, liberal, democrats, republican, republicans, trump, donaldtrump, the_donald, conservativesonly, maga, enoughtrumpspam, joebiden, kamalaharris, bernie, sandersforpresident, voteblue
+words us: trump, biden, democrat, republican, kamala, maga, senate, congress
