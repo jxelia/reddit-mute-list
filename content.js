@@ -1925,10 +1925,9 @@ function updatePageScope(force = true) {
 // On arriving at the home page, pick the default feed's tab once (a role=tab
 // button in faceplate-tabgroup, id feed-tab-N, no URL of its own; the selected
 // one has faceplate-tab-selected, no aria-selected). Already on it: nothing
-// happens. Every click reloads the feed, so wait for Reddit's script (:defined)
-// and retry only slowly. A tab the user clicks meanwhile, or afterwards, stays.
-// The click waits for the page's first feed fetch to finish: one made during it
-// moves the highlight, but that fetch's posts land under the new tab anyway.
+// happens. It waits for Reddit's scripts: :defined, and actioned on the button
+// once its click actions are attached. A tab the user clicks meanwhile, or
+// afterwards, stays.
 let feedDone = false;
 function openDefaultFeed() {
   if (feedDone) return;
@@ -1940,8 +1939,6 @@ function openDefaultFeed() {
   const started = performance.now();
   let ticks = 0;
   let clicked = -Infinity;
-  const feedLoaded = () => performance.getEntriesByType('resource')
-    .some((e) => e.startTime >= started && e.name.includes('/interest-home-feed?feed='));
   const tick = () => {
     ticks++;
     // Before the list loads the setting is missing; wait for it.
@@ -1952,23 +1949,40 @@ function openDefaultFeed() {
       (ticks % 10 === 0 ? [...walk(document)].find(isTab) : null));
     const now = performance.now();
     if (userPicked || location.pathname !== '/' || isOff() || want === 'last' ||
-        tab?.hasAttribute('faceplate-tab-selected') || now - started > 15000) {
-      if (clicked < 0) document.removeEventListener('click', onClick, true);
+        tab?.hasAttribute('faceplate-tab-selected') || now - started > 10000) {
+      document.removeEventListener('click', onClick, true);
       return;
     }
-    if (tab && now - clicked >= 3000 && tab.parentElement?.matches(':defined') && (feedLoaded() || now - started > 5000)) {
-      if (clicked < 0) watchFeedFetch(want, () => userPicked, () => document.removeEventListener('click', onClick, true));
+    const feed = document.querySelector('shreddit-feed[reload-url*="feed="]');
+    const ready = tab?.parentElement?.matches(':defined') && feed?.matches(':defined') && tab.hasAttribute('actioned');
+    if (tab && now - clicked >= 3000 && (ready || now - started > 5000)) {
       clicked = now;
-      clickLikeUser(tab);
+      switchFeed(tab, feed, want.replace(' ', '-'));
     }
     setTimeout(tick, 100);
   };
   tick();
 }
 
-// A bare el.click() moved the highlight to the tab but made Reddit fetch the
-// other feed, so send what a real click sends. Reddit focuses a selected tab,
-// which draws a ring on a page nobody has touched yet, so focus comes off again.
+// A scripted click on a tab moves the highlight, but Reddit can refetch the
+// feed from the URL it had before the switch, so the posts are the other tab's.
+// shreddit-feed keeps that URL in reload-url (read by a later Lit update, hence
+// the timeouts) and reloads on component-reload, cancelling a fetch in progress.
+function switchFeed(tab, feed, feedName) {
+  if (!feed) return clickLikeUser(tab);
+  const url = new URL(feed.getAttribute('reload-url'), location.href);
+  url.searchParams.set('feed', feedName);
+  const reloadUrl = url.pathname + url.search;
+  feed.setAttribute('reload-url', reloadUrl);
+  setTimeout(() => {
+    clickLikeUser(tab);
+    feed.setAttribute('reload-url', reloadUrl);
+    setTimeout(() => feed.dispatchEvent(new CustomEvent('component-reload')));
+  });
+}
+
+// What a real click sends. Reddit focuses a selected tab, which draws a ring on
+// a page nobody has touched yet, so focus comes off again.
 function clickLikeUser(el) {
   const opts = { bubbles: true, composed: true, cancelable: true, button: 0 };
   el.dispatchEvent(new PointerEvent('pointerdown', opts));
@@ -1984,29 +1998,6 @@ function clickLikeUser(el) {
     if (performance.now() - started < 3000) setTimeout(check, 100);
   };
   check();
-}
-
-// If Reddit still fetches the other feed after the click, the tab and the feed
-// disagree. Reddit now remembers the tab, so one reload shows the right feed.
-function watchFeedFetch(want, userPicked, done) {
-  const wantFeed = want.replace(' ', '-');
-  const startedAt = performance.now();
-  const stop = () => { observer.disconnect(); clearTimeout(timer); done(); };
-  const observer = new PerformanceObserver((entries) => {
-    for (const entry of entries.getEntries()) {
-      const feed = entry.startTime >= startedAt && entry.name.match(/\/interest-home-feed\?feed=([a-z-]+)/)?.[1];
-      if (!feed) continue;
-      stop();
-      const last = Number(sessionStorage.getItem('rmute-feed-reload'));
-      if (feed !== wantFeed && !userPicked() && Date.now() - last > 30000) {
-        sessionStorage.setItem('rmute-feed-reload', Date.now());
-        location.reload();
-      }
-      return;
-    }
-  });
-  observer.observe({ type: 'resource' });
-  const timer = setTimeout(stop, 15000);
 }
 
 // The user's custom feeds and joined subs come from Reddit's own API (same
