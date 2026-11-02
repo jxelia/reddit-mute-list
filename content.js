@@ -232,6 +232,28 @@ function pageSubs() {
   return [...subs];
 }
 
+// Double-clicking a name in the popup's list: scroll to the first showing
+// post from that sub (or its one-line bar) and flash it.
+function scrollToSub(sub) {
+  const posts = isOldReddit
+    ? document.querySelectorAll('.thing[data-subreddit]:not(.promoted)')
+    : document.querySelectorAll('shreddit-post');
+  for (const post of posts) {
+    const name = isOldReddit ? MuteStore.normalize(post.dataset.subreddit) : postInfo(post).sub;
+    if (name !== sub) continue;
+    const bar = post.previousElementSibling?.classList.contains('rmute-decide') ? post.previousElementSibling : null;
+    const target = post.checkVisibility() ? post : bar?.checkVisibility() ? bar : null;
+    if (!target) continue;
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    target.classList.remove('rmute-flash');
+    void target.offsetWidth; // restart the animation
+    target.classList.add('rmute-flash');
+    target.addEventListener('animationend', () => target.classList.remove('rmute-flash'), { once: true });
+    return true;
+  }
+  return false;
+}
+
 async function muteMany(names) {
   names = names.filter((n) => !mutes.subs.includes(n));
   if (!names.length) return;
@@ -292,6 +314,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
     muteMany(subs);
     reply({ count: subs.length });
   }
+  if (msg?.type === 'rmute:scrollTo') reply({ found: scrollToSub(msg.sub) });
 });
 
 /* ---------- Hidden-post counter ---------- */

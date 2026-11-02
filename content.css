@@ -278,3 +278,10 @@ html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toa
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Popup's page list: a double-clicked sub's post, scrolled to. */
+.rmute-flash { animation: rmute-flash 1.6s ease-out; }
+@keyframes rmute-flash {
+  0%, 40% { outline: 3px solid #ff4500; outline-offset: 2px; }
+  100% { outline: 3px solid transparent; outline-offset: 2px; }
+}

@@ -1110,7 +1110,7 @@ function renderPageSubList() {
     button.type = 'button';
     button.textContent = '−';
     button.setAttribute('aria-pressed', out);
-    button.title = out ? `Take r/${sub} off the Mute all whitelist` : `Leave r/${sub} out of Mute all from now on`;
+    button.ariaLabel = out ? `Take r/${sub} off the Mute all whitelist` : `Leave r/${sub} out of Mute all from now on`;
     button.addEventListener('click', async () => {
       shownSkipped.add(sub);
       await save({ ...state, skipSubs: out ? state.skipSubs.filter((n) => n !== sub) : [...state.skipSubs, sub] });
@@ -1119,19 +1119,29 @@ function renderPageSubList() {
     });
     // Opens in a new tab next to this one and switches to it (the list is kept, see savePageSubs).
     // Cmd/Ctrl-click or middle-click opens it in the background instead, after earlier ones.
+    // A double-click scrolls the Reddit page to the sub's post instead, so a
+    // plain click waits a moment to see whether a second one follows.
     const link = document.createElement('a');
     link.href = `${pageOrigin}/r/${sub}/`;
     link.textContent = 'r/' + sub;
-    link.title = `Open r/${sub} in a new tab (${navigator.platform.startsWith('Mac') ? '⌘' : 'Ctrl'}-click: in the background)`;
-    const open = (e) => {
+    let clickTimer = null;
+    const open = (background) => activeTab().then((tab) => chrome.tabs.create({
+      url: link.href, index: tab.index + 1 + (background ? backgroundOpened++ : 0), openerTabId: tab.id, active: !background,
+    }));
+    link.addEventListener('click', (e) => {
       e.preventDefault();
-      const background = e.metaKey || e.ctrlKey || e.button === 1;
-      activeTab().then((tab) => chrome.tabs.create({
-        url: link.href, index: tab.index + 1 + (background ? backgroundOpened++ : 0), openerTabId: tab.id, active: !background,
-      }));
-    };
-    link.addEventListener('click', open);
-    link.addEventListener('auxclick', (e) => { if (e.button === 1) open(e); });
+      if (e.metaKey || e.ctrlKey) return open(true);
+      clearTimeout(clickTimer);
+      clickTimer = e.detail > 1 ? null : setTimeout(() => open(false), 300);
+    });
+    link.addEventListener('dblclick', async (e) => {
+      e.preventDefault();
+      clearTimeout(clickTimer);
+      try {
+        await chrome.tabs.sendMessage((await activeTab()).id, { type: 'rmute:scrollTo', sub });
+      } catch (_) {} // page script from before an extension reload
+    });
+    link.addEventListener('auxclick', (e) => { if (e.button === 1) { e.preventDefault(); open(true); } });
     li.append(link, button);
     return li;
   }));
