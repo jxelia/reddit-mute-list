@@ -6,6 +6,7 @@
   --line: #e5ebee;
   --accent: #ff4500;
   --accent-fg: #ffffff;
+  --link: #0b6bcb;
   --danger: #d93a00;
   color-scheme: light;
 }
@@ -19,6 +20,7 @@
     --muted: #8ba2ad;
     --line: #2a3236;
     --danger: #ff6a3d;
+    --link: #4a9eed;
     color-scheme: dark;
   }
 }
@@ -30,6 +32,7 @@
   --muted: #8ba2ad;
   --line: #2a3236;
   --danger: #ff6a3d;
+  --link: #4a9eed;
   color-scheme: dark;
 }
 
@@ -318,7 +321,8 @@ body:not(.popup) #main-group { max-height: 29rem; }
 .page-subs-list button { width: 1.4rem; height: 1.4rem; padding: 0; border-radius: 50%; background: none; color: var(--muted); font-size: 0.75rem; font-weight: 400; line-height: 1; }
 .page-subs-list button:hover, .page-subs-list button[aria-pressed="true"] { color: var(--fg); background: var(--line); }
 .page-muted { display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; margin: 0 0 0.75rem; color: var(--muted); font-size: 0.85rem; overflow-wrap: anywhere; }
-.page-muted .link { padding: 0; font-size: inherit; text-decoration: underline; }
+.page-muted .link, .page-muted .link:hover { padding: 0; color: var(--link); font-size: inherit; font-weight: 400; filter: none; }
+.page-muted .link:hover { text-decoration: underline; }
 .page-subs > button:disabled { opacity: 0.5; cursor: default; filter: none; }
 
 /* Sort order, beside each filter box. */
