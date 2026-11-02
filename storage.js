@@ -51,6 +51,7 @@ const MuteStore = (() => {
     // country codes ("US"), groups ("g:men"), or sub names without _ or -.
     placeExcept: [], airlineExcept: [], identityExcept: [], askExcept: [], newsExcept: [],
     collapsePopular: true, // every r/popular post starts as a one-line bar
+    popularFilters: false, // the built-in filters also apply on r/popular
     enabled: true, // the popup's on/off switch
     wordAction: 'hide', // posts with a muted word: 'hide', or 'rename' (title replaced, text and media hidden)
     minScore: 0, // feed posts under this many upvotes are hidden; 0 = off
@@ -78,7 +79,8 @@ const MuteStore = (() => {
   // Nothing is deleted, so turning extras back on restores them.
   const CORE_SETTINGS = {
     wordAction: 'hide', minScore: 0, hideCommentAvatars: false, commentNames: 'show', commentAction: 'bar',
-    commentShowWord: true, commentHideReplies: false, hideCommentSections: false, showCounter: false
+    commentShowWord: true, commentHideReplies: false, hideCommentSections: false, showCounter: false,
+    popularFilters: false
   };
   const EXTRA_KINDS = ['bodyWords', 'flairWords', 'scopes'];
 

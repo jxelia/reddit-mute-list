@@ -376,6 +376,7 @@ function render() {
   for (const [id, key] of PRESET_BOXES) $(id).checked = !!state.settings[key];
   $('keep-mode').checked = !!state.settings.keepMode;
   $('collapse-popular').checked = !!state.settings.collapsePopular;
+  $('popular-filters').checked = !!state.settings.popularFilters;
   EXCEPTIONS.forEach(renderException);
   document.querySelectorAll('#keep-topics input').forEach((box) => {
     box.checked = (state.settings.keepTopics || []).includes(box.value);
@@ -847,6 +848,7 @@ for (const [id, key] of PRESET_BOXES) {
 // Keep list: the mode and its topics (presets/src/topics.txt).
 $('keep-mode').addEventListener('change', (e) => save({ ...state, settings: { ...state.settings, keepMode: e.target.checked } }));
 $('collapse-popular').addEventListener('change', (e) => save({ ...state, settings: { ...state.settings, collapsePopular: e.target.checked } }));
+$('popular-filters').addEventListener('change', (e) => save({ ...state, settings: { ...state.settings, popularFilters: e.target.checked } }));
 // Off: Reddit tabs drop everything the extension adds; the lists stay as they are.
 $('extras').addEventListener('change', (e) => save({ ...state, settings: { ...state.settings, extras: e.target.checked } }));
 $('extras-x').addEventListener('change', (e) => save({ ...state, settings: { ...state.settings, extrasX: e.target.checked } }));
