@@ -75,6 +75,8 @@ function buildCss(list) {
   // r/popular: every post starts as a bar (markPopular), recommended or not.
   const POPULAR = '[data-rmute-scope="popular"]';
   if (list.settings.collapsePopular) other.push(`shreddit-post${POPULAR}[data-rmute-preset~="undecided"]:not([data-rmute-open])`);
+  // The country/city filter also applies there (markPopular).
+  if (list.settings.presetPlaces) posts.push(`shreddit-post${POPULAR}[data-rmute-preset~="places"]`);
   // Muted words: markTitles() tags each post with what matched (see
   // markTitle): popular/subs (title lists) and body apply on r/popular and on
   // pages of subs not joined; flair, and words scoped "only in r/…", anywhere.
@@ -1733,12 +1735,15 @@ function markPreset(post) {
   syncDecideBar(post, hits.includes('undecided') && !muted ? sub : null);
 }
 
-// r/popular: every post becomes a bar, except kept subs and posts the mute
-// lists already hide. The block filters and topics don't apply here.
+// r/popular: country and city subs are hidden if that filter is on. Every other
+// post becomes a bar, except kept subs and posts the mute lists already hide.
+// The other block filters and topics don't apply here.
 function markPopular(post) {
-  const { sub, author } = mutes.settings.collapsePopular ? postInfo(post) : {};
-  const bar = sub && !inList(mutes.keepSubs, sub) && !inList(mutes.subs, sub) && !userMuted(author, sub);
-  if (bar) post.dataset.rmutePreset = 'undecided';
+  const { sub, author } = postInfo(post);
+  const place = sub && mutes.settings.presetPlaces && presetsFor(sub).includes('places');
+  const bar = !place && sub && mutes.settings.collapsePopular && !inList(mutes.keepSubs, sub) && !inList(mutes.subs, sub) && !userMuted(author, sub);
+  if (place) post.dataset.rmutePreset = 'places';
+  else if (bar) post.dataset.rmutePreset = 'undecided';
   else delete post.dataset.rmutePreset;
   syncDecideBar(post, bar ? sub : null, true);
 }
