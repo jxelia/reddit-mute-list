@@ -83,10 +83,12 @@ function buildCss(list) {
   const wordAnywhere = [`${P}${POPULAR}${tagged('popular')}`, `${P}${POPULAR}${tagged('body')}`, `${P}${tagged('flair')}`, `${P}${tagged('only')}`];
   const wordOnSubs = [`${P}${tagged('subs')}`, `${P}${tagged('body')}`];
   const rename = list.settings.wordAction === 'rename';
-  // Feed posts under the minimum score (markScore).
-  posts.push(`${P}[data-rmute-low]`);
+  // Feed posts under the minimum score (markScore), or seen, repeated or too
+  // old (markFeedFilters).
+  const feedHidden = ':is([data-rmute-low], [data-rmute-seen], [data-rmute-dup], [data-rmute-old])';
+  posts.push(`${P}${feedHidden}`);
   // A hidden post takes its bar with it.
-  other.push(`.rmute-decide:has(+ :is(${rename ? '' : wordAnywhere.join(', ') + ', '}[data-rmute-low]))`);
+  other.push(`.rmute-decide:has(+ :is(${rename ? '' : wordAnywhere.join(', ') + ', '}${feedHidden}))`);
   for (const u of list.users) {
     const scope = MuteStore.scopeOf(list, 'u', u);
     const where = (kind) => (scope ? scopeSel(scope, kind) : '');
@@ -1253,6 +1255,7 @@ function markTitle(post) {
   const link = titleLink(post);
   if (label) link?.setAttribute('data-rmute-hit', `Muted word: “${label}”`);
   else link?.removeAttribute('data-rmute-hit');
+  markFeedFilters(post);
 }
 
 /* ---------- Minimum score ---------- */
@@ -1261,12 +1264,151 @@ function markTitle(post) {
 const OLD_FEED_RE = /^\/(?:(?:hot|new|top|rising|controversial)\/?)?$|^\/r\/(?:all|popular)\b|^\/(?:me|user\/[^/]+)\/m\//i;
 
 // Only in feeds (home, r/popular, r/all, custom feeds), not on a sub's own page.
+const inFeed = (post) => (post.matches('.thing') ? OLD_FEED_RE.test(location.pathname) : post.getAttribute('view-context') === 'AggregateFeed');
+
 function markScore(post) {
   const min = Number(mutes.settings.minScore) || 0;
-  const inFeed = post.matches('.thing') ? OLD_FEED_RE.test(location.pathname) : post.getAttribute('view-context') === 'AggregateFeed';
   const score = parseInt(post.getAttribute('score') ?? post.dataset.score, 10);
-  post.toggleAttribute('data-rmute-low', min > 0 && inFeed && Number.isFinite(score) && score < min);
+  post.toggleAttribute('data-rmute-low', min > 0 && inFeed(post) && Number.isFinite(score) && score < min);
 }
+
+/* ---------- Seen posts, repeated links, age limit (Extra features 2) ---------- */
+
+function markFeedFilters(post) {
+  const { hideSeen, hideDuplicates, maxAgeHours } = mutes.settings;
+  if (!hideSeen && !hideDuplicates && !maxAgeHours && !post.matches('[data-rmute-seen], [data-rmute-dup], [data-rmute-old]')) return;
+  const feed = inFeed(post);
+  markSeen(post, feed && hideSeen);
+  markDuplicate(post, feed && hideDuplicates);
+  markOld(post, feed ? Number(maxAgeHours) || 0 : 0);
+}
+
+// "2026-11-01T03:15:34.429000+0000" (always UTC); old Reddit has data-timestamp in ms.
+function markOld(post, hours) {
+  const stamp = post.getAttribute('created-timestamp');
+  const at = stamp ? Date.parse(stamp.slice(0, 19) + 'Z') : Number(post.dataset.timestamp);
+  post.toggleAttribute('data-rmute-old', hours > 0 && at > 0 && Date.now() - at > hours * 3600000);
+}
+
+// Tracking bits that don't change what a link points to.
+const LINK_NOISE = /^(utm_.*|ref|ref_source|ref_src|si|fbclid|gclid|share_id|feature)$/i;
+
+// What a post links to, the same for all its forms. A crosspost's link is the
+// original thread, so it counts as a repeat of that thread too.
+function linkKey(post) {
+  const href = post.getAttribute('content-href') || post.dataset.url || post.getAttribute('permalink');
+  if (!href) return null;
+  try {
+    const url = new URL(href, location.origin);
+    const host = url.hostname.replace(/^(www|m|old|new|np)\./, '');
+    const thread = url.pathname.match(/\/comments\/([a-z0-9]+)/i);
+    if (thread && (host === 'reddit.com' || url.origin === location.origin)) return `reddit:${thread[1].toLowerCase()}`;
+    if (host === 'youtu.be') return `youtube.com/watch?v=${url.pathname.slice(1)}`;
+    for (const key of [...url.searchParams.keys()]) if (LINK_NOISE.test(key)) url.searchParams.delete(key);
+    return host + url.pathname.replace(/\/$/, '') + url.search;
+  } catch (_) {
+    return null;
+  }
+}
+
+// The first post of a link on this page holds it; later ones hide while the
+// holder shows, so a repeat of a muted post isn't lost with it. A holder that
+// Reddit has unloaded far above the viewport still counts.
+const linkHolders = new Map(); // link -> { post, id }
+let linkPath = null;
+
+function markDuplicate(post, on) {
+  let dup = false;
+  const key = on && linkKey(post);
+  if (key) {
+    if (location.pathname !== linkPath) {
+      linkHolders.clear();
+      linkPath = location.pathname;
+    }
+    const id = post.dataset.fullname || post.id;
+    const holder = linkHolders.get(key);
+    dup = !!holder && holder.id !== id && (!holder.post.isConnected || holder.post.checkVisibility());
+    if (!dup) linkHolders.set(key, { post, id });
+  }
+  post.toggleAttribute('data-rmute-dup', dup);
+}
+
+// Seen = half of a post (or half the window, for a tall one) on screen for a
+// second. Only posts seen before this page load hide, so nothing vanishes
+// while reading or on coming back to the feed. A collapsed post's bar doesn't
+// count: the post itself wasn't shown.
+const SEEN_KEY = 'seenPosts';
+const SEEN_DELAY = 1000;
+let seenBefore = null; // Set of ids, while hideSeen is on
+let seenWatcher = null;
+const seenNow = new Set(); // ids noted since this page loaded
+const seenTimers = new Map();
+const seenQueue = [];
+let seenFlush = null;
+
+const seenId = (post) => post.dataset.fullname || post.id;
+
+function markSeen(post, on) {
+  const id = on && seenBefore ? seenId(post) : null;
+  const before = !!id && seenBefore.has(id);
+  post.toggleAttribute('data-rmute-seen', before);
+  if (!id || before || seenNow.has(id)) return;
+  seenWatcher ||= new IntersectionObserver(onSeenEntries, { threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.75, 1] });
+  seenWatcher.observe(post);
+}
+
+function onSeenEntries(entries) {
+  for (const e of entries) {
+    const post = e.target;
+    if (e.isIntersecting && e.intersectionRect.height >= Math.min(e.boundingClientRect.height, innerHeight) / 2) {
+      if (!seenTimers.has(post)) seenTimers.set(post, setTimeout(() => noteSeen(post), SEEN_DELAY));
+    } else {
+      clearTimeout(seenTimers.get(post));
+      seenTimers.delete(post);
+    }
+  }
+}
+
+function noteSeen(post) {
+  seenTimers.delete(post);
+  seenWatcher?.unobserve(post);
+  const id = seenId(post);
+  if (!id || seenNow.has(id)) return;
+  seenNow.add(id);
+  seenQueue.push(id);
+  seenFlush ??= setTimeout(flushSeen, 2000);
+}
+
+function flushSeen() {
+  clearTimeout(seenFlush);
+  seenFlush = null;
+  if (!seenQueue.length) return;
+  try { chrome.runtime.sendMessage({ type: 'rmute:addSeen', ids: seenQueue.splice(0) }).catch(() => {}); } catch (_) { /* extension reloaded */ }
+}
+addEventListener('pagehide', flushSeen);
+
+// Follows the setting: reads the ids when it turns on, stops watching when off.
+async function syncSeen() {
+  if (!mutes.settings.hideSeen) {
+    seenBefore = null;
+    seenWatcher?.disconnect();
+    seenWatcher = null;
+    seenTimers.forEach(clearTimeout);
+    seenTimers.clear();
+    return;
+  }
+  if (seenBefore) return;
+  const ids = (await chrome.storage.local.get(SEEN_KEY))[SEEN_KEY];
+  seenBefore = new Set(ids ? ids.split(' ') : []);
+  markTitles();
+}
+
+// "Forget them" in the popup.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local' || !(SEEN_KEY in changes) || changes[SEEN_KEY].newValue || !seenBefore) return;
+  seenBefore = new Set();
+  markTitles();
+});
 
 /* ---------- Comment words ---------- */
 
@@ -1719,7 +1861,8 @@ function updateWords() {
 
 // Whether posts need marking at all as they load.
 const needsMarking = () => Object.values(wordMatchers).some(Boolean) || presetsOn() ||
-  mutes.settings.collapsePopular || Number(mutes.settings.minScore) > 0;
+  mutes.settings.collapsePopular || Number(mutes.settings.minScore) > 0 ||
+  mutes.settings.hideSeen || mutes.settings.hideDuplicates || Number(mutes.settings.maxAgeHours) > 0;
 
 // "popular" on r/popular, "subs" on the home page of a subreddit that isn't
 // joined or in any custom feed, otherwise nothing. Reddit navigates without reloading, so
@@ -1743,10 +1886,11 @@ function updatePageScope(force = true) {
   // scope it was loaded with (postScope).
 }
 
-// On arriving at the home page, pick the default feed's tab (a role=tab button,
-// id feed-tab-N, no URL of its own) once. Clicks repeat until the tab shows as
-// selected, since one made before Reddit's script is ready does nothing. A
-// tab the user clicks meanwhile, or afterwards, stays.
+// On arriving at the home page, pick the default feed's tab once (a role=tab
+// button in faceplate-tabgroup, id feed-tab-N, no URL of its own; the selected
+// one has faceplate-tab-selected, no aria-selected). Already on it: nothing
+// happens. Every click reloads the feed, so wait for Reddit's script (:defined)
+// and retry only slowly. A tab the user clicks meanwhile, or afterwards, stays.
 let feedDone = false;
 function openDefaultFeed() {
   if (feedDone) return;
@@ -1757,7 +1901,7 @@ function openDefaultFeed() {
   document.addEventListener('click', onClick, true);
   const started = performance.now();
   let ticks = 0;
-  let clicked = 0;
+  let clicked = -Infinity;
   const tick = () => {
     ticks++;
     // Before the list loads the setting is missing; wait for it.
@@ -1768,17 +1912,30 @@ function openDefaultFeed() {
       (ticks % 10 === 0 ? [...walk(document)].find(isTab) : null));
     const now = performance.now();
     if (userPicked || location.pathname !== '/' || isOff() || want === 'last' ||
-        tab?.getAttribute('aria-selected') === 'true' || now - started > 10000) {
+        tab?.hasAttribute('faceplate-tab-selected') || now - started > 10000) {
       document.removeEventListener('click', onClick, true);
       return;
     }
-    if (tab && now - clicked >= 500) {
+    if (tab && now - clicked >= 3000 && tab.parentElement?.matches(':defined')) {
       clicked = now;
-      tab.click();
+      clickWithoutFocus(tab);
     }
     setTimeout(tick, 100);
   };
   tick();
+}
+
+// Reddit focuses a tab when it's selected, which draws a focus ring on a page
+// nobody has touched yet.
+function clickWithoutFocus(el) {
+  el.click();
+  // Checked, not a focus listener: a tab in the background gets no focus event.
+  const started = performance.now();
+  const check = () => {
+    if (document.activeElement === el) el.blur();
+    if (performance.now() - started < 3000) setTimeout(check, 100);
+  };
+  check();
 }
 
 // The user's custom feeds and joined subs come from Reddit's own API (same
@@ -1945,12 +2102,14 @@ MuteStore.load().then((list) => {
   mutes = MuteStore.effective(list);
   applyStyle();
   updateWords();
+  syncSeen();
   if (document.body) syncNativeButton();
 });
 MuteStore.onChange((list) => {
   mutes = MuteStore.effective(list);
   applyStyle();
   updateWords();
+  syncSeen();
   // Turned back on: the ⋯ buttons and old-Reddit links come back.
   if (document.body) isOldReddit ? processOld() : (addMuteButtons(), syncNativeButton());
 });
