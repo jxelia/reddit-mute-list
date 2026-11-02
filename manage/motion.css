@@ -5,31 +5,20 @@
 @media (prefers-reduced-motion: no-preference) {
   :root { --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1); }
 
-  /* 1. Tabs as a lens-shaped carousel: the titles keep their order in one row, wrapped
-     round a drum seen side on, so the row tapers to both ends like an eye. The selected
-     title is always in the middle and a little larger; each step away is smaller, fainter
-     and turned further. motion.js sets each title's place. The line stays under the
-     selected title and takes its width. */
-  .tabs { position: relative; height: 2.75rem; border-bottom: none; }
+  /* 1. Tabs on a cornea: the titles keep their order on one row with the selected title
+     at the centre of the bulge, and the rest curve away and shrink towards both corners,
+     like an eye. motion.js places each letter. The line stays under the selected title. */
+  .tabs { position: relative; height: 2.5rem; border-bottom: none; overflow: clip; overflow-clip-margin: 1rem; }
   .tabs[data-ring] button {
-    position: absolute; left: 50%; top: 50%; margin: 0; white-space: nowrap;
-    translate: calc(-50% + var(--x)) -50%;
-    scale: var(--s);
-    transform: perspective(320px) rotateY(var(--r));
-    opacity: var(--o);
+    position: absolute; left: 50%; top: 45%; width: 0; height: 0; padding: 0; margin: 0; border: 0;
+    font-size: 14px;
+    transition: color 0.2s;
   }
-  .tabs[data-ring="on"] button {
-    transition: translate 0.45s var(--motion-ease), scale 0.45s var(--motion-ease),
-      transform 0.45s var(--motion-ease), opacity 0.45s var(--motion-ease), color 0.2s;
-  }
-  .tabs[data-ring] button:hover, .tabs[data-ring] button:focus-visible { opacity: 1; }
-  .tabs[data-ring] button[aria-selected="true"] { border-bottom-color: transparent; }
-  .tabs[data-ring]::after {
-    content: ""; position: absolute; left: 50%; bottom: 0; height: 2px;
-    width: var(--tab-w); translate: -50%;
-    background: var(--accent);
-  }
-  .tabs[data-ring="on"]::after { transition: width 0.35s var(--motion-ease); }
+  .tabs[data-ring] button:hover { color: var(--fg); }
+  .tabs[data-ring] button:focus-visible { outline: none; color: var(--accent); }
+  .tabs .letter { position: absolute; left: 0; top: 0; padding: 0.4rem 1px; white-space: pre; transform-origin: 0 0; }
+  .tabs .line { position: absolute; left: 50%; top: 45%; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
+  .tabs .line path { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; }
 
   /* 2. Button press: drops 1px. Not tabs, whose line would move off the rule. */
   button:active:not(:disabled, .tabs button) { transform: translateY(1px); }
