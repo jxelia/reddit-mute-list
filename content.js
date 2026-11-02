@@ -93,8 +93,11 @@ function buildCss(list) {
   // old, and crossposts from muted subs (markFeedFilters).
   const feedHidden = ':is([data-rmute-low], [data-rmute-seen], [data-rmute-dup], [data-rmute-old], [data-rmute-xpost])';
   posts.push(`${P}${feedHidden}`);
+  // Own rules, not in the 100-selector ones below: each holds many simple selectors.
+  const commentRules = [];
   // A hidden post takes its bar with it.
   other.push(`.rmute-decide:has(+ :is(${rename ? '' : wordAnywhere.join(', ') + ', '}${feedHidden}))`);
+  const hiddenAuthors = [];
   for (const u of list.users) {
     const scope = MuteStore.scopeOf(list, 'u', u);
     const where = (kind) => (scope ? scopeSel(scope, kind) : '');
@@ -103,24 +106,32 @@ function buildCss(list) {
     // Only the comment itself goes, not its replies (ownParts). Old Reddit
     // keeps replies in .child.
     if (list.settings.hideComments) {
-      const c = `shreddit-comment${attrMatch('author', u)}${where('comment')}`;
-      other.push(...ownParts(c), `.thing.comment${attrMatch('data-author', u)}${where('old')} > :not(.child)`);
+      hiddenAuthors.push(`${attrMatch('author', u)}${where('comment')}`);
+      other.push(`.thing.comment${attrMatch('data-author', u)}${where('old')} > :not(.child)`);
     }
     // The comment with everything under it.
     if (list.settings.hideRepliesToMuted) {
       other.push(`shreddit-comment${attrMatch('author', u)}${where('comment')}`, `.thing.comment${attrMatch('data-author', u)}${where('old')}`);
     }
   }
+  // One selector per 100 users: its cost grows with the number of selectors,
+  // much less with the names in one.
+  for (let i = 0; i < hiddenAuthors.length; i += 100) {
+    commentRules.push(ownParts(`shreddit-comment:is(${hiddenAuthors.slice(i, i + 100).join(', ')})`));
+  }
   // Comments with a muted word shrink to the bar markComment() puts in them
   // (long-pressing it hides the replies too), or go completely.
   const anyCword = ':is(shreddit-comment, .thing.comment)[data-rmute-cword]';
   if (list.settings.commentAction === 'hide') {
     if (list.settings.commentHideReplies) other.push(anyCword);
-    else other.push(...ownParts('shreddit-comment[data-rmute-cword]'), '.thing.comment[data-rmute-cword] > :not(.child)');
+    else {
+      commentRules.push(ownParts('shreddit-comment[data-rmute-cword]'));
+      other.push('.thing.comment[data-rmute-cword] > :not(.child)');
+    }
   } else {
     const cword = 'shreddit-comment[data-rmute-cword]:not([data-rmute-open])';
-    other.push(...ownParts(cword, '.rmute-cbar'),
-      '.thing.comment[data-rmute-cword]:not([data-rmute-open]) > :not(.child, .rmute-cbar)',
+    commentRules.push(ownParts(cword, '.rmute-cbar'));
+    other.push('.thing.comment[data-rmute-cword]:not([data-rmute-open]) > :not(.child, .rmute-cbar)',
       ':is(shreddit-comment, .thing.comment)[data-rmute-noreplies] > :not(.rmute-cbar)');
   }
   if (list.settings.hideCommentAvatars) other.push('shreddit-comment [slot="commentAvatar"] > *', '.thing.comment > .entry .tagline .author-avatar');
@@ -153,7 +164,7 @@ function buildCss(list) {
   // the 8000th simple selector of a single rule (a 13-bit index), which with a
   // few hundred muted subs left the end of the list, and the bar collapse
   // after it, doing nothing.
-  const rules = [];
+  const rules = commentRules.map((sel) => `${sel} { display: none !important; }`);
   for (let i = 0; i < selectors.length; i += 100) {
     rules.push(selectors.slice(i, i + 100).join(',\n') + ' { display: none !important; }');
   }
@@ -184,9 +195,12 @@ const COMMENT_NAME = 'shreddit-comment [slot="commentMeta"] faceplate-tracker[no
 // sit deep inside the comment (details > div > div > shreddit-comment[slot="children-…"]),
 // so walk the path down to them: at each level hide the siblings that hold
 // no reply, and never touch anything inside a reply. keep: also left showing.
+// This runs on every element of every page, so the check that it's in a comment
+// comes first (Chrome tests a compound left to right). With :has() first, it
+// scanned each element's subtree: style passes took 10 times as long, adding a post 25.
 function ownParts(c, keep) {
   const reply = `shreddit-comment, [slot^="children"], [slot*="more" i]`;
-  return [`:is(${c}, ${c} :has(${reply}):not(${c} shreddit-comment *)) > :not(${reply}, :has(${reply})${keep ? ', ' + keep : ''})`];
+  return `:is(${c} > *, :is(${c} *):not(${c} shreddit-comment *):has(${reply}) > *):not(${reply}, :has(${reply})${keep ? ', ' + keep : ''})`;
 }
 
 // The popup's on/off switch. Off: no hiding, nothing added to the page
