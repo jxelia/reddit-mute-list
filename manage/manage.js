@@ -1059,6 +1059,8 @@ let pagePath = null;
 // − puts a sub on the Mute all whitelist (skipSubs), which keeps it out of
 // later lists; in this one it stays, crossed out, so − again can undo it.
 const shownSkipped = new Set();
+// Background tabs opened from the list this time, so each goes after the last.
+let backgroundOpened = 0;
 const isSkipped = (sub) => !!state?.skipSubs.includes(sub);
 // The collected list is kept per tab in local storage, so it's still there
 // when the popup is opened again (it closes when Chrome focuses something
@@ -1109,14 +1111,20 @@ function renderPageSubList() {
       $('page-subs-list').children[i]?.querySelector('button').focus();
     });
     // Opens in a new tab next to this one and switches to it (the list is kept, see savePageSubs).
+    // Cmd/Ctrl-click or middle-click opens it in the background instead, after earlier ones.
     const link = document.createElement('a');
     link.href = `${pageOrigin}/r/${sub}/`;
     link.textContent = 'r/' + sub;
-    link.title = `Open r/${sub} in a new tab`;
-    link.addEventListener('click', (e) => {
+    link.title = `Open r/${sub} in a new tab (${navigator.platform.startsWith('Mac') ? '⌘' : 'Ctrl'}-click: in the background)`;
+    const open = (e) => {
       e.preventDefault();
-      activeTab().then((tab) => chrome.tabs.create({ url: link.href, index: tab.index + 1, openerTabId: tab.id }));
-    });
+      const background = e.metaKey || e.ctrlKey || e.button === 1;
+      activeTab().then((tab) => chrome.tabs.create({
+        url: link.href, index: tab.index + 1 + (background ? backgroundOpened++ : 0), openerTabId: tab.id, active: !background,
+      }));
+    };
+    link.addEventListener('click', open);
+    link.addEventListener('auxclick', (e) => { if (e.button === 1) open(e); });
     li.append(link, button);
     return li;
   }));
