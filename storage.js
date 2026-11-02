@@ -185,11 +185,27 @@ const MuteStore = (() => {
     return { ...list, scopes };
   }
 
-  function parse(all) {
-    const list = { settings: { ...DEFAULT_SETTINGS, ...(all.settings || {}) } };
+  // Version of the stored data's shape. Raise it, and add a step below, only
+  // when the shape changes in a way old lists need converting for; a new
+  // setting with a default doesn't need it. Lists from before this have none (1).
+  const SCHEMA = 2;
+  // Steps run on every read of an older list, in memory (nothing is written
+  // until the next save), so each takes and returns the raw stored items.
+  const MIGRATIONS = {
     // India and Australia were built in as never filtered before the country
     // picker; lists saved back then keep them ticked.
-    if (all.settings && !('placeExcept' in all.settings)) list.settings.placeExcept = ['IN', 'AU'];
+    2: (all) => (all.settings && !('placeExcept' in all.settings)
+      ? { ...all, settings: { ...all.settings, placeExcept: ['IN', 'AU'] } } : all)
+  };
+
+  function migrate(all) {
+    for (let v = (all.schema || 1) + 1; v <= SCHEMA; v++) all = MIGRATIONS[v](all);
+    return all;
+  }
+
+  function parse(raw) {
+    const all = migrate(raw);
+    const list = { settings: { ...DEFAULT_SETTINGS, ...(all.settings || {}) } };
     for (const kind of ALL_KINDS) {
       const count = all[kind + '.count'] || 0;
       const chunks = [];
@@ -206,7 +222,7 @@ const MuteStore = (() => {
   // 100 KB (see save).
   const onDevice = async () => !!(await chrome.storage.local.get(ON_DEVICE))[ON_DEVICE];
   const area = async () => (await onDevice() ? chrome.storage.local : chrome.storage.sync);
-  const isListKey = (key) => key === 'settings' || key === ON_DEVICE || ALL_KINDS.includes(key.replace(/\.(?:count|\d+)$/, ''));
+  const isListKey = (key) => key === 'settings' || key === 'schema' || key === ON_DEVICE || ALL_KINDS.includes(key.replace(/\.(?:count|\d+)$/, ''));
 
   async function load() {
     const all = await (await area()).get(null);
@@ -223,6 +239,8 @@ const MuteStore = (() => {
     const from = await area();
     const prev = await from.get(null);
     const data = { settings: { ...DEFAULT_SETTINGS, ...(list.settings || {}) } };
+    // Never lowered: a stale tab saving mustn't mark a newer list as old.
+    data.schema = Math.max(prev.schema || 1, SCHEMA);
 
     // Entries already stored are kept even if this copy of the code can't
     // read them, so a stale tab can't wipe a newer format (as it did *cats*).
