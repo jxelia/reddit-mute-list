@@ -363,6 +363,7 @@ function render() {
   const imported = new Set(imports.flatMap((g) => g[kind] || []));
   $('main-label').textContent = kind === 'subs' ? 'Muted subreddits' : 'Muted users';
   $('count-main').textContent = state[kind].filter((n) => !imported.has(n)).length;
+  $('main-group').firstElementChild.title = $('main-group').firstElementChild.ariaLabel = `${$('main-label').textContent} ${$('count-main').textContent}`;
   if (filter) $('main-group').open = true;
   renderSkip(filter);
   renderImports(kind, filter);
