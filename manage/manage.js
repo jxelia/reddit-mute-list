@@ -836,7 +836,7 @@ function byCountry(items, kind) {
   for (const [cc, label, names] of items) {
     const name = countryName(cc);
     if (!groups.has(cc)) {
-      groups.set(cc, { tag: cc, label: name, option: `All ${name} ${kind}`, chip: `All ${name}`, many: (n) => `${n} ${name} ${kind}`, items: [] });
+      groups.set(cc, { tag: cc, label: name, option: `All ${name} ${kind}`, chip: name, many: (n) => `${n} ${name} ${kind}`, items: [] });
     }
     groups.get(cc).items.push({ tag: names.split(' ')[0], label, option: `${label} (${name})` });
   }
