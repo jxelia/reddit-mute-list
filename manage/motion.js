@@ -7,7 +7,10 @@
   const REACH = 0.95; // the far end of the longer side sits this far round the eye, in radians
   const VIEW = 290; // how far the viewer is from the front of the eye
   const GAP = 5; // between titles along the strip
-  const BIG = 0.08; // extra size at the very middle
+  const SIZES = [1.25, 1.06, 0.98, 0.94]; // a title's size by how many titles it is from the selected one
+  const HOVER = 0.18; // a hovered title grows by this much of its size
+  const HOVER_TIME = 70; // how quickly it gets there, in ms (about 3x this to settle)
+  const HOVER_GAP = 120; // ms off a letter (the gaps between them) before it counts as left
   const WORD_REACH = 1.2; // how far round the selected word's ends sit, against the row's curve at that point
   const WORD_MIN = 0.25; // and at least this, in radians, so short words curve too
   const WORD_VIEW = 2; // how far the viewer is from the word's small carousel, per its radius
@@ -15,11 +18,14 @@
   const LINE = 11; // the line's distance below the middle of the title, in px
   const TIME = 450;
   const pen = document.createElement('canvas').getContext('2d');
-  let strip = null; // [{ button, width, centre, letters: [{ el, at }] }]
-  let end = 0; // the strip's length
-  let pos = 0; // the point on the strip that's in the middle
+  let strip = null; // [{ button, width, letters: [{ el, at }] }]
+  let pos = 0; // which title is in the middle; between two while moving
   let lineWidth = 0; // the shortest title's, whichever is selected
   let frame = 0;
+  let moving = null; // { from, to, start } while the row turns to a new title
+  let hovered = null;
+  let hoverOff = 0;
+  let last = 0;
   let line = null;
 
   function build() {
@@ -41,34 +47,40 @@
         button.append(el);
         letters.push({ el, at: from + wide / 2 - width / 2 });
       }
-      const title = { button, width, centre: end + width / 2, letters };
-      end += width + GAP;
-      return title;
+      return { button, width, letters, lift: 0 };
     });
-    end -= GAP;
-    lineWidth = Math.min(...strip.map((t) => t.width)) * (1 + BIG);
+    lineWidth = Math.min(...strip.map((t) => t.width)) * SIZES[0];
+  }
+
+  // Between two steps while the row is moving, so sizes change smoothly.
+  function sizeAt(away) {
+    const step = Math.min(Math.floor(away), SIZES.length - 1);
+    const next = SIZES[Math.min(step + 1, SIZES.length - 1)];
+    return SIZES[step] + (next - SIZES[step]) * (away - step);
   }
 
   function draw() {
-    // The title reaching the middle grows, so the others move out of its way.
-    let before = 0;
-    let centred = 0;
-    for (const t of strip) {
-      t.big = 1 + BIG * Math.max(0, 1 - Math.abs(t.centre - pos) / (t.width / 2 + GAP));
-      const extra = t.width * (t.big - 1);
-      t.shift = before + extra / 2;
-      centred += extra * Math.max(0, Math.min(1, (pos - t.centre + t.width / 2) / t.width));
-      before += extra;
-    }
+    // Laid out at each title's current size, so the titles make room for each other.
+    let across = 0;
+    strip.forEach((t, i) => {
+      t.away = Math.abs(i - pos);
+      t.big = sizeAt(t.away) * (1 + HOVER * t.lift);
+      t.spot = across + t.width * t.big / 2;
+      across += t.width * t.big + GAP;
+    });
+    across -= GAP;
+    const low = Math.floor(pos);
+    const high = Math.min(low + 1, strip.length - 1);
+    const middle = strip[low].spot + (strip[high].spot - strip[low].spot) * (pos - low);
     // Tighter when the longer side is short, so the curve always reaches as far round.
-    const round = Math.max(pos, end - pos, 200) * 1.08 / REACH;
-    for (const { centre, width, big, shift, letters } of strip) {
+    const round = Math.max(middle, across - middle, 200) * 1.08 / REACH;
+    for (const { width, away, big, spot, letters } of strip) {
+      // The title in the middle is a little carousel of its own: the main one carries
+      // its centre, and its letters turn round a small one.
+      const own = Math.max(0, 1 - away);
+      const small = (width * big / 2) / wordReach(width * big / 2, round);
       for (const { el, at } of letters) {
-        // The title in the middle is a little carousel of its own: the main one carries
-        // its centre, and its letters turn round a small one.
-        const own = (big - 1) / BIG;
-        const small = (width * big / 2) / wordReach(width * big / 2, round);
-        const along = centre + at * big * (1 - own) + shift - pos - centred;
+        const along = spot + at * big * (1 - own) - middle;
         el.style.transform = `perspective(${VIEW}px) translateZ(${-round}px) rotateY(${along / round}rad) translateZ(${round}px) perspective(${small * WORD_VIEW}px) translateZ(${-small}px) rotateY(${own * at * big / small}rad) translateZ(${small}px) scale(${big}) translate(-50%, -50%)`;
       }
     }
@@ -94,25 +106,57 @@
     line.firstChild.setAttribute('d', path);
   }
 
-  function place(animate) {
-    const tab = strip.find((t) => t.button.getAttribute('aria-selected') === 'true');
-    if (!tab) return;
-    cancelAnimationFrame(frame);
-    if (!animate) {
-      pos = tab.centre;
-      return draw();
+  function step(now) {
+    frame = 0;
+    const passed = last ? now - last : 16;
+    last = now;
+    let busy = false;
+    if (moving) {
+      const t = Math.min(1, (now - moving.start) / TIME);
+      pos = moving.from + (moving.to - moving.from) * (1 - (1 - t) ** 3);
+      if (t < 1) busy = true;
+      else moving = null;
     }
-    const from = pos;
-    const start = performance.now();
-    const step = (now) => {
-      const t = Math.min(1, (now - start) / TIME);
-      const eased = 1 - (1 - t) ** 3;
-      pos = from + (tab.centre - from) * eased;
-      draw();
-      if (t < 1) frame = requestAnimationFrame(step);
-    };
-    frame = requestAnimationFrame(step);
+    for (const t of strip) {
+      const goal = t.button === hovered && t.button.getAttribute('aria-selected') !== 'true' ? 1 : 0;
+      t.lift += (goal - t.lift) * (1 - Math.exp(-passed / HOVER_TIME));
+      if (Math.abs(goal - t.lift) < 0.005) t.lift = goal;
+      else busy = true;
+    }
+    draw();
+    if (busy) run();
+    else last = 0;
   }
+
+  function run() {
+    if (!frame) frame = requestAnimationFrame(step);
+  }
+
+  function place(animate) {
+    const tab = strip.findIndex((t) => t.button.getAttribute('aria-selected') === 'true');
+    if (tab < 0) return;
+    if (animate) {
+      moving = { from: pos, to: tab, start: performance.now() };
+      return run();
+    }
+    moving = null;
+    pos = tab;
+    draw();
+  }
+
+  function hover(button) {
+    clearTimeout(hoverOff);
+    if (button === hovered) return;
+    hovered = button;
+    run();
+  }
+
+  tabs.addEventListener('pointerover', (e) => {
+    const button = e.target.closest('[role="tab"]');
+    if (button) hover(button);
+    else if (hovered) hoverOff = setTimeout(hover, HOVER_GAP, null);
+  });
+  tabs.addEventListener('pointerleave', () => hover(null));
 
   tabs.dataset.ring = 'on'; // first, since the titles are measured at this size
   build();
