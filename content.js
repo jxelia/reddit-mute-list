@@ -1369,9 +1369,11 @@ const PRESET_SETTING = {
 };
 let presetData = null;
 
-// Local subs often add a topic to the place name: askNYC, torontojobs.
-const PLACE_PREFIX = /^(?:ask|visit|living|livingin|movingto|moving|greater|metro|downtown|the)/;
-const PLACE_SUFFIX = /(?:jobs|food|foodies|eats|events|housing|rentals|apartments|r4r|social|meetups|circlejerk|news|traffic|weather|pics|photos|music|nightlife|dating|gaybros|lgbt|expats|transit|realestate|memes|bikes|cycling|hiking|running|area|region|city|county|state)$/;
+// Local subs often add a topic to the place name, on either side: askNYC,
+// torontojobs, FoodLosAngeles. Longer words first: a prefix takes the first hit.
+const PLACE_TOPICS = 'jobs|foodies|food|eats|events|housing|rentals|apartments|r4r|social|meetups|circlejerk|news|traffic|weather|pics|photos|music|nightlife|dating|gaybros|lgbt|expats|transit|realestate|memes|bikes|cycling|hiking|running';
+const PLACE_PREFIX = new RegExp(`^(?:ask|visit|livingin|living|movingto|moving|greater|metro|downtown|the|${PLACE_TOPICS})`);
+const PLACE_SUFFIX = new RegExp(`(?:${PLACE_TOPICS}|area|region|city|county|state)$`);
 // What's left beside a country word that makes it a topic, not a place:
 // r/learnjapanese, r/frenchbulldogs, r/italianfood.
 const TOPIC_REST = /^(?:learn\w*|\w*learning|\w*language\w*|food\w*|cooking|cuisine|recipes|mythology|bulldogs?|shepherds?|fold|corgis?|oven|shorthairs?|cats?|setters?|fries|press|horns?|whiskey|design|horses?)$/;
