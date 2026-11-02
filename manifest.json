@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Mute List for Reddit",
-  "version": "1.1.0",
+  "version": "0.1.0",
   "description": "A synced mute list for subreddits, users and title words that hides them on Reddit, with mute options in each post's menu.",
   "permissions": ["storage"],
   "icons": {
