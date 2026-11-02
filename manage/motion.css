@@ -23,6 +23,18 @@
   /* 3. Theme icon: fades to full color on hover. */
   .header .theme { transition: color 0.2s; }
 
+  /* 4. Mute list and built-in filter lists: open by sliding out from under their
+     header. The window resizes once, at the start. A fixed distance, since the list
+     can be thousands of pixels tall. The transition is on the open state only, so
+     collapsing is instant, and returning to a tab doesn't replay it. */
+  #main-group::details-content, .presets details::details-content {
+    clip-path: inset(12rem -4px -4px -4px); translate: 0 -12rem; /* -4px: room for focus rings */
+  }
+  #main-group[open]::details-content, .presets details[open]::details-content {
+    clip-path: inset(-4px); translate: 0 0;
+    transition: clip-path 0.35s ease-out, translate 0.35s ease-out;
+  }
+
   /* Colors change at once during the theme circle, so the new look isn't revealed mid-fade. */
   :root:active-view-transition * { transition: none !important; }
 }
