@@ -37,7 +37,12 @@ const IMPORTS_KEY = 'importGroups';
 let imports = [];
 
 let state = null;
+const TAB_KEY = 'rmute:tab'; // localStorage, since it's read before the first paint
 let kind = 'subs'; // selected tab: subs, users, words or rec
+try {
+  const tab = localStorage.getItem(TAB_KEY);
+  if (['subs', 'users', 'words', 'rec'].includes(tab)) kind = tab;
+} catch {}
 let textKind = null; // list open in the text editor, if any
 
 // undo: adds an Undo button after the message.
@@ -336,9 +341,7 @@ function renderImports(k, filter) {
   }));
 }
 
-function render() {
-  const REC_LISTS = [...MuteStore.REC_KINDS, ...MuteStore.KEEP_KINDS];
-  for (const k of REC_LISTS) $('count-' + k).textContent = state[k].length;
+function showTab() {
   document.querySelectorAll('.tabs [role="tab"]').forEach((tab) => {
     tab.setAttribute('aria-selected', String(tab.dataset.kind === kind));
   });
@@ -346,6 +349,12 @@ function render() {
   $('words-view').hidden = !!textKind || kind !== 'words';
   $('rec-view').hidden = !!textKind || kind !== 'rec';
   $('text-view').hidden = !textKind;
+}
+
+function render() {
+  const REC_LISTS = [...MuteStore.REC_KINDS, ...MuteStore.KEEP_KINDS];
+  for (const k of REC_LISTS) $('count-' + k).textContent = state[k].length;
+  showTab();
   $('enabled').checked = state.settings.enabled !== false;
   document.body.classList.toggle('off', state.settings.enabled === false);
   document.body.classList.toggle('extras', extras());
@@ -739,11 +748,13 @@ async function usage() {
 document.querySelectorAll('.tabs [role="tab"]').forEach((tab) => {
   tab.addEventListener('click', () => {
     kind = tab.dataset.kind;
+    try { localStorage.setItem(TAB_KEY, kind); } catch {}
     textKind = null;
     $('main-group').open = false;
     render();
   });
 });
+showTab(); // the tab it was closed on, before motion.js sets up the row
 
 $('add-form').addEventListener('submit', async (e) => {
   e.preventDefault();
