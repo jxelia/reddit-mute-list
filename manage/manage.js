@@ -1316,7 +1316,7 @@ let openSub = null;
 function renderPageMuted() {
   const entry = openSub && state ? state.subs.find((e) => entryMatches(e, openSub)) : undefined;
   $('page-muted').hidden = entry === undefined;
-  if (entry !== undefined) $('page-muted-text').textContent = `r/${openSub} is muted${entry.includes('*') ? ` by ${entry}` : ''}`;
+  if (entry !== undefined) $('page-muted-text').textContent = `r/${openSub}${entry.includes('*') ? ` · ${entry}` : ''}`;
 }
 // Takes off everything muting it, patterns too, or the page would stay muted.
 $('page-muted-unmute').addEventListener('click', async () => {
