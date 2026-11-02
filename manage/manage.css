@@ -249,6 +249,8 @@ body.popup .word-section .list { max-height: 10rem; }
 .import-group .list { margin-top: 0.4rem; }
 .import-group > .link { margin-top: 0.4rem; }
 .import-group > .hint { margin: 0.4rem 0 0; }
+/* No counts on the whitelist and imported groups (the user asked). */
+#skip-group > summary .count, #imports summary .count { display: none; }
 /* The main Subreddits / Users list fills its box edge to edge when open. */
 /* Its header (old header height, grey in the top 23%) is a plain bar (name and count in the tooltip) that scrolls away with the rows. */
 #main-group { padding: 0; max-height: 17rem; overflow-y: auto; }
