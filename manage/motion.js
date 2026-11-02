@@ -4,13 +4,13 @@
   if (!matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
   const tabs = document.querySelector('.tabs');
   const buttons = [...tabs.querySelectorAll('[role="tab"]')];
-  const REACH = 0.95; // the far end of the longer side sits this far round the eye, in radians
-  const VIEW = 290; // how far the viewer is from the front of the eye
+  const REACH = 0.6; // the far end of the longer side sits this far round the eye, in radians
+  const VIEW = 120; // how far the viewer is from the front of the eye
   const GAP = 5; // between titles along the strip
   const SIZES = [1.25, 1.06, 0.98, 0.94]; // a title's size by how many titles it is from the selected one
-  const HOVER = 0.12; // a hovered title grows by this much of its size, over its neighbours
+  const POP = 12; // how far a hovered title comes out of the carousel, along the way it's facing, in px
+  const POP_ROOM = 14; // how far past the row's ends it can go, in px
   const HOVER_TIME = 70; // how quickly it gets there, in ms (about 3x this to settle)
-  const HOVER_GAP = 120; // ms off a letter (the gaps between them) before it counts as left
   const WORD_REACH = 1.2; // how far round the selected word's ends sit, against the row's curve at that point
   const WORD_MIN = 0.25; // and at least this, in radians, so short words curve too
   const WORD_VIEW = 2; // how far the viewer is from the word's small carousel, per its radius
@@ -24,7 +24,6 @@
   let frame = 0;
   let moving = null; // { from, to, start } while the row turns to a new title
   let hovered = null;
-  let hoverOff = 0;
   let last = 0;
   let line = null;
 
@@ -74,18 +73,33 @@
     const middle = strip[low].spot + (strip[high].spot - strip[low].spot) * (pos - low);
     // Tighter when the longer side is short, so the curve always reaches as far round.
     const round = Math.max(middle, across - middle, 200) * 1.08 / REACH;
-    for (const { width, away, size, lift, spot, letters } of strip) {
+    for (const t of strip) {
+      const { width, away, size, lift, spot, letters } = t;
       // The title in the middle is a little carousel of its own: the main one carries
       // its centre, and its letters turn round a small one.
       const own = Math.max(0, 1 - away);
       const small = (width * size / 2) / wordReach(width * size / 2, round);
-      const big = size * (1 + HOVER * lift); // hovering doesn't change the layout above
+      // Where the title rests on the row, for finding the hovered one.
+      const half = width * size / 2;
+      const off = spot - middle;
+      t.left = project(off - half, round, 0);
+      t.right = project(off + half, round, 0);
+      // It comes straight out, and slides back only as far as it would leave the page.
+      const pop = POP * lift;
+      const outer = Math.abs(off) + half;
+      const slide = lift ? -Math.sign(off) * Math.max(0, project(outer, round, pop) - tabs.clientWidth / 2 - POP_ROOM) : 0;
       for (const { el, at } of letters) {
-        const along = spot + at * big * (1 - own) - middle;
-        el.style.transform = `perspective(${VIEW}px) translateZ(${-round}px) rotateY(${along / round}rad) translateZ(${round}px) perspective(${small * WORD_VIEW}px) translateZ(${-small}px) rotateY(${own * at * big / small}rad) translateZ(${small}px) scale(${big}) translate(-50%, -50%)`;
+        const along = spot + at * size * (1 - own) - middle;
+        el.style.transform = `translateX(${slide}px) perspective(${VIEW}px) translateZ(${-round}px) rotateY(${along / round}rad) translateZ(${round + pop}px) perspective(${small * WORD_VIEW}px) translateZ(${-small}px) rotateY(${own * at * size / small}rad) translateZ(${small}px) scale(${size}) translate(-50%, -50%)`;
       }
     }
     drawLine(round);
+  }
+
+  // A point on the row as it appears on screen, from the middle, out by pop along its facing.
+  function project(along, round, pop) {
+    const angle = along / round;
+    return (round + pop) * Math.sin(angle) * VIEW / (VIEW + round - (round + pop) * Math.cos(angle));
   }
 
   // Kept to the row's curve, so the word carries on the curve of the titles beside it.
@@ -147,18 +161,25 @@
   }
 
   function hover(button) {
-    clearTimeout(hoverOff);
     if (button === hovered) return;
+    hovered?.removeAttribute('data-hover');
+    button?.setAttribute('data-hover', '');
+    tabs.style.cursor = button ? 'pointer' : '';
     hovered = button;
     run();
   }
 
-  tabs.addEventListener('pointerover', (e) => {
-    const button = e.target.closest('[role="tab"]');
-    if (button) hover(button);
-    else if (hovered) hoverOff = setTimeout(hover, HOVER_GAP, null);
+  // By where the titles rest, not the letters, so a title moving out from under the
+  // pointer stays hovered.
+  tabs.addEventListener('pointermove', (e) => {
+    const box = tabs.getBoundingClientRect();
+    const x = e.clientX - box.left - box.width / 2;
+    hover(strip.find((t) => x >= t.left - GAP / 2 && x <= t.right + GAP / 2)?.button ?? null);
   });
   tabs.addEventListener('pointerleave', () => hover(null));
+  tabs.addEventListener('click', (e) => {
+    if (!e.target.closest('[role="tab"]')) hovered?.click();
+  });
 
   tabs.dataset.ring = 'on'; // first, since the titles are measured at this size
   build();

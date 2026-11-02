@@ -14,7 +14,7 @@
     font-size: 14px;
     transition: color 0.2s;
   }
-  .tabs[data-ring] button:hover:not([aria-selected="true"]) { color: color-mix(in srgb, var(--fg) 30%, var(--muted)); }
+  .tabs[data-ring] button[data-hover]:not([aria-selected="true"]) { color: color-mix(in srgb, var(--fg) 30%, var(--muted)); z-index: 1; }
   .tabs[data-ring] button:focus-visible { outline: none; color: var(--accent); }
   .tabs .letter { position: absolute; left: 0; top: 0; padding: 0.4rem 1px; white-space: pre; transform-origin: 0 0; }
   .tabs .line { position: absolute; left: 50%; top: 45%; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
