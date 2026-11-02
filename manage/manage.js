@@ -1301,25 +1301,32 @@ function savePageSubs() {
 }
 
 // List entries can be patterns ("*cat*", "cat*", "*cat"), as in content.js.
-function listEntry(list, name) {
-  return list.find((entry) => {
-    const s = entry.replace(/\*/g, '');
-    if (entry.startsWith('*') && entry.endsWith('*')) return name.includes(s);
-    if (entry.startsWith('*')) return name.endsWith(s);
-    if (entry.endsWith('*')) return name.startsWith(s);
-    return name === s;
-  });
+function entryMatches(entry, name) {
+  const s = entry.replace(/\*/g, '');
+  if (entry.startsWith('*') && entry.endsWith('*')) return name.includes(s);
+  if (entry.startsWith('*')) return name.endsWith(s);
+  if (entry.endsWith('*')) return name.startsWith(s);
+  return name === s;
 }
-const inList = (list, name) => listEntry(list, name) !== undefined;
+const inList = (list, name) => list.some((entry) => entryMatches(entry, name));
 
 // On a muted sub's page (its feed or a post in it), the card's place says so,
 // with the pattern if that's what muted it. r/popular, r/all and a+b mix subs.
 let openSub = null;
 function renderPageMuted() {
-  const entry = openSub && state ? listEntry(state.subs, openSub) : undefined;
+  const entry = openSub && state ? state.subs.find((e) => entryMatches(e, openSub)) : undefined;
   $('page-muted').hidden = entry === undefined;
-  if (entry !== undefined) $('page-muted').textContent = `r/${openSub} is muted${entry.includes('*') ? ` by ${entry}` : ''}`;
+  if (entry !== undefined) $('page-muted-text').textContent = `r/${openSub} is muted${entry.includes('*') ? ` by ${entry}` : ''}`;
 }
+// Takes off everything muting it, patterns too, or the page would stay muted.
+$('page-muted-unmute').addEventListener('click', async () => {
+  const before = state;
+  const entries = state.subs.filter((e) => entryMatches(e, openSub));
+  if (await save({ ...state, subs: state.subs.filter((e) => !entries.includes(e)) })) {
+    setStatus(`Unmuted ${entries.map((e) => display('subs', e)).join(', ')}`, false, () => restoreNames(['subs'], entries, before));
+  }
+  renderPageMuted();
+});
 function setOpenPath(path) {
   const name = path?.match(/^\/r\/([^/]+)/i)?.[1];
   openSub = name && !name.includes('+') && !/^(popular|all)$/i.test(name) ? MuteStore.normalize(name) : null;

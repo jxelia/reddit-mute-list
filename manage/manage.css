@@ -317,7 +317,8 @@ body:not(.popup) #main-group { max-height: 29rem; }
 .page-subs-list li.out a { color: var(--muted); text-decoration: line-through; }
 .page-subs-list button { width: 1.4rem; height: 1.4rem; padding: 0; border-radius: 50%; background: none; color: var(--muted); font-size: 0.75rem; font-weight: 400; line-height: 1; }
 .page-subs-list button:hover, .page-subs-list button[aria-pressed="true"] { color: var(--fg); background: var(--line); }
-.page-muted { margin: 0 0 0.75rem; padding: 0.5rem 0.75rem; border: 1px solid var(--line); border-radius: 0.5rem; font-size: 0.85rem; overflow-wrap: anywhere; }
+.page-muted { display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; margin: 0 0 0.75rem; color: var(--muted); font-size: 0.85rem; overflow-wrap: anywhere; }
+.page-muted .link { padding: 0; font-size: inherit; text-decoration: underline; }
 .page-subs > button:disabled { opacity: 0.5; cursor: default; filter: none; }
 
 /* Sort order, beside each filter box. */
