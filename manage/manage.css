@@ -209,6 +209,8 @@ textarea { height: 14rem; resize: vertical; font-family: ui-monospace, Menlo, mo
 }
 
 .check { display: flex; gap: 0.5rem; align-items: center; cursor: pointer; }
+/* A checkbox's hint starts under its label text, not under the box */
+.check + .hint { padding-left: 28px; }
 
 .restore { display: grid; gap: 0.4rem; margin-top: 0.75rem; }
 
