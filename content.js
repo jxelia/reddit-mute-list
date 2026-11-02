@@ -195,6 +195,7 @@ const isOff = () => mutes.settings.enabled === false;
 
 function applyStyle() {
   document.documentElement.toggleAttribute('data-rmute-off', isOff());
+  document.documentElement.toggleAttribute('data-rmute-show-join', mutes.settings.hideJoin === false);
   let style = document.getElementById(STYLE_ID);
   if (!style) {
     style = document.createElement('style');
@@ -448,7 +449,7 @@ function actionsFor(post, { withMuteSub = isRecommended(post) || !post.querySele
   const { sub, author } = postInfo(post);
   const actions = [];
   const join = joinButtonOf(post);
-  if (join && sub) actions.push({ label: 'Join', icon: ICONS.join, first: true, run: () => { clickJoin(join); rememberJoined(sub); } });
+  if (join && sub && mutes.settings.hideJoin !== false) actions.push({ label: 'Join', icon: ICONS.join, first: true, run: () => { clickJoin(join); rememberJoined(sub); } });
   if (sub && withMuteSub) {
     actions.push({ label: `Mute r/${sub}${isRecommended(post) ? ' everywhere' : ''}`, icon: ICONS.mute, run: () => mute('subs', sub) });
   }

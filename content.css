@@ -1,5 +1,6 @@
-/* Join moves from the post header into the post's ⋯ menu (see content.js). */
-html:not([data-rmute-off]) :is(shreddit-post, shreddit-ad-post) shreddit-join-button {
+/* Join moves from the post header into the post's ⋯ menu (see content.js),
+   unless settings.hideJoin is off. */
+html:not([data-rmute-off], [data-rmute-show-join]) :is(shreddit-post, shreddit-ad-post) shreddit-join-button {
   display: none !important;
 }
 

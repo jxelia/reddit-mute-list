@@ -360,6 +360,7 @@ function render() {
   $('hide-comments-muted-posts').checked = !!state.settings.hideCommentsOnMutedPosts;
   $('enabled-switch').title = state.settings.enabled === false ? 'Off on Reddit. Click to turn on.' : 'On on Reddit. Click to turn off.';
   $('hide-comments').checked = !!state.settings.hideComments;
+  $('hide-join').checked = state.settings.hideJoin !== false;
   $('default-feed').value = state.settings.defaultFeed || 'last';
   $('hide-avatars').checked = !!state.settings.hideCommentAvatars;
   $('comment-names').value = state.settings.commentNames || 'show';
@@ -1069,6 +1070,7 @@ $('text-save').addEventListener('click', async () => {
 const setSetting = (key, value) => save({ ...state, settings: { ...state.settings, [key]: value } });
 
 $('hide-comments').addEventListener('change', (e) => setSetting('hideComments', e.target.checked));
+$('hide-join').addEventListener('change', (e) => setSetting('hideJoin', e.target.checked));
 $('default-feed').addEventListener('change', (e) => setSetting('defaultFeed', e.target.value));
 $('hide-avatars').addEventListener('change', (e) => setSetting('hideCommentAvatars', e.target.checked));
 $('comment-names').addEventListener('change', (e) => setSetting('commentNames', e.target.value));

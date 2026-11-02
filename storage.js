@@ -62,6 +62,7 @@ const MuteStore = (() => {
     hideCommentSections: false, // no comments at all
     showCounter: true, // hidden-post count on the toolbar icon
     theme: 'system', // the popup's own light/dark theme
+    hideJoin: true, // the header Join button moves to the top of the post's ⋯ menu
     defaultFeed: 'last', // the home page's tab: 'following', 'for you', or 'last' (Reddit's own memory)
     extras: false, // the popup's "Extra features" switch (see effective)
     extrasX: false, // the popup's "Extra features 2 (X)" switch (see effective)
