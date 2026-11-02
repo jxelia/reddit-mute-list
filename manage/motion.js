@@ -8,7 +8,7 @@
   const VIEW = 290; // how far the viewer is from the front of the eye
   const GAP = 5; // between titles along the strip
   const SIZES = [1.25, 1.06, 0.98, 0.94]; // a title's size by how many titles it is from the selected one
-  const HOVER = 0.18; // a hovered title grows by this much of its size
+  const HOVER = 0.12; // a hovered title grows by this much of its size, over its neighbours
   const HOVER_TIME = 70; // how quickly it gets there, in ms (about 3x this to settle)
   const HOVER_GAP = 120; // ms off a letter (the gaps between them) before it counts as left
   const WORD_REACH = 1.2; // how far round the selected word's ends sit, against the row's curve at that point
@@ -64,9 +64,9 @@
     let across = 0;
     strip.forEach((t, i) => {
       t.away = Math.abs(i - pos);
-      t.big = sizeAt(t.away) * (1 + HOVER * t.lift);
-      t.spot = across + t.width * t.big / 2;
-      across += t.width * t.big + GAP;
+      t.size = sizeAt(t.away);
+      t.spot = across + t.width * t.size / 2;
+      across += t.width * t.size + GAP;
     });
     across -= GAP;
     const low = Math.floor(pos);
@@ -74,11 +74,12 @@
     const middle = strip[low].spot + (strip[high].spot - strip[low].spot) * (pos - low);
     // Tighter when the longer side is short, so the curve always reaches as far round.
     const round = Math.max(middle, across - middle, 200) * 1.08 / REACH;
-    for (const { width, away, big, spot, letters } of strip) {
+    for (const { width, away, size, lift, spot, letters } of strip) {
       // The title in the middle is a little carousel of its own: the main one carries
       // its centre, and its letters turn round a small one.
       const own = Math.max(0, 1 - away);
-      const small = (width * big / 2) / wordReach(width * big / 2, round);
+      const small = (width * size / 2) / wordReach(width * size / 2, round);
+      const big = size * (1 + HOVER * lift); // hovering doesn't change the layout above
       for (const { el, at } of letters) {
         const along = spot + at * big * (1 - own) - middle;
         el.style.transform = `perspective(${VIEW}px) translateZ(${-round}px) rotateY(${along / round}rad) translateZ(${round}px) perspective(${small * WORD_VIEW}px) translateZ(${-small}px) rotateY(${own * at * big / small}rad) translateZ(${small}px) scale(${big}) translate(-50%, -50%)`;
@@ -112,7 +113,8 @@
     last = now;
     let busy = false;
     if (moving) {
-      const t = Math.min(1, (now - moving.start) / TIME);
+      // A frame's time can be just before the click that started the turn.
+      const t = Math.max(0, Math.min(1, (now - moving.start) / TIME));
       pos = moving.from + (moving.to - moving.from) * (1 - (1 - t) ** 3);
       if (t < 1) busy = true;
       else moving = null;
