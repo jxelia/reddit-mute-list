@@ -1938,9 +1938,9 @@ function updatePageScope(force = true) {
 // router doesn't see it either. Reddit remembers the last feed fetched, so
 // background.js is told each time that changes.
 const FEED_TABS = { 'feed-tab-1': 'for-you', 'feed-tab-2': 'following' };
-function feedSeen(feed, served) {
+function feedSeen(feed) {
   try {
-    return chrome.runtime.sendMessage({ type: 'rmute:feedSeen', feed, served }).catch(() => ({}));
+    return chrome.runtime.sendMessage({ type: 'rmute:feedSeen', feed }).catch(() => ({}));
   } catch (_) { /* extension reloaded */ }
   return Promise.resolve({});
 }
@@ -1951,12 +1951,28 @@ function watchServedFeed() {
     if (!index) return;
     observer.disconnect();
     const feed = FEED_TABS[`feed-tab-${index}`];
-    if (feed) feedSeen(feed, true).then((r) => { if (r?.open) location.replace(`/?feed=${r.open}`); });
+    if (feed) feedSeen(feed).then((r) => { if (r?.open) location.replace(`/?feed=${r.open}`); });
   };
   const observer = new MutationObserver(check);
   observer.observe(document, { childList: true, subtree: true });
   addEventListener('load', () => observer.disconnect(), { once: true });
 }
+// When Reddit fetches a feed other than the default (a tab click, its next pages),
+// fetch the default once it's done, so its memory is back and the next load of /
+// needs no redirect. What's on screen doesn't change. The result reaches
+// background.js through this same observer.
+let feedRestore = 0;
+if (location.hostname === 'www.reddit.com') new PerformanceObserver((list) => {
+  for (const entry of list.getEntries()) {
+    if (!entry.name.includes('/svc/shreddit/feeds/interest-home-feed') || entry.responseStatus >= 400) continue;
+    const feed = new URL(entry.name).searchParams.get('feed');
+    if (!feed) continue;
+    feedSeen(feed).then((r) => {
+      clearTimeout(feedRestore);
+      if (r?.open) feedRestore = setTimeout(() => fetch(`/svc/shreddit/feeds/interest-home-feed?feed=${r.open}`).catch(() => {}), 1000);
+    });
+  }
+}).observe({ type: 'resource' });
 if (location.hostname === 'www.reddit.com' && location.pathname === '/') {
   const asked = /^\?feed=(following|for-you)$/.exec(location.search);
   if (asked) feedSeen(asked[1]);

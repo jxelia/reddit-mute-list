@@ -45,12 +45,11 @@ chrome.storage.onChanged.addListener((changes) => {
   if (changes.settings || changes.feedKnown) syncFeedRule();
 });
 
-// From content.js. A plain / that served another feed (it was switched on another
-// device) gets sent to the default once, by replying with the feed to open.
+// From content.js: the feed Reddit just fetched. The reply names the default when
+// that's another feed, so the page can put Reddit's memory back.
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   if (msg?.type !== 'rmute:feedSeen') return;
   chrome.storage.local.set({ feedKnown: msg.feed }).then(async () => {
-    if (!msg.served) return reply({});
     const { settings } = await MuteStore.load();
     const feed = settings.defaultFeed.replace(' ', '-');
     reply(settings.enabled !== false && settings.defaultFeed !== 'last' && feed !== msg.feed ? { open: feed } : {});
