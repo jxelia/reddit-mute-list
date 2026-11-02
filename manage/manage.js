@@ -330,6 +330,7 @@ function render() {
   $('hide-seen').checked = !!state.settings.hideSeen;
   $('hide-duplicates').checked = !!state.settings.hideDuplicates;
   $('max-age').value = String(Number(state.settings.maxAgeHours) || 0);
+  $('hide-crossposts').checked = !!state.settings.hideCrossposts;
   $('enabled-switch').title = state.settings.enabled === false ? 'Off on Reddit. Click to turn on.' : 'On on Reddit. Click to turn off.';
   $('hide-comments').checked = !!state.settings.hideComments;
   $('default-feed').value = state.settings.defaultFeed || 'last';
@@ -1065,6 +1066,7 @@ $('show-counter').addEventListener('change', (e) => setSetting('showCounter', e.
 $('hide-seen').addEventListener('change', (e) => setSetting('hideSeen', e.target.checked));
 $('hide-duplicates').addEventListener('change', (e) => setSetting('hideDuplicates', e.target.checked));
 $('max-age').addEventListener('change', (e) => setSetting('maxAgeHours', Number(e.target.value)));
+$('hide-crossposts').addEventListener('change', (e) => setSetting('hideCrossposts', e.target.checked));
 
 // Posts remembered as seen (content.js, background.js), on this device only.
 const SEEN_KEY = 'seenPosts';

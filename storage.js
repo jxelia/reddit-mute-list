@@ -63,7 +63,8 @@ const MuteStore = (() => {
     extrasX: false, // the popup's "Extra features 2 (X)" switch (see effective)
     hideSeen: false, // feed posts already on screen before this page load are hidden
     hideDuplicates: false, // feed posts of a link already showing are hidden
-    maxAgeHours: 0 // feed posts older than this are hidden; 0 = off
+    maxAgeHours: 0, // feed posts older than this are hidden; 0 = off
+    hideCrossposts: false // crossposts of a muted sub's posts are hidden
   };
 
   // With extra features off, the page acts as the plain mute list: these
@@ -76,7 +77,7 @@ const MuteStore = (() => {
   const EXTRA_KINDS = ['bodyWords', 'flairWords', 'scopes'];
 
   // The same for the "Extra features 2 (X)" switch, on its own.
-  const X_SETTINGS = { hideSeen: false, hideDuplicates: false, maxAgeHours: 0 };
+  const X_SETTINGS = { hideSeen: false, hideDuplicates: false, maxAgeHours: 0, hideCrossposts: false };
 
   function effective(list) {
     const x = list.settings?.extrasX ? {} : X_SETTINGS;

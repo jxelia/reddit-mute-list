@@ -84,8 +84,8 @@ function buildCss(list) {
   const wordOnSubs = [`${P}${tagged('subs')}`, `${P}${tagged('body')}`];
   const rename = list.settings.wordAction === 'rename';
   // Feed posts under the minimum score (markScore), or seen, repeated or too
-  // old (markFeedFilters).
-  const feedHidden = ':is([data-rmute-low], [data-rmute-seen], [data-rmute-dup], [data-rmute-old])';
+  // old, and crossposts from muted subs (markFeedFilters).
+  const feedHidden = ':is([data-rmute-low], [data-rmute-seen], [data-rmute-dup], [data-rmute-old], [data-rmute-xpost])';
   posts.push(`${P}${feedHidden}`);
   // A hidden post takes its bar with it.
   other.push(`.rmute-decide:has(+ :is(${rename ? '' : wordAnywhere.join(', ') + ', '}${feedHidden}))`);
@@ -1272,16 +1272,27 @@ function markScore(post) {
   post.toggleAttribute('data-rmute-low', min > 0 && inFeed(post) && Number.isFinite(score) && score < min);
 }
 
-/* ---------- Seen posts, repeated links, age limit (Extra features 2) ---------- */
+/* ---------- Seen posts, repeated links, age limit, crossposts (Extra features 2) ---------- */
 
 function markFeedFilters(post) {
   if (post.matches('shreddit-ad-post, .promoted')) return; // ads are left alone
-  const { hideSeen, hideDuplicates, maxAgeHours } = mutes.settings;
-  if (!hideSeen && !hideDuplicates && !maxAgeHours && !post.matches('[data-rmute-seen], [data-rmute-dup], [data-rmute-old]')) return;
+  const { hideSeen, hideDuplicates, maxAgeHours, hideCrossposts } = mutes.settings;
+  if (!hideSeen && !hideDuplicates && !maxAgeHours && !hideCrossposts &&
+    !post.matches('[data-rmute-seen], [data-rmute-dup], [data-rmute-old], [data-rmute-xpost]')) return;
+  markCrosspost(post, hideCrossposts); // on every page, like a muted sub's own posts
   const feed = inFeed(post);
   markSeen(post, feed && hideSeen);
   markDuplicate(post, feed && hideDuplicates);
   markOld(post, feed ? Number(maxAgeHours) || 0 : 0);
+}
+
+// A crosspost names its source only in its link: /r/<sub>/comments/… (a
+// crosspost's own sub is in subreddit-name). Old Reddit: a data-url like that.
+function markCrosspost(post, on) {
+  const crosspost = post.matches('.thing') || post.getAttribute('post-type') === 'crosspost';
+  const href = on && crosspost ? post.getAttribute('content-href') || post.dataset.url : '';
+  const source = MuteStore.normalize(href?.match(/\/r\/([^/]+)\/comments\//i)?.[1]);
+  post.toggleAttribute('data-rmute-xpost', !!source && inList(mutes.subs, source));
 }
 
 // "2026-11-01T03:15:34.429000+0000" (always UTC); old Reddit has data-timestamp in ms.
@@ -1863,7 +1874,7 @@ function updateWords() {
 // Whether posts need marking at all as they load.
 const needsMarking = () => Object.values(wordMatchers).some(Boolean) || presetsOn() ||
   mutes.settings.collapsePopular || Number(mutes.settings.minScore) > 0 ||
-  mutes.settings.hideSeen || mutes.settings.hideDuplicates || Number(mutes.settings.maxAgeHours) > 0;
+  mutes.settings.hideSeen || mutes.settings.hideDuplicates || Number(mutes.settings.maxAgeHours) > 0 || mutes.settings.hideCrossposts;
 
 // "popular" on r/popular, "subs" on the home page of a subreddit that isn't
 // joined or in any custom feed, otherwise nothing. Reddit navigates without reloading, so
