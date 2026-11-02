@@ -18,7 +18,7 @@
   let strip = null; // [{ button, width, centre, letters: [{ el, at }] }]
   let end = 0; // the strip's length
   let pos = 0; // the point on the strip that's in the middle
-  let lineWidth = 0;
+  let lineWidth = 0; // the shortest title's, whichever is selected
   let frame = 0;
   let line = null;
 
@@ -46,6 +46,7 @@
       return title;
     });
     end -= GAP;
+    lineWidth = Math.min(...strip.map((t) => t.width)) * (1 + BIG);
   }
 
   function draw() {
@@ -96,21 +97,17 @@
   function place(animate) {
     const tab = strip.find((t) => t.button.getAttribute('aria-selected') === 'true');
     if (!tab) return;
-    const toWidth = tab.width * (1 + BIG);
     cancelAnimationFrame(frame);
     if (!animate) {
       pos = tab.centre;
-      lineWidth = toWidth;
       return draw();
     }
     const from = pos;
-    const fromWidth = lineWidth;
     const start = performance.now();
     const step = (now) => {
       const t = Math.min(1, (now - start) / TIME);
       const eased = 1 - (1 - t) ** 3;
       pos = from + (tab.centre - from) * eased;
-      lineWidth = fromWidth + (toWidth - fromWidth) * eased;
       draw();
       if (t < 1) frame = requestAnimationFrame(step);
     };
