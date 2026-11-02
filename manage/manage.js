@@ -1133,7 +1133,8 @@ $('min-score').addEventListener('change', (e) => {
 
 /* ---------- Theme ---------- */
 
-// System, light or dark, in that order on each click. Also kept in
+// Each click flips the look; landing on the system's own look goes back to
+// following it, so no click leaves the popup looking the same. Also kept in
 // localStorage, so the next open starts in the right theme.
 const THEMES = { system: 'Theme: same as system', light: 'Theme: light', dark: 'Theme: dark' };
 
@@ -1147,8 +1148,10 @@ function applyTheme(theme = 'system') {
 try { applyTheme(localStorage.getItem('theme') || 'system'); } catch (_) { /* no storage */ }
 
 $('theme').addEventListener('click', () => {
-  const order = Object.keys(THEMES);
-  const next = order[(order.indexOf(state.settings.theme || 'system') + 1) % order.length];
+  const theme = state.settings.theme || 'system';
+  const systemDark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const dark = theme === 'system' ? systemDark : theme === 'dark';
+  const next = !dark === systemDark ? 'system' : dark ? 'light' : 'dark';
   applyTheme(next);
   setSetting('theme', next);
 });
