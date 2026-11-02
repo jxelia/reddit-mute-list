@@ -1603,8 +1603,8 @@ function compilePresets() {
     airlineOf: tagMap(MutePresets.airlineItems),
     placeOf: tagMap(MutePresets.placeItems),
     partCC,
-    // "aus" isn't Austria or Austin.
-    partStart: new RegExp(`^(${allParts.replace(/\baus\b/, 'aus(?!tri|tin)')})`),
+    // "aus" isn't Austria or Austin; "india" and "indian" aren't Indiana.
+    partStart: new RegExp(`^(${allParts.replace(/\baus\b/, 'aus(?!tri|tin)').replace(/\bindian\b/, 'indian(?!a)').replace(/\bindia\b/, 'india(?!na)')})`),
     partEnd: new RegExp(`(${allParts})$`),
     identityGroups: compileGroups(MutePresets.identityGroups,
       (alt) => new RegExp(`^(?:ask|ex|true)(?:an?)?(?:${alt})s?(?:over\\d+|\\d+)?$`)),
