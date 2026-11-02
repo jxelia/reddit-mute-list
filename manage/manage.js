@@ -1301,14 +1301,29 @@ function savePageSubs() {
 }
 
 // List entries can be patterns ("*cat*", "cat*", "*cat"), as in content.js.
-function inList(list, name) {
-  return list.some((entry) => {
+function listEntry(list, name) {
+  return list.find((entry) => {
     const s = entry.replace(/\*/g, '');
     if (entry.startsWith('*') && entry.endsWith('*')) return name.includes(s);
     if (entry.startsWith('*')) return name.endsWith(s);
     if (entry.endsWith('*')) return name.startsWith(s);
     return name === s;
   });
+}
+const inList = (list, name) => listEntry(list, name) !== undefined;
+
+// On a muted sub's page (its feed or a post in it), the card's place says so,
+// with the pattern if that's what muted it. r/popular, r/all and a+b mix subs.
+let openSub = null;
+function renderPageMuted() {
+  const entry = openSub && state ? listEntry(state.subs, openSub) : undefined;
+  $('page-muted').hidden = entry === undefined;
+  if (entry !== undefined) $('page-muted').textContent = `r/${openSub} is muted${entry.includes('*') ? ` by ${entry}` : ''}`;
+}
+function setOpenPath(path) {
+  const name = path?.match(/^\/r\/([^/]+)/i)?.[1];
+  openSub = name && !name.includes('+') && !/^(popular|all)$/i.test(name) ? MuteStore.normalize(name) : null;
+  renderPageMuted();
 }
 
 function renderPageSubList() {
@@ -1373,6 +1388,8 @@ function renderPageSubList() {
 async function watchPageSubs() {
   const tab = await activeTab();
   if (!tab) return;
+  // Chrome gives the address only for www.reddit.com; the page's script says it elsewhere.
+  if (tab.url) setOpenPath(new URL(tab.url).pathname);
   pageKey = `pageSubs.${tab.id}`;
   const all = await chrome.storage.local.get(null);
   const stale = Object.keys(all).filter((k) => k.startsWith('pageSubs.') && !(Date.now() - all[k].at < PAGE_SUBS_MAX_AGE));
@@ -1398,6 +1415,7 @@ async function watchPageSubs() {
     }
     pageOrigin = res.origin;
     pagePath = res.path;
+    setOpenPath(res.path);
     pageSubs = isFeedPath(res.path) ? [...new Set([...pageSubs, ...res.subs])] : [];
     renderPageSubList();
   });
@@ -1436,6 +1454,7 @@ MuteStore.onChange((list) => {
   render();
   usage();
   if (pageSubs.length) renderPageSubList();
+  renderPageMuted();
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
@@ -1457,6 +1476,7 @@ Promise.all([MuteStore.load(), chrome.storage.local.get([IMPORTS_KEY, SORT_KEY])
   usage();
   renderFeeds();
   renderTotal();
+  renderPageMuted();
   if (new URLSearchParams(location.search).has('restore')) $('restore-panel').hidden = false;
   if (new URLSearchParams(location.search).has('import')) setStatus('Click “Import list…” to pick the file.');
 });
