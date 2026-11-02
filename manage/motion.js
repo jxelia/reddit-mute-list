@@ -29,10 +29,13 @@
   const LISTS = '#main-group, .presets details';
   const page = document.documentElement;
   let running = null;
+  let lifting = null;
   let closing = null;
 
   const stop = () => {
     running?.cancel();
+    lifting?.cancel();
+    lifting = null;
     closing?.removeAttribute('data-closing');
     running = closing = null;
     page.style.minHeight = '';
@@ -44,12 +47,15 @@
       .reduce((sum, side) => sum + parseFloat(box[side]), el.querySelector(':scope > summary').offsetHeight);
   };
 
-  function resize(el, from, to, duration, end) {
+  const lift = (el) => getComputedStyle(el, '::details-content').marginTop;
+
+  // liftFrom, liftTo: the mute list's rows rise over its bar's empty part as it opens
+  // (manage.css) and leave it as it closes, so none shows in the bar.
+  function resize(el, from, to, liftFrom, liftTo, duration, end) {
     page.style.minHeight = `${page.scrollHeight}px`;
-    running = el.animate(
-      { height: [`${from}px`, `${to}px`], overflow: ['hidden', 'hidden'] },
-      { duration, easing: 'ease-out', fill: 'forwards' }
-    );
+    const timing = { duration, easing: 'ease-out', fill: 'forwards' };
+    running = el.animate({ height: [`${from}px`, `${to}px`], overflow: ['hidden', 'hidden'] }, timing);
+    if (liftFrom !== liftTo) lifting = el.animate({ marginTop: [liftFrom, liftTo] }, { ...timing, pseudoElement: '::details-content' });
     running.onfinish = end;
   }
 
@@ -57,7 +63,7 @@
   new MutationObserver((records) => {
     stop();
     const el = records.map((r) => r.target).find((t) => t.open && t.matches(LISTS) && t.offsetHeight);
-    if (el) resize(el, closedHeight(el), el.offsetHeight, 300, stop);
+    if (el) resize(el, closedHeight(el), el.offsetHeight, '0px', lift(el), 300, stop);
   }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['open'] });
 
   // A summary click would close at once, so the close is held until the box has shrunk.
@@ -67,14 +73,15 @@
     if (!el?.open || !el.matches(LISTS)) return;
     e.preventDefault();
     const from = el.offsetHeight;
+    const liftFrom = lift(el);
     if (closing === el) {
       stop();
-      return resize(el, from, el.offsetHeight, 300, stop);
+      return resize(el, from, el.offsetHeight, liftFrom, lift(el), 300, stop);
     }
     stop();
     closing = el;
     el.setAttribute('data-closing', ''); // the bar's shade comes back as it starts (motion.css)
-    resize(el, from, closedHeight(el), 200, () => {
+    resize(el, from, closedHeight(el), liftFrom, '0px', 200, () => {
       el.open = false;
       stop();
     });

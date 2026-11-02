@@ -312,6 +312,8 @@ body:not(.popup) #main-group { max-height: 29rem; }
 #main-group > summary { height: 2.1rem; padding: 0; background: linear-gradient(rgb(128 128 128 / 23%) 23%, transparent 23%); list-style: none; }
 #main-group > summary::-webkit-details-marker { display: none; }
 #main-group > summary > * { display: none; }
+/* Open, the rows start near the top, over the bar's empty part. What's left of the bar closes it. */
+#main-group[open]::details-content { margin-top: -1.6rem; }
 #main-group .list { margin: 0; border: 0; border-radius: 0; max-height: none; overflow: visible; }
 #main-group > .empty { margin: 0; padding: 0.4rem 0.6rem; border-top: 1px solid var(--line); }
 
