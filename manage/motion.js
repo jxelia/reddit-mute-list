@@ -4,12 +4,14 @@
   if (!matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
   const tabs = document.querySelector('.tabs');
   const buttons = [...tabs.querySelectorAll('[role="tab"]')];
-  const REACH = 1.1; // the far end of the longer side sits this far round the eye, in radians
+  const REACH = 0.95; // the far end of the longer side sits this far round the eye, in radians
   const VIEW = 290; // how far the viewer is from the front of the eye
-  const GAP = 12; // between titles along the strip
+  const GAP = 5; // between titles along the strip
   const BIG = 0.08; // extra size at the very middle
-  const WORD_REACH = 0.5; // how far round its own little carousel the selected word's ends sit, in radians
-  const WORD_VIEW = 0.6; // how far the viewer is from that carousel, per its radius
+  const WORD_REACH = 1.2; // how far round the selected word's ends sit, against the row's curve at that point
+  const WORD_MIN = 0.25; // and at least this, in radians, so short words curve too
+  const WORD_VIEW = 2; // how far the viewer is from the word's small carousel, per its radius
+  const LINE_VIEW = 0.25; // the same for its line, closer so its curve shows
   const LINE = 11; // the line's distance below the middle of the title, in px
   const TIME = 450;
   const pen = document.createElement('canvas').getContext('2d');
@@ -64,22 +66,26 @@
         // The title in the middle is a little carousel of its own: the main one carries
         // its centre, and its letters turn round a small one.
         const own = (big - 1) / BIG;
-        const small = (width * big / 2) / WORD_REACH;
+        const small = (width * big / 2) / wordReach(width * big / 2, round);
         const along = centre + at * big * (1 - own) + shift - pos - centred;
         el.style.transform = `perspective(${VIEW}px) translateZ(${-round}px) rotateY(${along / round}rad) translateZ(${round}px) perspective(${small * WORD_VIEW}px) translateZ(${-small}px) rotateY(${own * at * big / small}rad) translateZ(${small}px) scale(${big}) translate(-50%, -50%)`;
       }
     }
-    drawLine();
+    drawLine(round);
   }
 
+  // Kept to the row's curve, so the word carries on the curve of the titles beside it.
+  const wordReach = (half, round) => Math.max(WORD_MIN, WORD_REACH * half / round);
+
   // On the selected word's little carousel too, so its ends curve away with the letters.
-  function drawLine() {
+  function drawLine(round) {
     const half = lineWidth / 2;
-    const small = half / WORD_REACH;
+    const reach = wordReach(half, round);
+    const small = half / reach;
     let path = '';
     for (let i = -16; i <= 16; i++) {
-      const angle = WORD_REACH * i / 16;
-      const near = 1 / (1 + (1 - Math.cos(angle)) / WORD_VIEW);
+      const angle = reach * i / 16;
+      const near = 1 / (1 + (1 - Math.cos(angle)) / LINE_VIEW);
       const x = small * Math.sin(angle) * near;
       const y = LINE * near;
       path += `${i === -16 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)}`;
