@@ -365,7 +365,6 @@ function render() {
   $('comment-names').value = state.settings.commentNames || 'show';
   $('hide-sections').checked = !!state.settings.hideCommentSections;
   $('comment-action').value = state.settings.commentAction || 'bar';
-  $('comment-show-word').checked = state.settings.commentShowWord !== false;
   $('comment-hide-replies').checked = !!state.settings.commentHideReplies;
   renderSummary();
   $('show-counter').checked = !!state.settings.showCounter;
@@ -1075,7 +1074,6 @@ $('hide-avatars').addEventListener('change', (e) => setSetting('hideCommentAvata
 $('comment-names').addEventListener('change', (e) => setSetting('commentNames', e.target.value));
 $('hide-sections').addEventListener('change', (e) => setSetting('hideCommentSections', e.target.checked));
 $('comment-action').addEventListener('change', (e) => setSetting('commentAction', e.target.value));
-$('comment-show-word').addEventListener('change', (e) => setSetting('commentShowWord', e.target.checked));
 $('comment-hide-replies').addEventListener('change', (e) => setSetting('commentHideReplies', e.target.checked));
 
 // Running total of posts hidden (background.js counts them), with Reset.

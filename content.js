@@ -1489,9 +1489,8 @@ function syncCommentBar(c, word) {
     c.removeAttribute('data-rmute-noreplies');
     return;
   }
-  const showWord = mutes.settings.commentShowWord !== false;
   const names = mutes.settings.commentNames === 'show';
-  const key = `${word} ${showWord} ${names}`;
+  const key = `${word} ${names}`;
   if (bar?.dataset.key === key) return;
   bar?.remove();
   // Replies start hidden too when the popup says so.
@@ -1507,8 +1506,8 @@ function syncCommentBar(c, word) {
   const update = () => {
     const open = c.hasAttribute('data-rmute-open');
     const noReplies = c.hasAttribute('data-rmute-noreplies');
-    const what = showWord ? `comment with “${word}”` : 'comment with a muted word';
-    label.textContent = `${author ? `u/${author}: ` : ''}${what}${noReplies ? ' and its replies' : ''} ${open ? 'shown' : 'hidden'}`;
+    const state = noReplies ? ' and its replies hidden' : open ? ' shown' : '';
+    label.textContent = `${author ? `u/${author}: ` : ''}comment with hidden word${state}`;
     bar.setAttribute('aria-expanded', String(open));
     bar.title = noReplies ? 'Click to show the replies again' : `Click to ${open ? 'hide' : 'show'}. Press and hold to hide the replies too.`;
   };

@@ -58,7 +58,6 @@ const MuteStore = (() => {
     hideCommentAvatars: false,
     commentNames: 'show', // usernames in comments: 'show', 'replace' (with "Redditor") or 'hide'
     commentAction: 'bar', // comments with a muted word: 'bar' (one line, click to show) or 'hide'
-    commentShowWord: true, // the bar says which word matched
     commentHideReplies: false, // their replies go too
     hideCommentSections: false, // no comments at all
     showCounter: true, // hidden-post count on the toolbar icon
@@ -79,7 +78,7 @@ const MuteStore = (() => {
   // Nothing is deleted, so turning extras back on restores them.
   const CORE_SETTINGS = {
     wordAction: 'hide', minScore: 0, hideCommentAvatars: false, commentNames: 'show', commentAction: 'bar',
-    commentShowWord: true, commentHideReplies: false, hideCommentSections: false, showCounter: false,
+    commentHideReplies: false, hideCommentSections: false, showCounter: false,
     popularFilters: false
   };
   const EXTRA_KINDS = ['bodyWords', 'flairWords', 'scopes'];
