@@ -327,7 +327,7 @@ function render() {
   $('extras').checked = extras();
   $('enabled-switch').title = state.settings.enabled === false ? 'Off on Reddit. Click to turn on.' : 'On on Reddit. Click to turn off.';
   $('hide-comments').checked = !!state.settings.hideComments;
-  $('open-following').checked = state.settings.openFollowing !== false;
+  $('open-following').checked = !!state.settings.openFollowing;
   $('hide-avatars').checked = !!state.settings.hideCommentAvatars;
   $('comment-names').value = state.settings.commentNames || 'show';
   $('hide-sections').checked = !!state.settings.hideCommentSections;
