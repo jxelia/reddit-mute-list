@@ -1161,11 +1161,18 @@ const LISTING_RE = /^\/r\/([^/]+)\/?(?:(?:best|hot|new|top|rising|controversial)
 let wordMatchers = {}; // word list -> compileScoped() result, or null when empty
 let feedSubs = null; // Set of subreddits joined or in the user's custom feeds, once known
 
-// Whole words or phrases, case-insensitive; "*" matches any letters, so
-// "spoil*" covers "spoiler" and "spoilers".
+// "café" and "cafe" count as the same word. Only marks on Latin letters go:
+// in Hindi or Japanese, for one, a mark can make it a different word.
+function foldAccents(text) {
+  if (!/[^\x00-\x7f]/.test(text)) return text;
+  return text.normalize('NFD').replace(/(\p{Script=Latin})[\u0300-\u036f]+/gu, '$1').normalize('NFC');
+}
+
+// Whole words or phrases, case-insensitive, ignoring accents; "*" matches any
+// letters, so "spoil*" covers "spoiler" and "spoilers".
 function compileWords(words) {
   if (!words.length) return null;
-  const parts = words.map((w) => w
+  const parts = words.map((w) => foldAccents(w)
     .split('*')
     .map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '\\s+'))
     .join('[\\p{L}\\p{N}_]*'));
@@ -1189,6 +1196,7 @@ function compileScoped(words) {
 // only = the word is scoped "only in" this sub, so it applies on every page.
 function wordHit(m, text, sub) {
   if (!m || !text) return null;
+  text = foldAccents(text);
   const found = m.all?.exec(text);
   if (found) return { text: found[0].trim(), only: false };
   let hit = null;
