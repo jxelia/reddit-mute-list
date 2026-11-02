@@ -3,11 +3,6 @@ html:not([data-rmute-off]) :is(shreddit-post, shreddit-ad-post) shreddit-join-bu
   display: none !important;
 }
 
-/* The home feed stays hidden until the default feed's tab is selected (content.js). */
-html[data-rmute-feed-hold] #interest-home-feed-main {
-  visibility: hidden;
-}
-
 /* Feed dividers: only the one after a post's <article> stays. Hidden posts
    take theirs with them (buildCss); ads have no article, and an ad hidden by
    anything (the extension, another extension, an ad blocker) left its divider

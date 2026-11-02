@@ -62,7 +62,7 @@ const MuteStore = (() => {
     hideCommentSections: false, // no comments at all
     showCounter: true, // hidden-post count on the toolbar icon
     theme: 'system', // the popup's own light/dark theme
-    defaultFeed: 'last', // home page tab on arrival: 'following', 'for you', or 'last' (Reddit's own memory)
+    defaultFeed: 'last', // the home page's tab: 'following', 'for you', or 'last' (Reddit's own memory)
     extras: false, // the popup's "Extra features" switch (see effective)
     extrasX: false, // the popup's "Extra features 2 (X)" switch (see effective)
     hideSeen: false, // feed posts already on screen before this page load are hidden

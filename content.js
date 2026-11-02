@@ -1916,80 +1916,21 @@ function updatePageScope(force = true) {
   }
   if (scope) document.documentElement.dataset.rmutePage = scope;
   else delete document.documentElement.dataset.rmutePage;
-  if (location.pathname === '/') openDefaultFeed();
-  else feedDone = false;
   // Home and r/popular bars need no re-marking here: each post keeps the
   // scope it was loaded with (postScope).
 }
 
-// On arriving at the home page, switch to the default feed's tab unless it's
-// already selected (faceplate-tab-selected). The feed stays hidden until then,
-// so the other tab never shows. Back and forward return to the feed as it was,
-// scroll included. Replaces don't count: Reddit can make one right after arriving.
-let feedDone = false;
-let lastNavigation = null;
-window.navigation?.addEventListener('navigate', (e) => {
-  if (e.navigationType !== 'replace') lastNavigation = e.navigationType;
-});
-const cameBack = () => (lastNavigation ? lastNavigation === 'traverse' :
-  performance.getEntriesByType('navigation')[0]?.type === 'back_forward');
-
-// A copy of the setting in the page's localStorage, since chrome.storage can't
-// answer before the page starts to draw.
-const FEED_COPY = 'rmute-default-feed';
-function saveFeedCopy() {
-  try { localStorage.setItem(FEED_COPY, isOff() ? 'last' : mutes.settings.defaultFeed); } catch {}
-}
-function holdFeed() {
-  try {
-    const feed = localStorage.getItem(FEED_COPY);
-    if (feed && feed !== 'last' && location.pathname === '/' && !cameBack()) document.documentElement.dataset.rmuteFeedHold = '';
-  } catch {}
-}
-const releaseFeed = () => delete document.documentElement.dataset.rmuteFeedHold;
-holdFeed();
-
-function openDefaultFeed() {
-  if (feedDone) return;
-  feedDone = true;
-  if (cameBack()) return releaseFeed();
-  holdFeed();
-  const started = performance.now();
-  const tick = () => {
-    // Before the list loads the setting is missing; wait for it.
-    const want = mutes.settings.defaultFeed;
-    const tab = want && [...document.querySelectorAll('#feed-tab-group [role="tab"]')]
-      .find((el) => el.textContent.trim().toLowerCase() === want);
-    if (location.pathname !== '/' || isOff() || want === 'last' || tab?.hasAttribute('faceplate-tab-selected')) return releaseFeed();
-    const feed = document.querySelector('shreddit-feed[reload-url*="feed="]');
-    // actioned: Reddit's click actions are attached to the button.
-    if (tab?.hasAttribute('actioned') && tab.parentElement.matches(':defined') && document.readyState !== 'loading' && (!feed || feed.matches(':defined'))) {
-      return switchFeed(tab, feed, want.replace(' ', '-'));
-    }
-    if (performance.now() - started > 5000) return releaseFeed();
-    setTimeout(tick, 100);
-  };
-  tick();
-}
-
-// The tab's click makes Reddit reload the feed, but from the URL it had before
-// the switch, so the feed gets the right one first (shreddit-feed reads
-// reload-url in a later update, hence the timeout). Reddit focuses the selected
-// tab, which would draw a ring, so that comes off before the feed shows.
-function switchFeed(tab, feed, feedName) {
-  if (feed) {
-    const url = new URL(feed.getAttribute('reload-url'), location.href);
-    url.searchParams.set('feed', feedName);
-    feed.setAttribute('reload-url', url.pathname + url.search);
-  }
-  setTimeout(() => {
-    tab.click();
-    setTimeout(() => {
-      tab.blur();
-      releaseFeed();
-    });
-  });
-}
+// The default feed: background.js redirects page loads of the home page to
+// Reddit's own /?feed= address. Reddit opens links within the page, which that
+// can't see, so links to the home page get the address too.
+document.addEventListener('click', (e) => {
+  const feed = mutes.settings.defaultFeed;
+  if (isOff() || !feed || feed === 'last') return;
+  const link = e.composedPath().find((el) => el.localName === 'a' && el.href);
+  if (!link) return;
+  const url = new URL(link.href);
+  if (url.hostname === location.hostname && url.pathname === '/' && !url.search) link.href = `/?feed=${feed.replace(' ', '-')}`;
+}, true);
 
 // The user's custom feeds and joined subs come from Reddit's own API (same
 // site, using the signed-in session) and are cached in local storage for a
@@ -2158,7 +2099,6 @@ let timedTimer = null;
 function useList(list) {
   storedList = list;
   mutes = MuteStore.effective(list);
-  saveFeedCopy();
   clearTimeout(timedTimer);
   const end = MuteStore.nextEnd(list);
   if (!end) return;

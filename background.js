@@ -16,6 +16,27 @@ async function checkBuild() {
 }
 importScripts('presets/presets.js', 'storage.js');
 
+// The default feed: Reddit serves the tab named in /?feed=, so a page load of
+// the home page goes there directly, with no wrong feed loaded first. Dynamic
+// rules last until changed; only addresses with no query match, so anything else
+// (Back and Forward included) is left alone.
+async function syncFeedRule() {
+  const { settings } = await MuteStore.load();
+  const feed = settings.enabled !== false && settings.defaultFeed !== 'last' ? settings.defaultFeed.replace(' ', '-') : null;
+  await chrome.declarativeNetRequest.updateDynamicRules({
+    removeRuleIds: [1],
+    addRules: feed ? [{
+      id: 1,
+      action: { type: 'redirect', redirect: { url: `https://www.reddit.com/?feed=${feed}` } },
+      condition: { regexFilter: '^https://www\\.reddit\\.com/$', resourceTypes: ['main_frame'] }
+    }] : []
+  });
+}
+syncFeedRule();
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.settings) syncFeedRule();
+});
+
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   if (msg === 'rmute:checkBuild') checkBuild();
   // Mutes from Reddit pages are saved here, so leaving the page can't cut them off.
