@@ -1972,11 +1972,10 @@ function openDefaultFeed() {
   tick();
 }
 
-// The tab's click can make Reddit reload the feed from the URL it had before the
-// switch, so the feed gets the right one first. shreddit-feed reads reload-url
-// in a later update, and on component-reload cancels any fetch and fetches it.
-// Reddit focuses the selected tab, which would draw a ring, so that comes off
-// before the feed shows.
+// The tab's click makes Reddit reload the feed, but from the URL it had before
+// the switch, so the feed gets the right one first (shreddit-feed reads
+// reload-url in a later update, hence the timeout). Reddit focuses the selected
+// tab, which would draw a ring, so that comes off before the feed shows.
 function switchFeed(tab, feed, feedName) {
   if (feed) {
     const url = new URL(feed.getAttribute('reload-url'), location.href);
@@ -1985,7 +1984,6 @@ function switchFeed(tab, feed, feedName) {
   }
   setTimeout(() => {
     tab.click();
-    feed?.dispatchEvent(new CustomEvent('component-reload'));
     setTimeout(() => {
       tab.blur();
       releaseFeed();
