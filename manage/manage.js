@@ -327,6 +327,7 @@ function render() {
   $('extras').checked = extras();
   $('enabled-switch').title = state.settings.enabled === false ? 'Off on Reddit. Click to turn on.' : 'On on Reddit. Click to turn off.';
   $('hide-comments').checked = !!state.settings.hideComments;
+  $('open-following').checked = state.settings.openFollowing !== false;
   $('hide-avatars').checked = !!state.settings.hideCommentAvatars;
   $('comment-names').value = state.settings.commentNames || 'show';
   $('hide-sections').checked = !!state.settings.hideCommentSections;
@@ -963,6 +964,7 @@ $('text-save').addEventListener('click', async () => {
 const setSetting = (key, value) => save({ ...state, settings: { ...state.settings, [key]: value } });
 
 $('hide-comments').addEventListener('change', (e) => setSetting('hideComments', e.target.checked));
+$('open-following').addEventListener('change', (e) => setSetting('openFollowing', e.target.checked));
 $('hide-avatars').addEventListener('change', (e) => setSetting('hideCommentAvatars', e.target.checked));
 $('comment-names').addEventListener('change', (e) => setSetting('commentNames', e.target.value));
 $('hide-sections').addEventListener('change', (e) => setSetting('hideCommentSections', e.target.checked));

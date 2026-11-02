@@ -56,6 +56,7 @@ const MuteStore = (() => {
     hideCommentSections: false, // no comments at all
     showCounter: true, // hidden-post count on the toolbar icon
     theme: 'system', // the popup's own light/dark theme
+    openFollowing: true, // reddit.com's home page switches to its Following tab
     extras: false // the popup's "Extra features" switch (see effective)
   };
 

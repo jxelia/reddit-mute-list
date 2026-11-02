@@ -1662,8 +1662,34 @@ function updatePageScope(force = true) {
   }
   if (scope) document.documentElement.dataset.rmutePage = scope;
   else delete document.documentElement.dataset.rmutePage;
+  if (location.pathname === '/') openFollowing();
+  else followingDone = false;
   // Home and r/popular bars need no re-marking here: each post keeps the
   // scope it was loaded with (postScope).
+}
+
+// On arriving at the home page, pick its Following tab (a role=tab button,
+// id feed-tab-N, no URL of its own) once. Picking For You afterwards stays.
+let followingDone = false;
+function openFollowing() {
+  if (followingDone) return;
+  followingDone = true;
+  const started = performance.now();
+  let ticks = 0;
+  const tick = () => {
+    if (location.pathname !== '/' || isOff() || mutes.settings.openFollowing === false) return;
+    // Before the list loads the setting is missing; wait for it.
+    const isTab = (el) => el.matches('[role="tab"]') && el.textContent.trim().toLowerCase() === 'following';
+    // The tab is a slotted light-DOM button; shadow roots are searched once a second.
+    const tab = mutes.settings.openFollowing && ([...document.querySelectorAll('[role="tab"]')].find(isTab) ||
+      (++ticks % 10 === 0 ? [...walk(document)].find(isTab) : null));
+    if (tab) {
+      if (tab.getAttribute('aria-selected') !== 'true') tab.click();
+      return;
+    }
+    if (performance.now() - started < 10000) setTimeout(tick, 100);
+  };
+  tick();
 }
 
 // The user's custom feeds and joined subs come from Reddit's own API (same

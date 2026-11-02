@@ -130,9 +130,9 @@ for t in topics:
     t['words'] = ' '.join(t['words'])
     t['names'] = ' '.join(t['names'])
 
-# Indian and Australian places: shown in full in keep mode.
+# Indian and Australian places and airlines: shown in full in keep mode.
 keep_places = set()
-for src in (places_src, countries_src):
+for src in (places_src, countries_src, airlines_src):
     for n, ccs in by_country(src).items():
         if ccs & KEEP_COUNTRIES:
             keep_places.add(n)
