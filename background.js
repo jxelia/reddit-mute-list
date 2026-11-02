@@ -45,4 +45,17 @@ chrome.runtime.onMessage.addListener((msg) => {
     await chrome.storage.local.set({ hiddenTotal: { ...total, count: total.count + (msg.count || 0) } });
   }).catch(() => {});
 });
+
+// Posts seen in feeds (content.js), oldest first, as space-joined ids. Local
+// only, and capped so it can't grow forever.
+const SEEN_MAX = 5000;
+let seenChain = Promise.resolve();
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg?.type !== 'rmute:addSeen') return;
+  seenChain = seenChain.then(async () => {
+    const { seenPosts } = await chrome.storage.local.get('seenPosts');
+    const ids = new Set([...(seenPosts ? seenPosts.split(' ') : []), ...msg.ids]);
+    await chrome.storage.local.set({ seenPosts: [...ids].slice(-SEEN_MAX).join(' ') });
+  }).catch(() => {});
+});
 checkBuild();

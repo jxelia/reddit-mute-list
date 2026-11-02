@@ -1275,6 +1275,7 @@ function markScore(post) {
 /* ---------- Seen posts, repeated links, age limit (Extra features 2) ---------- */
 
 function markFeedFilters(post) {
+  if (post.matches('shreddit-ad-post, .promoted')) return; // ads are left alone
   const { hideSeen, hideDuplicates, maxAgeHours } = mutes.settings;
   if (!hideSeen && !hideDuplicates && !maxAgeHours && !post.matches('[data-rmute-seen], [data-rmute-dup], [data-rmute-old]')) return;
   const feed = inFeed(post);

@@ -59,7 +59,11 @@ const MuteStore = (() => {
     showCounter: true, // hidden-post count on the toolbar icon
     theme: 'system', // the popup's own light/dark theme
     defaultFeed: 'last', // home page tab on arrival: 'following', 'for you', or 'last' (Reddit's own memory)
-    extras: false // the popup's "Extra features" switch (see effective)
+    extras: false, // the popup's "Extra features" switch (see effective)
+    extrasX: false, // the popup's "Extra features 2 (X)" switch (see effective)
+    hideSeen: false, // feed posts already on screen before this page load are hidden
+    hideDuplicates: false, // feed posts of a link already showing are hidden
+    maxAgeHours: 0 // feed posts older than this are hidden; 0 = off
   };
 
   // With extra features off, the page acts as the plain mute list: these
@@ -71,9 +75,13 @@ const MuteStore = (() => {
   };
   const EXTRA_KINDS = ['bodyWords', 'flairWords', 'scopes'];
 
+  // The same for the "Extra features 2 (X)" switch, on its own.
+  const X_SETTINGS = { hideSeen: false, hideDuplicates: false, maxAgeHours: 0 };
+
   function effective(list) {
-    if (list.settings?.extras) return list;
-    return { ...list, ...Object.fromEntries(EXTRA_KINDS.map((k) => [k, []])), settings: { ...list.settings, ...CORE_SETTINGS } };
+    const x = list.settings?.extrasX ? {} : X_SETTINGS;
+    if (list.settings?.extras) return { ...list, settings: { ...list.settings, ...x } };
+    return { ...list, ...Object.fromEntries(EXTRA_KINDS.map((k) => [k, []])), settings: { ...list.settings, ...CORE_SETTINGS, ...x } };
   }
   // Set in local storage when the list outgrew sync and is kept on this device.
   const ON_DEVICE = 'listOnDevice';

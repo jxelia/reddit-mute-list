@@ -325,6 +325,11 @@ function render() {
   document.body.classList.toggle('off', state.settings.enabled === false);
   document.body.classList.toggle('extras', extras());
   $('extras').checked = extras();
+  document.body.classList.toggle('extras-x', !!state.settings.extrasX);
+  $('extras-x').checked = !!state.settings.extrasX;
+  $('hide-seen').checked = !!state.settings.hideSeen;
+  $('hide-duplicates').checked = !!state.settings.hideDuplicates;
+  $('max-age').value = String(Number(state.settings.maxAgeHours) || 0);
   $('enabled-switch').title = state.settings.enabled === false ? 'Off on Reddit. Click to turn on.' : 'On on Reddit. Click to turn off.';
   $('hide-comments').checked = !!state.settings.hideComments;
   $('default-feed').value = state.settings.defaultFeed || 'last';
@@ -810,6 +815,7 @@ $('keep-mode').addEventListener('change', (e) => save({ ...state, settings: { ..
 $('collapse-popular').addEventListener('change', (e) => save({ ...state, settings: { ...state.settings, collapsePopular: e.target.checked } }));
 // Off: Reddit tabs drop everything the extension adds; the lists stay as they are.
 $('extras').addEventListener('change', (e) => save({ ...state, settings: { ...state.settings, extras: e.target.checked } }));
+$('extras-x').addEventListener('change', (e) => save({ ...state, settings: { ...state.settings, extrasX: e.target.checked } }));
 $('enabled').addEventListener('change', (e) => save({ ...state, settings: { ...state.settings, enabled: e.target.checked } }));
 $('keep-topics').replaceChildren(...MutePresets.topics.map((t) => {
   const label = document.createElement('label');
@@ -1056,6 +1062,29 @@ async function renderTotal() {
   line.append(reset);
 }
 $('show-counter').addEventListener('change', (e) => setSetting('showCounter', e.target.checked));
+$('hide-seen').addEventListener('change', (e) => setSetting('hideSeen', e.target.checked));
+$('hide-duplicates').addEventListener('change', (e) => setSetting('hideDuplicates', e.target.checked));
+$('max-age').addEventListener('change', (e) => setSetting('maxAgeHours', Number(e.target.value)));
+
+// Posts remembered as seen (content.js, background.js), on this device only.
+const SEEN_KEY = 'seenPosts';
+async function renderSeen() {
+  const ids = (await chrome.storage.local.get(SEEN_KEY))[SEEN_KEY];
+  const count = ids ? ids.split(' ').length : 0;
+  const line = $('seen-line');
+  line.textContent = `Hidden from the next page load. ${count.toLocaleString()} remembered on this device. `;
+  if (!count) return;
+  const forget = document.createElement('button');
+  forget.type = 'button';
+  forget.className = 'link';
+  forget.textContent = 'Forget them';
+  forget.addEventListener('click', () => chrome.storage.local.remove(SEEN_KEY));
+  line.append(forget);
+}
+renderSeen();
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && SEEN_KEY in changes) renderSeen();
+});
 $('word-action').addEventListener('change', (e) => setSetting('wordAction', e.target.value));
 $('min-score').addEventListener('change', (e) => {
   const n = Math.max(0, Math.floor(Number(e.target.value) || 0));

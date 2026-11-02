@@ -261,6 +261,26 @@
       <label class="check"><input type="checkbox" id="show-counter"> Show how many posts are hidden on the toolbar icon</label>
       <p class="hint" id="hidden-total"></p>
       </div>
+      <label class="check"><input type="checkbox" id="extras-x"> Extra features 2 (X)</label>
+      <p class="hint extra-x-off">Feed filters based on X's published feed code: already-seen posts, repeated links and an age limit.</p>
+      <div class="extra-x">
+      <label class="check"><input type="checkbox" id="hide-seen"> Hide posts I've already seen</label>
+      <p class="hint" id="seen-line"></p>
+      <label class="check"><input type="checkbox" id="hide-duplicates"> Hide repeat posts of the same link</label>
+      <label class="check">Hide feed posts older than
+        <select id="max-age">
+          <option value="0">Off</option>
+          <option value="6">6 hours</option>
+          <option value="12">12 hours</option>
+          <option value="24">1 day</option>
+          <option value="48">2 days</option>
+          <option value="72">3 days</option>
+          <option value="168">1 week</option>
+          <option value="720">30 days</option>
+        </select>
+      </label>
+      <p class="hint">These apply on Home, r/popular, r/all and custom feeds.</p>
+      </div>
     </details>
 
     <details class="card fold">
