@@ -248,26 +248,27 @@ body.popup .word-section .list { max-height: 10rem; }
 /* Exceptions under each built-in filter (manage.js EXCEPTIONS): chips, an add box and a full list */
 .except { margin: 0 0 0.5rem 1.6rem; font-size: 0.85rem; }
 .except-label { color: var(--muted); margin-right: 0.25rem; }
-/* A chip removes itself on click. On hover it grows over the next chip (the margin
-   cancels the growth, so nothing moves or wraps) while its × stretches out. */
+/* A chip removes itself on click. On hover it grows, pushing the chips after it
+   along, while its × stretches out. .tight: a chip at the end of a line grows into
+   its margin instead, since wrapping would pull it out from under the pointer. */
 .except .chip {
-  display: inline-flex; align-items: center; position: relative; margin: 0 0.25rem 0.25rem 0; padding: 0.05rem 0.55rem;
-  border: 1px solid var(--line); border-radius: 999px; background: var(--bg); color: inherit; font: inherit; cursor: pointer;
+  display: inline-flex; align-items: center; margin: 0 0.25rem 0.25rem 0; padding: 0.05rem 0.55rem;
+  border: 1px solid var(--line); border-radius: 999px; background: none; color: inherit; font: inherit; cursor: pointer;
   transition: margin-right 0.15s ease-out;
 }
-.except .chip:hover, .except .chip:focus-visible { z-index: 1; margin-right: -0.7rem; }
+.except .chip.tight:hover, .except .chip.tight:focus-visible { margin-right: -0.35rem; }
 .except .chip .x {
-  position: relative; width: 0; height: 1.1rem; color: var(--danger);
+  position: relative; width: 0; height: 0.7rem; color: var(--danger);
   transition: width 0.15s ease-out, margin 0.15s ease-out;
 }
-.except .chip:hover .x, .except .chip:focus-visible .x { width: 1.1rem; margin: 0 -0.35rem 0 0.2rem; }
+.except .chip:hover .x, .except .chip:focus-visible .x { width: 0.7rem; margin: 0 -0.3rem 0 0.2rem; }
 .except .chip .x::before, .except .chip .x::after {
-  content: ""; position: absolute; top: 50%; left: 50%; width: 5px; height: 5px; opacity: 0;
-  border-radius: 3px; background: currentColor; transform: translate(-50%, -50%);
+  content: ""; position: absolute; top: 50%; left: 50%; width: 4px; height: 4px; opacity: 0;
+  border-radius: 2px; background: currentColor; transform: translate(-50%, -50%);
   transition: width 0.15s ease-out, height 0.15s ease-out, transform 0.15s ease-out, opacity 0.08s;
 }
 .except .chip:hover .x::before, .except .chip:focus-visible .x::before,
-.except .chip:hover .x::after, .except .chip:focus-visible .x::after { width: 11px; height: 1.5px; opacity: 1; }
+.except .chip:hover .x::after, .except .chip:focus-visible .x::after { width: 8px; height: 1.25px; opacity: 1; }
 .except .chip:hover .x::before, .except .chip:focus-visible .x::before { transform: translate(-50%, -50%) rotate(45deg); }
 .except .chip:hover .x::after, .except .chip:focus-visible .x::after { transform: translate(-50%, -50%) rotate(-45deg); }
 @media (prefers-reduced-motion: reduce) {

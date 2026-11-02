@@ -955,6 +955,9 @@ function renderException(cfg) {
     const x = document.createElement('span');
     x.className = 'x';
     chip.addEventListener('click', () => saveException(cfg, exceptTags(cfg).filter((t) => !group.includes(t))));
+    const checkRoom = () => chip.classList.toggle('tight', chip.getBoundingClientRect().right + 16 > cfg.box.getBoundingClientRect().right);
+    chip.addEventListener('mouseenter', checkRoom);
+    chip.addEventListener('focus', checkRoom);
     chip.append(label, x);
     return chip;
   }));
