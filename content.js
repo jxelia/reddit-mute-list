@@ -1929,9 +1929,18 @@ function updatePageScope(force = true) {
 // once its click actions are attached. A tab the user clicks meanwhile, or
 // afterwards, stays.
 let feedDone = false;
+// Back and forward return to the feed as it was, scroll included. Replaces don't
+// count: Reddit can make one right after arriving.
+let lastNavigation = null;
+window.navigation?.addEventListener('navigate', (e) => {
+  if (e.navigationType !== 'replace') lastNavigation = e.navigationType;
+});
+const cameBack = () => (lastNavigation ? lastNavigation === 'traverse' :
+  performance.getEntriesByType('navigation')[0]?.type === 'back_forward');
 function openDefaultFeed() {
   if (feedDone) return;
   feedDone = true;
+  if (cameBack()) return;
   const isTabEl = (el) => el.matches?.('[role="tab"]');
   let userPicked = false;
   const onClick = (e) => { if (e.isTrusted && e.composedPath().some(isTabEl)) userPicked = true; };
