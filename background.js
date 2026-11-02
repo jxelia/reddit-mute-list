@@ -16,21 +16,24 @@ async function checkBuild() {
 }
 importScripts('presets/presets.js', 'storage.js');
 
-// The default feed: Reddit serves the tab named in /?feed=, so a page load of
-// the home page goes there directly, with no wrong feed loaded first. Dynamic
-// rules last until changed.
+// The default feed: Reddit serves the tab named in /?feed=, and plain / serves
+// the last feed fetched, remembered on its server (no cookie). So a page load of
+// the home page only needs the redirect, which shows in the address bar, when
+// that memory isn't the default: feedKnown is the feed it last held, from
+// content.js. Dynamic rules last until changed.
 async function syncFeedRule() {
   const { settings } = await MuteStore.load();
+  const { feedKnown } = await chrome.storage.local.get('feedKnown');
   const feed = settings.enabled !== false && settings.defaultFeed !== 'last' ? settings.defaultFeed.replace(' ', '-') : null;
   // Rule 2 is Reddit's in-page load of home (the logo), which always carries
   // screen_view_count.
   await chrome.declarativeNetRequest.updateDynamicRules({
     removeRuleIds: [1, 2],
-    addRules: feed ? [{
+    addRules: feed ? [...(feedKnown === feed ? [] : [{
       id: 1,
       action: { type: 'redirect', redirect: { url: `https://www.reddit.com/?feed=${feed}` } },
       condition: { regexFilter: '^https://www\\.reddit\\.com/$', resourceTypes: ['main_frame'] }
-    }, {
+    }]), {
       id: 2,
       action: { type: 'redirect', redirect: { transform: { queryTransform: { addOrReplaceParams: [{ key: 'feed', value: feed }] } } } },
       condition: { regexFilter: '^https://www\\.reddit\\.com/\\?([^#]*&)?screen_view_count=\\d+', resourceTypes: ['xmlhttprequest'] }
@@ -39,7 +42,20 @@ async function syncFeedRule() {
 }
 syncFeedRule();
 chrome.storage.onChanged.addListener((changes) => {
-  if (changes.settings) syncFeedRule();
+  if (changes.settings || changes.feedKnown) syncFeedRule();
+});
+
+// From content.js. A plain / that served another feed (it was switched on another
+// device) gets sent to the default once, by replying with the feed to open.
+chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
+  if (msg?.type !== 'rmute:feedSeen') return;
+  chrome.storage.local.set({ feedKnown: msg.feed }).then(async () => {
+    if (!msg.served) return reply({});
+    const { settings } = await MuteStore.load();
+    const feed = settings.defaultFeed.replace(' ', '-');
+    reply(settings.enabled !== false && settings.defaultFeed !== 'last' && feed !== msg.feed ? { open: feed } : {});
+  }).catch(() => reply({}));
+  return true;
 });
 
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {

@@ -1931,16 +1931,48 @@ function updatePageScope(force = true) {
 }
 
 // The default feed: background.js redirects Reddit's loads of the home page to
-// its own ?feed= address, and the address bar stays on plain / here. A full page
-// load is cleaned before Reddit's scripts run. After an in-page load Reddit copies
-// the redirected address to the bar, so that copy is cancelled; this listener is
-// registered first, so Reddit's router doesn't see it either.
+// its own ?feed= address while Reddit's remembered feed isn't the default, and the
+// address bar stays on plain / here. A full page load is cleaned before Reddit's
+// scripts run. After an in-page load Reddit copies the redirected address to the
+// bar, so that copy is cancelled; this listener is registered first, so Reddit's
+// router doesn't see it either. Reddit remembers the last feed fetched, so
+// background.js is told each time that changes.
+const FEED_TABS = { 'feed-tab-1': 'for-you', 'feed-tab-2': 'following' };
+function feedSeen(feed, served) {
+  try {
+    return chrome.runtime.sendMessage({ type: 'rmute:feedSeen', feed, served }).catch(() => ({}));
+  } catch (_) { /* extension reloaded */ }
+  return Promise.resolve({});
+}
+// The tab Reddit served for a plain /. Its pageindex is 1 For You, 2 Following.
+function watchServedFeed() {
+  const check = () => {
+    const index = document.getElementById('feed-tab-group')?.getAttribute('pageindex');
+    if (!index) return;
+    observer.disconnect();
+    const feed = FEED_TABS[`feed-tab-${index}`];
+    if (feed) feedSeen(feed, true).then((r) => { if (r?.open) location.replace(`/?feed=${r.open}`); });
+  };
+  const observer = new MutationObserver(check);
+  observer.observe(document, { childList: true, subtree: true });
+  addEventListener('load', () => observer.disconnect(), { once: true });
+}
+if (location.hostname === 'www.reddit.com' && location.pathname === '/') {
+  const asked = /^\?feed=(following|for-you)$/.exec(location.search);
+  if (asked) feedSeen(asked[1]);
+  else if (!location.search) watchServedFeed();
+}
 if (location.pathname === '/' && /^\?feed=(following|for-you)$/.test(location.search)) history.replaceState(history.state, '', '/');
+document.addEventListener('click', (e) => {
+  const feed = FEED_TABS[e.target.closest?.('[id^="feed-tab-"]')?.id];
+  if (feed) feedSeen(feed);
+}, true);
 window.navigation?.addEventListener('navigate', (e) => {
   const url = new URL(e.destination.url);
   if (e.navigationType !== 'replace' || url.pathname !== '/' || !url.searchParams.has('feed') || !url.searchParams.has('screen_view_count')) return;
   e.preventDefault();
   e.stopImmediatePropagation();
+  feedSeen(url.searchParams.get('feed'));
 });
 
 // The user's custom feeds and joined subs come from Reddit's own API (same
