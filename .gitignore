@@ -6,3 +6,5 @@ build.txt
 # Local tooling
 .claude/
 .DS_Store
+# The popup designer's saved edits
+tools/designer/changes.json

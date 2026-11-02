@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Popup Designer</title>
+<style>
+  :root {
+    --bg: #eef0f2; --panel: #fff; --fg: #16191c; --muted: #6b7680; --line: #dfe3e7;
+    --accent: #2f6fe4; --pick: #f59e0b; --soft: #f5f7f9;
+    font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--fg);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; height: 100vh; display: grid; grid-template-columns: 1fr 360px; grid-template-rows: auto 1fr; background: var(--bg); }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+
+  .bar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; padding: 8px 12px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .bar b { font-size: 14px; margin-right: 4px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+  .seg button { border: 0; background: none; padding: 4px 9px; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button[aria-pressed="true"] { background: var(--fg); color: #fff; }
+  .btn { border: 1px solid var(--line); background: var(--panel); border-radius: 7px; padding: 4px 10px; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn[aria-pressed="true"] { background: var(--pick); border-color: var(--pick); color: #fff; }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .group { display: inline-flex; gap: 6px; align-items: center; }
+  .group > span { color: var(--muted); }
+
+  .stage { overflow: auto; padding: 24px; display: flex; justify-content: center; align-items: flex-start; }
+  .frame-box { transform-origin: top center; box-shadow: 0 6px 24px rgba(0,0,0,.18); border-radius: 10px; overflow: hidden; background: #fff; flex: none; }
+  iframe { display: block; border: 0; }
+
+  aside { background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; }
+  section { padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 0 0 8px; display: flex; justify-content: space-between; align-items: center; }
+  h3 { font-size: 12px; color: var(--muted); margin: 10px 0 4px; font-weight: 600; }
+  .empty { color: var(--muted); }
+  .sel-input { width: 100%; font-family: ui-monospace, Menlo, monospace; font-size: 12px; padding: 5px 7px; border: 1px solid var(--line); border-radius: 6px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+  .chip { border: 1px solid var(--line); background: var(--soft); border-radius: 99px; padding: 1px 8px; font: 11px ui-monospace, Menlo, monospace; }
+  .chip[aria-pressed="true"] { border-color: var(--pick); background: #fff4e0; }
+  .meta { color: var(--muted); font-size: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .meta .btn { padding: 1px 8px; font-size: 12px; }
+  .props { display: grid; grid-template-columns: 92px 1fr; gap: 4px 8px; align-items: center; }
+  .props label { color: var(--muted); font-size: 12px; }
+  .field { display: flex; gap: 4px; }
+  .field input[type=text], .field select { flex: 1; min-width: 0; padding: 3px 6px; border: 1px solid var(--line); border-radius: 5px; background: #fff; }
+  .field input.set, .field select.set { border-color: var(--pick); background: #fffaf0; }
+  .field input[type=color] { width: 28px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 5px; background: none; }
+  textarea { width: 100%; min-height: 54px; padding: 5px 7px; border: 1px solid var(--line); border-radius: 6px; resize: vertical; }
+  textarea.code { font: 12px ui-monospace, Menlo, monospace; }
+  .check { display: flex; gap: 6px; align-items: center; margin-top: 8px; }
+  .tokens { display: grid; grid-template-columns: 1fr 56px 56px; gap: 4px 8px; align-items: center; font-size: 12px; }
+  .tokens .head { color: var(--muted); }
+  .tokens input { width: 100%; height: 24px; padding: 0; border: 1px solid var(--line); border-radius: 5px; }
+  .tokens input.set { outline: 2px solid var(--pick); }
+  .changes { list-style: none; margin: 0; padding: 0; }
+  .changes li { display: flex; gap: 6px; align-items: flex-start; padding: 5px 0; border-top: 1px solid var(--line); }
+  .changes li:first-child { border-top: 0; }
+  .changes .what { flex: 1; min-width: 0; cursor: pointer; }
+  .changes code { font: 11px ui-monospace, Menlo, monospace; display: block; overflow-wrap: anywhere; }
+  .changes small { color: var(--muted); display: block; }
+  .x { border: 0; background: none; color: var(--muted); font-size: 16px; line-height: 1; padding: 0 2px; }
+  .status { color: var(--muted); font-size: 12px; }
+  .help { color: var(--muted); font-size: 12px; margin: 0; }
+  kbd { font: 11px ui-monospace, Menlo, monospace; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; }
+
+  @media (max-width: 760px) {
+    body { grid-template-columns: 1fr; grid-template-rows: auto auto auto; height: auto; }
+    aside { border-left: 0; border-top: 1px solid var(--line); }
+    .stage { padding: 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="bar">
+  <b>Popup Designer</b>
+  <span class="group"><span>View</span><span class="seg" id="mode"><button data-v="popup">Popup</button><button data-v="page">Options page</button></span></span>
+  <span class="group"><span>Theme</span><span class="seg" id="theme"><button data-v="light">Light</button><button data-v="dark">Dark</button></span></span>
+  <span class="group"><span>Zoom</span><span class="seg" id="zoom"><button data-v="1">1×</button><button data-v="1.5">1.5×</button><button data-v="2">2×</button></span></span>
+  <span class="group"><span>Data</span><span class="seg" id="data"><button data-v="sample">Sample</button><button data-v="backup">My backup</button><button data-v="empty">Empty</button></span></span>
+  <label class="group"><input type="checkbox" id="tall"> Full height</label>
+  <button class="btn" id="page-card">Show “Mute all” card</button>
+  <span class="group" style="margin-left:auto">
+    <button class="btn" id="pick" title="Click elements in the popup to edit them (P)">Pick</button>
+    <button class="btn" id="original" title="Hold to see the popup without your changes">Hold: before</button>
+    <button class="btn" id="undo" title="Undo (⌘Z)">Undo</button>
+  </span>
+</div>
+
+<main class="stage" id="stage"><div class="frame-box" id="frame-box"><iframe id="frame" title="Popup preview"></iframe></div></main>
+
+<aside>
+  <section>
+    <h2>Selected <span class="meta"><button class="btn" id="parent" disabled>↑ Parent</button></span></h2>
+    <div id="sel-empty" class="empty">Turn on <b>Pick</b> and click anything in the popup. <kbd>Alt</kbd>-click picks too, when Pick is off.</div>
+    <div id="sel-body" hidden>
+      <input class="sel-input" id="selector" spellcheck="false" aria-label="CSS selector">
+      <div class="chips" id="chips"></div>
+      <div class="meta" id="sel-meta"></div>
+      <div id="props"></div>
+      <label class="check"><input type="checkbox" id="hide"> Hide it</label>
+      <h3>More CSS for this</h3>
+      <textarea class="code" id="extra" spellcheck="false" placeholder="e.g. text-transform: uppercase;"></textarea>
+      <h3>Note for Claude</h3>
+      <textarea id="note" placeholder="Describe what you want here, if the boxes above can't do it"></textarea>
+    </div>
+  </section>
+
+  <section>
+    <h2>Colors <button class="btn" id="tokens-reset" style="font-size:12px;padding:1px 8px">Reset</button></h2>
+    <div class="tokens" id="tokens"></div>
+  </section>
+
+  <section>
+    <h2>General notes</h2>
+    <textarea id="general" placeholder="Anything about the design as a whole: overall feel, spacing, what to change first…"></textarea>
+  </section>
+
+  <section>
+    <h2>Changes <span class="meta"><button class="btn" id="clear">Clear all</button></span></h2>
+    <ul class="changes" id="changes"></ul>
+    <p class="status" id="status"></p>
+  </section>
+
+  <section>
+    <p class="help">Changes save on their own. Tell Claude <b>apply</b> to put them into <code>manage.css</code>. The preview reloads when the popup's files change. In a box: <kbd>↑</kbd>/<kbd>↓</kbd> nudge a number by 1, with <kbd>Shift</kbd> by 10.</p>
+  </section>
+</aside>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const frame = $('frame');
+const fdoc = () => frame.contentDocument;
+
+// ---- State: the edits (saved to changes.json) and the view (this browser only).
+let S = { rules: {}, tokens: { light: {}, dark: {} }, general: '' };
+const VIEW_KEY = 'designer.view';
+let view = { mode: 'popup', theme: 'light', zoom: '1', data: 'sample', tall: false, pick: true };
+try { Object.assign(view, JSON.parse(localStorage.getItem(VIEW_KEY)) || {}); } catch (_) { /* defaults */ }
+const saveView = () => { try { localStorage.setItem(VIEW_KEY, JSON.stringify(view)); } catch (_) { /* not critical */ } };
+
+const history = [];
+let selector = '';
+let selEl = null;
+
+const PROPS = [
+  ['Text', [['font-size', 'Size'], ['font-weight', 'Weight', ['', '400', '500', '600', '700']], ['color', 'Color', 'color'], ['line-height', 'Line height'], ['text-align', 'Align', ['', 'left', 'center', 'right']], ['letter-spacing', 'Letter space']]],
+  ['Box', [['padding', 'Padding'], ['margin', 'Margin'], ['gap', 'Gap'], ['width', 'Width'], ['height', 'Height'], ['min-height', 'Min height']]],
+  ['Look', [['background-color', 'Background', 'color'], ['border', 'Border'], ['border-radius', 'Corners'], ['box-shadow', 'Shadow'], ['opacity', 'Opacity']]],
+  ['Layout', [['display', 'Display', ['', 'block', 'inline-block', 'flex', 'inline-flex', 'grid', 'none']], ['flex-direction', 'Direction', ['', 'row', 'column']], ['justify-content', 'Justify', ['', 'flex-start', 'center', 'flex-end', 'space-between']], ['align-items', 'Align items', ['', 'flex-start', 'center', 'flex-end', 'baseline', 'stretch']]]],
+];
+const UNITLESS = new Set(['font-weight', 'opacity', 'line-height']);
+const withUnit = (p, v) => (/^-?\d*\.?\d+$/.test(v.trim()) && !UNITLESS.has(p) ? v.trim() + 'px' : v.trim());
+
+// ---- Saving.
+let saveTimer;
+function changed({ record = true } = {}) {
+  if (record) pushHistory();
+  applyCss();
+  renderChanges();
+  clearTimeout(saveTimer);
+  $('status').textContent = 'Saving…';
+  saveTimer = setTimeout(async () => {
+    try {
+      const res = await fetch('/tools/designer/save', { method: 'POST', body: JSON.stringify({ savedAt: new Date().toISOString(), css: buildCss(false), ...S }) });
+      $('status').textContent = res.ok ? `Saved ${new Date().toLocaleTimeString()} · Claude can read these.` : 'Couldn’t save (server error).';
+    } catch (_) { $('status').textContent = 'Couldn’t save: is the designer server running?'; }
+  }, 400);
+}
+let lastSnap = null;
+function pushHistory() {
+  if (lastSnap !== null) history.push(lastSnap);
+  if (history.length > 200) history.shift();
+  lastSnap = JSON.stringify(S);
+  $('undo').disabled = !history.length;
+}
+
+// ---- CSS out of the edits. Preview adds !important so it beats manage.css.
+function buildCss(preview) {
+  const imp = preview ? ' !important' : '';
+  const out = [];
+  const tok = (sel, map) => {
+    const lines = Object.entries(map).map(([k, v]) => `  --${k}: ${v}${imp};`);
+    if (lines.length) out.push(`${sel} {\n${lines.join('\n')}\n}`);
+  };
+  tok(':root:not([data-theme="dark"])', S.tokens.light);
+  tok(':root[data-theme="dark"]', S.tokens.dark);
+  for (const [sel, r] of Object.entries(S.rules)) {
+    const lines = Object.entries(r.props || {}).filter(([, v]) => v !== '').map(([p, v]) => `  ${p}: ${withUnit(p, v)}${imp};`);
+    for (const d of (r.css || '').split(';').map((s) => s.trim()).filter(Boolean)) {
+      lines.push(`  ${preview ? d.replace(/\s*!important\s*$/, '') + imp : d};`);
+    }
+    if (lines.length) out.push(`${sel} {\n${lines.join('\n')}\n}`);
+  }
+  return out.join('\n\n');
+}
+
+let showOriginal = false;
+function applyCss() {
+  const d = fdoc();
+  const style = d?.getElementById('dz-css');
+  if (!style) return;
+  style.textContent = showOriginal ? '' : buildCss(true);
+  updateMeta();
+}
+
+// ---- The frame: the real manage.html with stand-in chrome.* APIs.
+const SEP = { subs: ',', users: ',', popularWords: '\n', subWords: '\n', commentWords: '\n', bodyWords: '\n', flairWords: '\n', recSubs: ',', recUsers: ',', keepSubs: ',', skipSubs: ',', userSubs: ',', scopes: '\n', wordGroups: '\n' };
+const SAMPLE = {
+  subs: ['funny', 'gaming', 'memes', 'nba', 'soccer', 'pics', 'aww', 'movies', '*cat*', '*dog*', '*bird*'],
+  users: ['spez', 'automoderator', 'gallowboob'], userSubs: ['spez:announcements'],
+  popularWords: ['election', 'trump'], subWords: ['election'], commentWords: ['spoiler', 'election'],
+  recSubs: ['askmen', 'lawyertalk'], recUsers: ['someuser'], keepSubs: ['programming', 'space'], skipSubs: ['india'],
+  settings: {},
+};
+function toStore(list) {
+  const sync = { 'seeded.animals': true, settings: { ...(list.settings || {}), theme: view.theme } };
+  for (const [kind, sep] of Object.entries(SEP)) {
+    const names = list[kind] || [];
+    sync[kind + '.count'] = names.length ? 1 : 0;
+    if (names.length) sync[kind + '.0'] = names.join(sep);
+  }
+  return { sync, local: {} };
+}
+async function seed() {
+  let list = view.data === 'empty' ? {} : SAMPLE;
+  if (view.data === 'backup') {
+    try { list = await (await fetch('/tools/designer/backup.json')).json(); }
+    catch (_) { $('status').textContent = 'No backup file in the project folder; showing sample data.'; }
+  }
+  window.__seed = toStore(list);
+  window.__mem = null;
+}
+
+async function buildFrame() {
+  const t = Date.now();
+  let html = await (await fetch('/manage/manage.html')).text();
+  html = html.replace(/(href|src)="([^"]+\.(?:css|js))"/g, (_, a, p) => `${a}="${new URL(p, location.origin + '/manage/').pathname}?t=${t}"`);
+  const head = `<base href="/manage/"><script>window.__dz = ${JSON.stringify({ popup: view.mode === 'popup' })};<\/script>`
+    + `<script src="/tools/designer/stub.js?t=${t}"><\/script>`;
+  html = html.replace('<head>', '<head>' + head).replace('</head>', '<style id="dz-css"></style><style id="dz-ui"></style></head>');
+  frame.srcdoc = html;
+}
+
+frame.addEventListener('load', () => {
+  const d = fdoc();
+  d.getElementById('dz-ui').textContent = `
+    [data-dz-hover] { outline: 2px solid #2f6fe4 !important; outline-offset: -2px !important; cursor: crosshair !important; }
+    [data-dz-sel] { outline: 2px dashed #f59e0b !important; outline-offset: -2px !important; }`;
+  hookFrame(d);
+  applyCss();
+  if (selector) select(null, selector);
+  sizeFrame();
+  new frame.contentWindow.ResizeObserver(sizeFrame).observe(d.documentElement);
+});
+
+function sizeFrame() {
+  const d = fdoc();
+  const w = view.mode === 'popup' ? 360 : 900;
+  frame.style.width = w + 'px';
+  const content = d?.documentElement.scrollHeight || 600;
+  // Chrome popups are at most 600 px tall; the rest scrolls.
+  frame.style.height = (view.mode === 'popup' && !view.tall ? Math.min(600, content) : Math.max(content, 300)) + 'px';
+  $('frame-box').style.transform = `scale(${view.zoom})`;
+  $('frame-box').style.marginBottom = `${(view.zoom - 1) * frame.offsetHeight}px`;
+}
+
+// ---- Picking elements.
+function pickable(t) {
+  if (!(t instanceof frame.contentWindow.Element)) return null;
+  return t.closest('svg') || t;
+}
+function hookFrame(d) {
+  let hover = null;
+  const picking = (e) => view.pick || e.altKey;
+  d.addEventListener('pointerover', (e) => {
+    hover?.removeAttribute('data-dz-hover');
+    hover = picking(e) ? pickable(e.target) : null;
+    hover?.setAttribute('data-dz-hover', '');
+  }, true);
+  d.addEventListener('pointerleave', () => hover?.removeAttribute('data-dz-hover'));
+  for (const type of ['pointerdown', 'mousedown', 'mouseup', 'click']) {
+    d.addEventListener(type, (e) => {
+      if (!picking(e)) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (type === 'click') select(pickable(e.target));
+    }, true);
+  }
+  d.addEventListener('keydown', onKey);
+}
+
+function partOf(el, withId = true) {
+  if (withId && el.id) return '#' + CSS.escape(el.id);
+  return el.tagName.toLowerCase() + [...el.classList].map((c) => '.' + CSS.escape(c)).join('');
+}
+function candidates(el) {
+  const d = fdoc();
+  const out = [];
+  if (el.id) out.push('#' + CSS.escape(el.id));
+  const own = partOf(el, false);
+  const anc = el.parentElement?.closest('[id]');
+  if (anc && anc !== d.body) out.push(`#${CSS.escape(anc.id)} ${own}`);
+  if (el.classList.length) out.push([...el.classList].map((c) => '.' + CSS.escape(c)).join(''));
+  if (el.parentElement && el.parentElement !== d.body) out.push(`${partOf(el.parentElement)} > ${own}`);
+  out.push(own);
+  return [...new Set(out)].slice(0, 5);
+}
+
+function select(el, sel) {
+  const d = fdoc();
+  d.querySelectorAll('[data-dz-sel]').forEach((n) => n.removeAttribute('data-dz-sel'));
+  if (el) {
+    selector = candidates(el)[0];
+    // A rule already made for this element wins over a new guess.
+    const existing = Object.keys(S.rules).find((s) => { try { return el.matches(s); } catch (_) { return false; } });
+    if (existing) selector = existing;
+  } else if (sel) {
+    selector = sel;
+    try { el = d.querySelector(sel); } catch (_) { el = null; }
+  }
+  selEl = el;
+  el?.setAttribute('data-dz-sel', '');
+  renderSelected();
+}
+
+// ---- The Selected panel.
+const rule = () => (S.rules[selector] ||= { props: {}, css: '', note: '' });
+const pruneRule = (sel) => {
+  const r = S.rules[sel];
+  if (r && !Object.values(r.props).some((v) => v !== '') && !r.css.trim() && !r.note.trim()) delete S.rules[sel];
+};
+const toHex = (c) => {
+  const m = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  return m ? '#' + m.slice(1, 4).map((n) => (+n).toString(16).padStart(2, '0')).join('') : (/^#[0-9a-f]{6}$/i.test(c) ? c : '#000000');
+};
+
+function renderSelected() {
+  $('sel-empty').hidden = !!selector;
+  $('sel-body').hidden = !selector;
+  $('parent').disabled = !selEl?.parentElement || selEl.parentElement === fdoc().body;
+  if (!selector) return;
+  $('selector').value = selector;
+  $('chips').replaceChildren(...(selEl ? candidates(selEl) : []).map((c) => {
+    const b = document.createElement('button');
+    b.className = 'chip';
+    b.textContent = c;
+    b.setAttribute('aria-pressed', String(c === selector));
+    b.onclick = () => { selector = c; renderSelected(); };
+    return b;
+  }));
+  const r = S.rules[selector] || { props: {}, css: '', note: '' };
+  const cs = selEl ? frame.contentWindow.getComputedStyle(selEl) : null;
+  const box = $('props');
+  box.replaceChildren();
+  for (const [title, props] of PROPS) {
+    const h = document.createElement('h3');
+    h.textContent = title;
+    const grid = document.createElement('div');
+    grid.className = 'props';
+    for (const [p, label, kind] of props) {
+      const lab = document.createElement('label');
+      lab.textContent = label;
+      const field = document.createElement('div');
+      field.className = 'field';
+      const now = cs ? cs.getPropertyValue(p) : '';
+      let input;
+      if (Array.isArray(kind)) {
+        input = document.createElement('select');
+        for (const o of kind) input.add(new Option(o || `— ${now}`, o));
+      } else {
+        input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = now;
+        input.spellcheck = false;
+        input.addEventListener('keydown', nudge);
+      }
+      input.value = r.props[p] || '';
+      input.classList.toggle('set', !!input.value);
+      input.id = lab.htmlFor = 'p-' + p;
+      const set = (v) => {
+        rule().props[p] = v;
+        input.classList.toggle('set', !!v);
+        pruneRule(selector);
+        changed({ record: false });
+      };
+      input.addEventListener('input', () => set(input.value));
+      field.append(input);
+      if (kind === 'color') {
+        const pick = document.createElement('input');
+        pick.type = 'color';
+        pick.value = toHex(input.value || now);
+        pick.title = 'Pick a color';
+        pick.addEventListener('input', () => { input.value = pick.value; set(pick.value); });
+        field.append(pick);
+      }
+      grid.append(lab, field);
+    }
+    box.append(h, grid);
+  }
+  $('hide').checked = r.props.display === 'none';
+  $('extra').value = r.css;
+  $('note').value = r.note;
+  updateMeta();
+}
+
+function updateMeta() {
+  if (!selector) return;
+  let n = 0;
+  try { n = fdoc()?.querySelectorAll(selector).length || 0; } catch (_) { n = -1; }
+  $('sel-meta').textContent = n < 0 ? 'Not a valid selector' : `${n} element${n === 1 ? '' : 's'} on this screen`;
+}
+
+// ↑/↓ change the number under the cursor (the first one) by 1, Shift by 10.
+function nudge(e) {
+  if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+  const input = e.target;
+  const v = input.value || input.placeholder;
+  const m = v.match(/-?\d*\.?\d+/);
+  if (!m) return;
+  e.preventDefault();
+  const step = (e.shiftKey ? 10 : 1) * (e.key === 'ArrowUp' ? 1 : -1) * (m[0].includes('.') && !e.shiftKey ? 0.1 : 1);
+  const next = Math.round((parseFloat(m[0]) + step) * 100) / 100;
+  input.value = v.slice(0, m.index) + next + v.slice(m.index + m[0].length);
+  input.dispatchEvent(new Event('input'));
+}
+
+$('selector').addEventListener('change', () => {
+  selector = $('selector').value.trim();
+  select(null, selector);
+});
+$('hide').addEventListener('change', () => {
+  rule().props.display = $('hide').checked ? 'none' : '';
+  pruneRule(selector);
+  changed({ record: false });
+  renderSelected();
+});
+$('extra').addEventListener('input', () => { rule().css = $('extra').value; pruneRule(selector); changed({ record: false }); });
+$('note').addEventListener('input', () => { rule().note = $('note').value; pruneRule(selector); changed({ record: false }); });
+$('general').addEventListener('input', () => { S.general = $('general').value; changed({ record: false }); });
+$('parent').addEventListener('click', () => { if (selEl?.parentElement) select(selEl.parentElement); });
+
+// Undo: a snapshot when a box is focused or a button clicked.
+document.querySelector('aside').addEventListener('focusin', () => pushHistory());
+$('undo').addEventListener('click', undo);
+function undo() {
+  if (!history.length) return;
+  S = JSON.parse(history.pop());
+  lastSnap = JSON.stringify(S);
+  $('undo').disabled = !history.length;
+  $('general').value = S.general || '';
+  renderTokens();
+  renderSelected();
+  changed({ record: false });
+}
+
+// ---- Colors (the :root variables in manage.css), light and dark.
+let TOKENS = [];
+async function loadTokens() {
+  const css = await (await fetch('/manage/manage.css')).text();
+  const block = (re) => Object.fromEntries([...(css.match(re)?.[1] || '').matchAll(/--([\w-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
+  const light = block(/^:root\s*\{([^}]*)\}/m);
+  const dark = { ...light, ...block(/:root\[data-theme="dark"\]\s*\{([^}]*)\}/) };
+  TOKENS = Object.keys(light).map((k) => ({ name: k, light: light[k], dark: dark[k] }));
+  renderTokens();
+}
+function renderTokens() {
+  const box = $('tokens');
+  box.replaceChildren(...['', 'Light', 'Dark'].map((t) => Object.assign(document.createElement('span'), { className: 'head', textContent: t })));
+  for (const t of TOKENS) {
+    const name = document.createElement('span');
+    name.textContent = '--' + t.name;
+    box.append(name);
+    for (const mode of ['light', 'dark']) {
+      const input = document.createElement('input');
+      input.type = 'color';
+      input.value = toHex(S.tokens[mode][t.name] || t[mode]);
+      input.classList.toggle('set', !!S.tokens[mode][t.name]);
+      input.title = `${mode}: ${S.tokens[mode][t.name] || t[mode]}`;
+      input.addEventListener('input', () => {
+        S.tokens[mode][t.name] = input.value;
+        input.classList.add('set');
+        if (view.theme !== mode) setTheme(mode);
+        changed({ record: false });
+      });
+      box.append(input);
+    }
+  }
+}
+$('tokens-reset').addEventListener('click', () => { pushHistory(); S.tokens = { light: {}, dark: {} }; renderTokens(); changed({ record: false }); });
+
+// ---- The Changes list.
+function renderChanges() {
+  const items = [];
+  for (const mode of ['light', 'dark']) {
+    for (const [k, v] of Object.entries(S.tokens[mode])) items.push({ title: `--${k} (${mode})`, sub: v, remove: () => delete S.tokens[mode][k] });
+  }
+  for (const [sel, r] of Object.entries(S.rules)) {
+    const bits = Object.entries(r.props).filter(([, v]) => v !== '').map(([p, v]) => `${p}: ${withUnit(p, v)}`);
+    if (r.css.trim()) bits.push(r.css.trim());
+    if (r.note.trim()) bits.push(`📝 ${r.note.trim()}`);
+    items.push({ title: sel, sub: bits.join(' · '), remove: () => delete S.rules[sel], open: () => select(null, sel) });
+  }
+  $('changes').replaceChildren(...items.map((it) => {
+    const li = document.createElement('li');
+    const what = document.createElement('div');
+    what.className = 'what';
+    what.innerHTML = '<code></code><small></small>';
+    what.firstChild.textContent = it.title;
+    what.lastChild.textContent = it.sub;
+    if (it.open) what.onclick = it.open;
+    const x = document.createElement('button');
+    x.className = 'x';
+    x.textContent = '×';
+    x.title = 'Remove this change';
+    x.onclick = () => { pushHistory(); it.remove(); renderTokens(); renderSelected(); changed({ record: false }); };
+    li.append(what, x);
+    return li;
+  }));
+  if (!items.length) $('changes').innerHTML = '<li class="empty">No changes yet.</li>';
+}
+$('clear').addEventListener('click', () => {
+  if (!confirm('Clear all changes and notes?')) return;
+  pushHistory();
+  S = { rules: {}, tokens: { light: {}, dark: {} }, general: '' };
+  $('general').value = '';
+  renderTokens();
+  renderSelected();
+  changed({ record: false });
+});
+
+// ---- Toolbar.
+function segment(id, key, after) {
+  const seg = $(id);
+  const paint = () => seg.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === String(view[key]))));
+  seg.addEventListener('click', (e) => {
+    const v = e.target.closest('button')?.dataset.v;
+    if (!v || v === String(view[key])) return;
+    view[key] = v;
+    saveView();
+    paint();
+    after(v);
+  });
+  paint();
+  return paint;
+}
+segment('mode', 'mode', () => buildFrame());
+const paintTheme = segment('theme', 'theme', (v) => setTheme(v));
+segment('zoom', 'zoom', () => sizeFrame());
+segment('data', 'data', async () => { await seed(); buildFrame(); });
+$('tall').checked = view.tall;
+$('tall').addEventListener('change', () => { view.tall = $('tall').checked; saveView(); sizeFrame(); });
+
+// The popup's own theme setting, so manage.js applies it as it would.
+async function setTheme(mode) {
+  view.theme = mode;
+  saveView();
+  paintTheme();
+  const c = frame.contentWindow.chrome;
+  const { settings } = await c.storage.sync.get('settings');
+  await c.storage.sync.set({ settings: { ...settings, theme: mode } });
+}
+
+function setPick(on) {
+  view.pick = on;
+  saveView();
+  $('pick').setAttribute('aria-pressed', String(on));
+  $('pick').textContent = on ? 'Picking (P)' : 'Pick (P)';
+  fdoc()?.querySelectorAll('[data-dz-hover]').forEach((n) => n.removeAttribute('data-dz-hover'));
+}
+$('pick').addEventListener('click', () => setPick(!view.pick));
+setPick(view.pick);
+
+const hold = (on) => { showOriginal = on; applyCss(); };
+$('original').addEventListener('pointerdown', () => hold(true));
+for (const t of ['pointerup', 'pointerleave']) $('original').addEventListener(t, () => hold(false));
+
+// A sample "Mute all on this page" card, as an open r/popular tab would send.
+$('page-card').addEventListener('click', () => {
+  window.__portMsg?.({ path: '/r/popular/', origin: 'https://www.reddit.com', subs: ['pics', 'interestingasfuck', 'nextfuckinglevel', 'mildlyinteresting', 'todayilearned', 'worldnews', 'movies', 'oddlysatisfying'] });
+});
+
+function onKey(e) {
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) && e.target.type !== 'checkbox';
+  if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !typing) { e.preventDefault(); undo(); }
+  else if (!typing && !e.metaKey && !e.ctrlKey && (e.key === 'p' || e.key === 'P')) setPick(!view.pick);
+  else if (e.key === 'Escape') setPick(false);
+}
+document.addEventListener('keydown', onKey);
+
+// Reload the frame when the popup's files change (e.g. after Claude applies the changes).
+let stamp = null;
+setInterval(async () => {
+  try {
+    const now = await (await fetch('/tools/designer/stamp')).json();
+    if (stamp !== null && now !== stamp) { await loadTokens(); buildFrame(); }
+    stamp = now;
+  } catch (_) { /* server stopped */ }
+}, 1500);
+
+// ---- Start.
+(async () => {
+  try {
+    const saved = await (await fetch('/tools/designer/changes.json')).json();
+    {
+      S = { rules: saved.rules || {}, tokens: saved.tokens || { light: {}, dark: {} }, general: saved.general || '' };
+    }
+  } catch (_) { /* first run */ }
+  lastSnap = JSON.stringify(S);
+  $('undo').disabled = true;
+  $('general').value = S.general;
+  await loadTokens();
+  renderChanges();
+  renderSelected();
+  await seed();
+  buildFrame();
+})();
+</script>
+</body>
+</html>
