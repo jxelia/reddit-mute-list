@@ -51,8 +51,11 @@
         <button type="button" class="link stack" id="edit-text"><span>Edit</span> <span>as</span> <span>text</span></button>
       </div>
 
-      <ul class="list" id="list"></ul>
-      <p class="empty" id="empty" hidden></p>
+      <details class="import-group" id="main-group">
+        <summary><span id="main-label">Muted</span> <span class="count" id="count-main">0</span></summary>
+        <ul class="list" id="list"></ul>
+        <p class="empty" id="empty" hidden></p>
+      </details>
       <details class="import-group" id="skip-group" hidden>
         <summary>Mute all whitelist <span class="count" id="count-skipSubs">0</span></summary>
         <p class="hint">Left out of “Mute all” with −. They won’t be listed again.</p>

@@ -359,6 +359,11 @@ function render() {
   $('add-input').placeholder = kind === 'subs' ? 'r/name, word, or paste links' : 'u/name, *bot*, or paste links';
   const filter = $('filter').value.trim().toLowerCase().replace(/^[ru]\//, '');
   renderList(kind, $('list'), $('empty'), filter);
+  // The list starts collapsed; filtering opens it.
+  const imported = new Set(imports.flatMap((g) => g[kind] || []));
+  $('main-label').textContent = kind === 'subs' ? 'Muted subreddits' : 'Muted users';
+  $('count-main').textContent = state[kind].filter((n) => !imported.has(n)).length;
+  if (filter) $('main-group').open = true;
   renderSkip(filter);
   renderImports(kind, filter);
 }
@@ -698,6 +703,7 @@ document.querySelectorAll('.tabs [role="tab"]').forEach((tab) => {
   tab.addEventListener('click', () => {
     kind = tab.dataset.kind;
     textKind = null;
+    $('main-group').open = false;
     render();
   });
 });
