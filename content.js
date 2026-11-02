@@ -1903,6 +1903,8 @@ function updatePageScope(force = true) {
 // one has faceplate-tab-selected, no aria-selected). Already on it: nothing
 // happens. Every click reloads the feed, so wait for Reddit's script (:defined)
 // and retry only slowly. A tab the user clicks meanwhile, or afterwards, stays.
+// The click waits for the page's first feed fetch to finish: one made during it
+// moves the highlight, but that fetch's posts land under the new tab anyway.
 let feedDone = false;
 function openDefaultFeed() {
   if (feedDone) return;
@@ -1914,6 +1916,8 @@ function openDefaultFeed() {
   const started = performance.now();
   let ticks = 0;
   let clicked = -Infinity;
+  const feedLoaded = () => performance.getEntriesByType('resource')
+    .some((e) => e.startTime >= started && e.name.includes('/interest-home-feed?feed='));
   const tick = () => {
     ticks++;
     // Before the list loads the setting is missing; wait for it.
@@ -1924,11 +1928,11 @@ function openDefaultFeed() {
       (ticks % 10 === 0 ? [...walk(document)].find(isTab) : null));
     const now = performance.now();
     if (userPicked || location.pathname !== '/' || isOff() || want === 'last' ||
-        tab?.hasAttribute('faceplate-tab-selected') || now - started > 10000) {
+        tab?.hasAttribute('faceplate-tab-selected') || now - started > 15000) {
       if (clicked < 0) document.removeEventListener('click', onClick, true);
       return;
     }
-    if (tab && now - clicked >= 3000 && tab.parentElement?.matches(':defined')) {
+    if (tab && now - clicked >= 3000 && tab.parentElement?.matches(':defined') && (feedLoaded() || now - started > 5000)) {
       if (clicked < 0) watchFeedFetch(want, () => userPicked, () => document.removeEventListener('click', onClick, true));
       clicked = now;
       clickLikeUser(tab);
