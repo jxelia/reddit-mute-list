@@ -1147,13 +1147,36 @@ function applyTheme(theme = 'system') {
 
 try { applyTheme(localStorage.getItem('theme') || 'system'); } catch (_) { /* no storage */ }
 
+// The new look grows out of the button as a circle over the old one (the
+// view-transition rules are in manage.css).
+function switchTheme(theme) {
+  // Saving re-renders with the new theme, so it can't come before the old look is captured.
+  const update = () => {
+    applyTheme(theme);
+    setSetting('theme', theme);
+  };
+  if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    update();
+    return;
+  }
+  const { left, top, width, height } = $('theme').getBoundingClientRect();
+  const x = left + width / 2;
+  const y = top + height / 2;
+  const radius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+  document.startViewTransition(update).ready.then(() => {
+    document.documentElement.animate(
+      { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+      { duration: 400, easing: 'ease-in-out', fill: 'forwards', pseudoElement: '::view-transition-new(root)' },
+    );
+  }).catch(() => { /* skipped by another click */ });
+}
+
 $('theme').addEventListener('click', () => {
   const theme = state.settings.theme || 'system';
   const systemDark = matchMedia('(prefers-color-scheme: dark)').matches;
   const dark = theme === 'system' ? systemDark : theme === 'dark';
   const next = !dark === systemDark ? 'system' : dark ? 'light' : 'dark';
-  applyTheme(next);
-  setSetting('theme', next);
+  switchTheme(next);
 });
 
 /* ---------- Import & export ---------- */

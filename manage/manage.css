@@ -36,6 +36,10 @@
   color-scheme: dark;
 }
 
+/* Theme button: the old look holds still, the new one is revealed by switchTheme. */
+::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+::view-transition-new(root) { clip-path: circle(0); }
+
 * { box-sizing: border-box; }
 
 /* Display rules below (e.g. .restore) would otherwise show hidden elements. */
