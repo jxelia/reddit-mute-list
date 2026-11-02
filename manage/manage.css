@@ -158,6 +158,8 @@ input[type="text"], input[type="search"], textarea {
 .add, .toolbar, .row { display: flex; gap: 0.5rem; align-items: center; }
 .add { margin-bottom: 0.5rem; }
 .toolbar { margin-bottom: 0.5rem; }
+/* Mute and Edit as text take the same width, so the add and Filter boxes line up. */
+#add-form > button, #edit-text { flex: none; width: 4.25rem; }
 
 .list {
   list-style: none;
