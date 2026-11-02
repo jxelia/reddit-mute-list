@@ -18,17 +18,22 @@ importScripts('presets/presets.js', 'storage.js');
 
 // The default feed: Reddit serves the tab named in /?feed=, so a page load of
 // the home page goes there directly, with no wrong feed loaded first. Dynamic
-// rules last until changed; only addresses with no query match, so anything else
-// (Back and Forward included) is left alone.
+// rules last until changed.
 async function syncFeedRule() {
   const { settings } = await MuteStore.load();
   const feed = settings.enabled !== false && settings.defaultFeed !== 'last' ? settings.defaultFeed.replace(' ', '-') : null;
+  // Rule 2 is Reddit's in-page load of home (the logo), which always carries
+  // screen_view_count.
   await chrome.declarativeNetRequest.updateDynamicRules({
-    removeRuleIds: [1],
+    removeRuleIds: [1, 2],
     addRules: feed ? [{
       id: 1,
       action: { type: 'redirect', redirect: { url: `https://www.reddit.com/?feed=${feed}` } },
       condition: { regexFilter: '^https://www\\.reddit\\.com/$', resourceTypes: ['main_frame'] }
+    }, {
+      id: 2,
+      action: { type: 'redirect', redirect: { transform: { queryTransform: { addOrReplaceParams: [{ key: 'feed', value: feed }] } } } },
+      condition: { regexFilter: '^https://www\\.reddit\\.com/\\?([^#]*&)?screen_view_count=\\d+', resourceTypes: ['xmlhttprequest'] }
     }] : []
   });
 }
