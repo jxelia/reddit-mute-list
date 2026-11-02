@@ -16,7 +16,7 @@ const ICONS = {
 };
 const BLOCK_HASH = '#rmute-block';
 
-let mutes = { subs: [], users: [], popularWords: [], subWords: [], commentWords: [], bodyWords: [], flairWords: [], recSubs: [], recUsers: [], keepSubs: [], userSubs: [], scopes: [], settings: { hideComments: true } };
+let mutes = { subs: [], users: [], popularWords: [], subWords: [], commentWords: [], bodyWords: [], flairWords: [], recSubs: [], recUsers: [], keepSubs: [], userSubs: [], scopes: [], timedMutes: [], settings: { hideComments: true } };
 let me = null; // signed-in username (see loadMe)
 
 /* ---------- Hiding ---------- */
@@ -100,6 +100,10 @@ function buildCss(list) {
       const c = `shreddit-comment${attrMatch('author', u)}${where('comment')}`;
       other.push(...ownParts(c), `.thing.comment${attrMatch('data-author', u)}${where('old')} > :not(.child)`);
     }
+    // The comment with everything under it.
+    if (list.settings.hideRepliesToMuted) {
+      other.push(`shreddit-comment${attrMatch('author', u)}${where('comment')}`, `.thing.comment${attrMatch('data-author', u)}${where('old')}`);
+    }
   }
   // Comments with a muted word shrink to the bar markComment() puts in them
   // (long-pressing it hides the replies too), or go completely.
@@ -120,6 +124,10 @@ function buildCss(list) {
   // The comment box, sort and search bar, and the tree (post page dump 2026-11-02).
   if (list.settings.hideCommentSections) {
     other.push('comment-body-header, shreddit-comments-sort-dropdown, shreddit-comment-tree, shreddit-comment-tree-ads, shreddit-comment, .commentarea');
+  }
+  // The comments on the page of a muted user's post (markMutedPostPage).
+  if (list.settings.hideCommentsOnMutedPosts) {
+    other.push('html[data-rmute-muted-op] :is(comment-body-header, shreddit-comments-sort-dropdown, shreddit-comment-tree, shreddit-comment-tree-ads, shreddit-comment, .commentarea)');
   }
   posts.push(...recPosts);
   const pagePosts = rename ? [] : wordOnSubs.map((p) => ['html[data-rmute-page="subs"]', p]);
@@ -1256,6 +1264,20 @@ function markTitle(post) {
   if (label) link?.setAttribute('data-rmute-hit', `Muted word: “${label}”`);
   else link?.removeAttribute('data-rmute-hit');
   markFeedFilters(post);
+  markMutedPostPage(post, sub);
+}
+
+// On a post's own page, tags <html> when a muted user wrote it. Cleared on
+// leaving the page (updatePageScope).
+const threadOf = (path) => path?.match(/\/comments\/([a-z0-9]+)/i)?.[1].toLowerCase();
+
+function markMutedPostPage(post, sub) {
+  const html = document.documentElement;
+  const on = mutes.settings.hideCommentsOnMutedPosts;
+  if (!on && !html.hasAttribute('data-rmute-muted-op')) return;
+  const author = post.getAttribute('author') || post.dataset.author;
+  if (!author || threadOf(post.getAttribute('permalink') || post.dataset.permalink) !== threadOf(location.pathname) || !threadOf(location.pathname)) return;
+  html.toggleAttribute('data-rmute-muted-op', on && userMuted(author.toLowerCase(), sub));
 }
 
 /* ---------- Minimum score ---------- */
@@ -1874,7 +1896,8 @@ function updateWords() {
 // Whether posts need marking at all as they load.
 const needsMarking = () => Object.values(wordMatchers).some(Boolean) || presetsOn() ||
   mutes.settings.collapsePopular || Number(mutes.settings.minScore) > 0 ||
-  mutes.settings.hideSeen || mutes.settings.hideDuplicates || Number(mutes.settings.maxAgeHours) > 0 || mutes.settings.hideCrossposts;
+  mutes.settings.hideSeen || mutes.settings.hideDuplicates || Number(mutes.settings.maxAgeHours) > 0 || mutes.settings.hideCrossposts ||
+  mutes.settings.hideCommentsOnMutedPosts;
 
 // "popular" on r/popular, "subs" on the home page of a subreddit that isn't
 // joined or in any custom feed, otherwise nothing. Reddit navigates without reloading, so
@@ -1882,6 +1905,7 @@ const needsMarking = () => Object.values(wordMatchers).some(Boolean) || presetsO
 let lastPath = null;
 function updatePageScope(force = true) {
   if (!force && location.pathname === lastPath) return;
+  if (location.pathname !== lastPath) document.documentElement.removeAttribute('data-rmute-muted-op');
   lastPath = location.pathname;
   const sub = location.pathname.match(LISTING_RE)?.[1].toLowerCase();
   let scope = '';
@@ -2145,15 +2169,32 @@ function processOld() {
 
 /* ---------- Driver ---------- */
 
-MuteStore.load().then((list) => {
+// Timed mutes end on their own, so the list is applied again when the next
+// one is due (at most a day ahead, as long timers aren't reliable).
+let storedList = null;
+let timedTimer = null;
+function useList(list) {
+  storedList = list;
   mutes = MuteStore.effective(list);
+  clearTimeout(timedTimer);
+  const end = MuteStore.nextEnd(list);
+  if (!end) return;
+  timedTimer = setTimeout(() => {
+    useList(storedList);
+    applyStyle();
+    updateWords();
+  }, Math.min(end - Date.now() + 50, 24 * 60 * 60 * 1000));
+}
+
+MuteStore.load().then((list) => {
+  useList(list);
   applyStyle();
   updateWords();
   syncSeen();
   if (document.body) syncNativeButton();
 });
 MuteStore.onChange((list) => {
-  mutes = MuteStore.effective(list);
+  useList(list);
   applyStyle();
   updateWords();
   syncSeen();

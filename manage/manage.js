@@ -70,7 +70,7 @@ function restoreNames(kinds, names, before) {
     next[k] = list;
   }
   const mine = (entry) => names.some((n) => entry.split('\t')[1] === n || entry.startsWith(n + ':'));
-  for (const k of ['scopes', 'userSubs']) next[k] = [...next[k], ...before[k].filter((e) => mine(e) && !next[k].includes(e))];
+  for (const k of ['scopes', 'userSubs', 'timedMutes']) next[k] = [...next[k], ...before[k].filter((e) => mine(e) && !next[k].includes(e))];
   // Named word lists: their entries from before, in place of any shrunk copy.
   const lists = before.wordGroups.filter((e) => e.split('\t').slice(1).some((w) => names.includes(w)));
   const listNames = new Set(lists.map((e) => e.split('\t')[0]));
@@ -102,6 +102,27 @@ function parseNames(text, k = kind) {
   }
   return { good, bad };
 }
+
+// "· 6d left" after a timed mute's name, or null.
+function timeLeft(type, name) {
+  const end = MuteStore.timedEnd(state, type, name);
+  if (!end) return null;
+  const hours = (end - Date.now()) / 3600000;
+  const left = document.createElement('span');
+  left.className = 'from';
+  left.textContent = ` · ${hours >= 48 ? `${Math.round(hours / 24)}d` : hours >= 1 ? `${Math.round(hours)}h` : 'under 1h'} left`;
+  left.title = `Unmutes itself on ${new Date(end).toLocaleString()}`;
+  return left;
+}
+
+// The "Mute for" choice next to an add box, in ms (0 = forever), back to
+// Forever afterwards. Only while Extra features 2 is on.
+function muteFor(id) {
+  const ms = state.settings.extrasX ? Number($(id).value) : 0;
+  $(id).value = '0';
+  return ms;
+}
+const FOR_TEXT = { 86400000: ' for 24 hours', 604800000: ' for 7 days', 2592000000: ' for 30 days' };
 
 // Words are shown in quotes; names with their r/ or u/ prefix.
 function display(k, name) {
@@ -197,13 +218,17 @@ function makeRow(k, name) {
   const label = document.createElement('span');
   label.textContent = display(k, name);
   const note = k === 'users' ? MuteStore.subNoteFor(state, name) : null;
+  const extra = document.createElement('span');
   if (note) {
     const from = document.createElement('span');
     from.className = 'from';
     from.textContent = ` · r/${note}`;
     from.title = `Muted from a post or comment in r/${note}`;
-    label.append(from);
+    extra.append(from);
   }
+  const left = k === 'subs' || k === 'users' ? timeLeft(k === 'subs' ? 's' : 'u', name) : null;
+  if (left) extra.append(left);
+  label.append(extra);
   const remove = document.createElement('button');
   remove.type = 'button';
   remove.className = 'remove';
@@ -219,7 +244,7 @@ function makeRow(k, name) {
     }
   });
   if (k === 'users') {
-    li.append(nameCell('u', name, display(k, name), label.querySelector('.from')), remove);
+    li.append(nameCell('u', name, display(k, name), extra.hasChildNodes() ? extra : null), remove);
   } else {
     li.append(label, remove);
   }
@@ -331,6 +356,8 @@ function render() {
   $('hide-duplicates').checked = !!state.settings.hideDuplicates;
   $('max-age').value = String(Number(state.settings.maxAgeHours) || 0);
   $('hide-crossposts').checked = !!state.settings.hideCrossposts;
+  $('hide-replies-muted').checked = !!state.settings.hideRepliesToMuted;
+  $('hide-comments-muted-posts').checked = !!state.settings.hideCommentsOnMutedPosts;
   $('enabled-switch').title = state.settings.enabled === false ? 'Off on Reddit. Click to turn on.' : 'On on Reddit. Click to turn off.';
   $('hide-comments').checked = !!state.settings.hideComments;
   $('default-feed').value = state.settings.defaultFeed || 'last';
@@ -421,7 +448,7 @@ function wordRow(word) {
   const li = document.createElement('li');
   const label = document.createElement('span');
   label.textContent = display('commentWords', word);
-  const cell = nameCell('w', word, label.textContent);
+  const cell = nameCell('w', word, label.textContent, timeLeft('w', word));
   const inComments = state.commentWords.includes(word);
   const titleIn = TITLE_KINDS.filter((k) => state[k].includes(word));
   const comments = wordBox(`Mute ${label.textContent} in comments`, inComments, false, async (on) => {
@@ -729,12 +756,16 @@ $('add-form').addEventListener('submit', async (e) => {
   const bad = [...here.bad, ...there.bad];
   const added = [...here.good.map((n) => PREFIX[kind] + n), ...there.good.map((n) => PREFIX[other] + n)];
   if (!added.length && !bad.length) return;
-  if (added.length && await save({ ...state, [kind]: [...state[kind], ...here.good], [other]: [...state[other], ...there.good] })) {
+  const ms = muteFor('add-for');
+  const type = (k) => (k === 'subs' ? 's' : 'u');
+  const next = MuteStore.withTimed(MuteStore.withTimed({ ...state, [kind]: [...state[kind], ...here.good], [other]: [...state[other], ...there.good] },
+    type(kind), here.good, ms), type(other), there.good, ms);
+  if (added.length && await save(next)) {
     $('add-input').value = bad.join(' ');
   }
   setStatus(bad.length
     ? `Not valid: ${bad.join(', ')}`
-    : `Muted ${added.join(', ')}`, bad.length > 0);
+    : `Muted ${added.join(', ')}${FOR_TEXT[ms] || ''}`, bad.length > 0);
 });
 
 $('filter').addEventListener('input', render);
@@ -761,8 +792,10 @@ $('word-form').addEventListener('submit', async (e) => {
   }
   const { good, bad } = parseWords($('word-input').value, /[,\n]+/);
   if (!good.length && !bad.length) return;
-  const next = { ...state };
-  for (const k of targets) next[k] = [...state[k], ...good];
+  const ms = muteFor('word-for');
+  const added = { ...state };
+  for (const k of targets) added[k] = [...state[k], ...good];
+  const next = MuteStore.withTimed(added, 'w', good, ms);
   if (good.length && await save(next)) {
     $('word-input').value = bad.join(', ');
     renderSummary();
@@ -771,7 +804,7 @@ $('word-form').addEventListener('submit', async (e) => {
   const where = targets.map((k) => PLACE[k]).join(', ').replace(/, ([^,]*)$/, ' and $1');
   setStatus(bad.length
     ? `Too short or long (2–100 characters): ${bad.join(', ')}`
-    : `Muted ${good.map((w) => `“${w}”`).join(', ')} on ${where}`, bad.length > 0);
+    : `Muted ${good.map((w) => `“${w}”`).join(', ')} on ${where}${FOR_TEXT[ms] || ''}`, bad.length > 0);
 });
 
 $('word-filter').addEventListener('input', render);
@@ -1067,6 +1100,8 @@ $('hide-seen').addEventListener('change', (e) => setSetting('hideSeen', e.target
 $('hide-duplicates').addEventListener('change', (e) => setSetting('hideDuplicates', e.target.checked));
 $('max-age').addEventListener('change', (e) => setSetting('maxAgeHours', Number(e.target.value)));
 $('hide-crossposts').addEventListener('change', (e) => setSetting('hideCrossposts', e.target.checked));
+$('hide-replies-muted').addEventListener('change', (e) => setSetting('hideRepliesToMuted', e.target.checked));
+$('hide-comments-muted-posts').addEventListener('change', (e) => setSetting('hideCommentsOnMutedPosts', e.target.checked));
 
 // Posts remembered as seen (content.js, background.js), on this device only.
 const SEEN_KEY = 'seenPosts';
@@ -1166,7 +1201,7 @@ $('export').addEventListener('click', () => {
 $('backup').addEventListener('click', () => {
   const data = {
     app: 'reddit-mute-list',
-    version: 9,
+    version: 10,
     exportedAt: new Date().toISOString(),
     subs: state.subs,
     users: state.users,
@@ -1177,6 +1212,7 @@ $('backup').addEventListener('click', () => {
     flairWords: state.flairWords,
     scopes: state.scopes,
     wordGroups: state.wordGroups,
+    timedMutes: state.timedMutes,
     recSubs: state.recSubs,
     recUsers: state.recUsers,
     keepSubs: state.keepSubs,
@@ -1218,7 +1254,7 @@ $('restore-file').addEventListener('change', async (e) => {
   }
 
   const replace = document.querySelector('input[name="restore-mode"]:checked').value === 'replace';
-  // Version 1 backups have no word lists; 1-2 no recommendation lists; 1-3 no keep list; 1-4 no comment words; 1-5 no user subreddit notes; 1-6 no Mute all whitelist; 1-7 no text or flair words or scopes; 1-8 no word lists.
+  // Version 1 backups have no word lists; 1-2 no recommendation lists; 1-3 no keep list; 1-4 no comment words; 1-5 no user subreddit notes; 1-6 no Mute all whitelist; 1-7 no text or flair words or scopes; 1-8 no word lists; 1-9 no timed mutes.
   const next = { settings: { ...state.settings, ...(data.settings || {}) } };
   for (const k of ALL_KINDS) {
     const restored = Array.isArray(data[k]) ? data[k] : [];
@@ -1394,7 +1430,7 @@ if (isPopup) watchPageSubs();
 /* ---------- Start ---------- */
 
 MuteStore.onChange((list) => {
-  state = list;
+  state = MuteStore.withoutExpired(list);
   render();
   usage();
   if (pageSubs.length) renderPageSubList();
@@ -1413,7 +1449,8 @@ chrome.storage.onChanged.addListener((changes, area) => {
 Promise.all([MuteStore.load(), chrome.storage.local.get([IMPORTS_KEY, SORT_KEY])]).then(([list, stored]) => {
   imports = stored[IMPORTS_KEY] || [];
   sortOrder = stored[SORT_KEY] || 'az';
-  state = list;
+  state = MuteStore.withoutExpired(list);
+  if (state !== list) MuteStore.save(state); // timed mutes that ended
   render();
   usage();
   renderFeeds();

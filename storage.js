@@ -31,10 +31,14 @@ const MuteStore = (() => {
   // the popup; the words themselves are in the word lists. Words no longer
   // muted drop out on save, and an empty list goes.
   const GROUP_KINDS = ['wordGroups'];
-  const ALL_KINDS = [...KINDS, ...WORD_KINDS, ...REC_KINDS, ...KEEP_KINDS, ...SKIP_KINDS, ...NOTE_KINDS, ...SCOPE_KINDS, ...GROUP_KINDS];
+  // Mutes with an end: "s<TAB>name<TAB>end in ms" (s sub, u user, w word).
+  // They stop applying at the end (effective) and leave the lists on the next
+  // save; entries for names no longer muted are dropped on save.
+  const TIMED_KINDS = ['timedMutes'];
+  const ALL_KINDS = [...KINDS, ...WORD_KINDS, ...REC_KINDS, ...KEEP_KINDS, ...SKIP_KINDS, ...NOTE_KINDS, ...SCOPE_KINDS, ...GROUP_KINDS, ...TIMED_KINDS];
   const SEP = {
     subs: ',', users: ',', popularWords: '\n', subWords: '\n', commentWords: '\n', bodyWords: '\n', flairWords: '\n',
-    recSubs: ',', recUsers: ',', keepSubs: ',', skipSubs: ',', userSubs: ',', scopes: '\n', wordGroups: '\n'
+    recSubs: ',', recUsers: ',', keepSubs: ',', skipSubs: ',', userSubs: ',', scopes: '\n', wordGroups: '\n', timedMutes: '\n'
   };
   const CHUNK_CHARS = 7000;
   const NAME_RE = /^[a-z0-9_-]{2,32}$/;
@@ -64,7 +68,9 @@ const MuteStore = (() => {
     hideSeen: false, // feed posts already on screen before this page load are hidden
     hideDuplicates: false, // feed posts of a link already showing are hidden
     maxAgeHours: 0, // feed posts older than this are hidden; 0 = off
-    hideCrossposts: false // crossposts of a muted sub's posts are hidden
+    hideCrossposts: false, // crossposts of a muted sub's posts are hidden
+    hideRepliesToMuted: false, // a muted user's comments go with everything under them
+    hideCommentsOnMutedPosts: false // no comments on the page of a muted user's post
   };
 
   // With extra features off, the page acts as the plain mute list: these
@@ -77,9 +83,10 @@ const MuteStore = (() => {
   const EXTRA_KINDS = ['bodyWords', 'flairWords', 'scopes'];
 
   // The same for the "Extra features 2 (X)" switch, on its own.
-  const X_SETTINGS = { hideSeen: false, hideDuplicates: false, maxAgeHours: 0, hideCrossposts: false };
+  const X_SETTINGS = { hideSeen: false, hideDuplicates: false, maxAgeHours: 0, hideCrossposts: false, hideRepliesToMuted: false, hideCommentsOnMutedPosts: false };
 
-  function effective(list) {
+  function effective(raw) {
+    const list = withoutExpired(raw);
     const x = list.settings?.extrasX ? {} : X_SETTINGS;
     if (list.settings?.extras) return { ...list, settings: { ...list.settings, ...x } };
     return { ...list, ...Object.fromEntries(EXTRA_KINDS.map((k) => [k, []])), settings: { ...list.settings, ...CORE_SETTINGS, ...x } };
@@ -148,6 +155,13 @@ const MuteStore = (() => {
     return n && list.length ? [n, ...list].join('\t') : null;
   }
 
+  // "s<TAB>name<TAB>end in ms".
+  function normalizeTimed(raw) {
+    const [type, name, end] = String(raw || '').split('\t');
+    const n = type === 's' ? normalizeSub(name) : type === 'u' ? normalizeUser(name) : type === 'w' ? normalizeWord(name) : null;
+    return n && Number(end) > 0 ? [type, n, Number(end)].join('\t') : null;
+  }
+
   // "user:sub", both plain names.
   function normalizeUserSub(raw) {
     const s = String(raw || '').trim().toLowerCase();
@@ -163,6 +177,7 @@ const MuteStore = (() => {
       : NOTE_KINDS.includes(kind) ? normalizeUserSub
       : SCOPE_KINDS.includes(kind) ? normalizeScope
       : GROUP_KINDS.includes(kind) ? normalizeGroup
+      : TIMED_KINDS.includes(kind) ? normalizeTimed
       : isSubKind(kind) ? normalizeSub
       : isUserKind(kind) ? normalizeUser : normalize;
     return [...new Set((names || []).map(norm).filter(Boolean))];
@@ -183,6 +198,47 @@ const MuteStore = (() => {
     const scopes = (list.scopes || []).filter((e) => !e.startsWith(prefix));
     if (subs?.length) scopes.push([type, name, mode, subs.join(' ')].join('\t'));
     return { ...list, scopes };
+  }
+
+  // When a timed mute ends, or null for one that doesn't.
+  function timedEnd(list, type, name) {
+    const prefix = `${type}\t${name}\t`;
+    const entry = list.timedMutes?.find((e) => e.startsWith(prefix));
+    return entry ? Number(entry.split('\t')[2]) : null;
+  }
+
+  // Gives names of one type ms more to run, or with no ms makes them forever.
+  function withTimed(list, type, names, ms) {
+    const ending = new Set(names.map((n) => `${type}\t${n}\t`));
+    const timedMutes = (list.timedMutes || []).filter((e) => !ending.has(e.slice(0, e.lastIndexOf('\t') + 1)));
+    if (ms) timedMutes.push(...names.map((n) => [type, n, Date.now() + ms].join('\t')));
+    return { ...list, timedMutes };
+  }
+
+  // The list without timed mutes that have ended (the same object if none have).
+  function withoutExpired(list) {
+    const now = Date.now();
+    const ended = (list.timedMutes || []).map((e) => e.split('\t')).filter((e) => Number(e[2]) <= now);
+    if (!ended.length) return list;
+    const gone = (type) => new Set(ended.filter((e) => e[0] === type).map((e) => e[1]));
+    const subs = gone('s');
+    const users = gone('u');
+    const words = gone('w');
+    const next = {
+      ...list,
+      timedMutes: list.timedMutes.filter((e) => Number(e.split('\t')[2]) > now),
+      subs: list.subs.filter((n) => !subs.has(n)),
+      users: list.users.filter((n) => !users.has(n))
+    };
+    for (const k of WORD_KINDS) next[k] = (list[k] || []).filter((w) => !words.has(w));
+    return next;
+  }
+
+  // The next end still to come, in ms, or null.
+  function nextEnd(list) {
+    const now = Date.now();
+    const ends = (list.timedMutes || []).map((e) => Number(e.split('\t')[2])).filter((end) => end > now);
+    return ends.length ? Math.min(...ends) : null;
   }
 
   // Version of the stored data's shape. Raise it, and add a step below, only
@@ -235,7 +291,8 @@ const MuteStore = (() => {
     return list;
   }
 
-  async function save(list) {
+  async function save(raw) {
+    const list = withoutExpired(raw);
     const from = await area();
     const prev = await from.get(null);
     const data = { settings: { ...DEFAULT_SETTINGS, ...(list.settings || {}) } };
@@ -249,7 +306,7 @@ const MuteStore = (() => {
     const words = new Set(WORD_KINDS.flatMap((k) => list[k] || []));
     for (const kind of ALL_KINDS) {
       let kept = (list[kind] || []).filter((n) => stored[kind].includes(n));
-      if (kind === 'userSubs' || kind === 'scopes' || kind === 'wordGroups') kept = [];
+      if (kind === 'userSubs' || kind === 'scopes' || kind === 'wordGroups' || kind === 'timedMutes') kept = [];
       const chunks = [];
       let chunk = '';
       let names = [...new Set([...clean(list[kind], kind), ...kept])];
@@ -260,6 +317,13 @@ const MuteStore = (() => {
           const left = list.filter((w) => words.has(w));
           return left.length ? [name, ...left].join('\t') : null;
         }).filter(Boolean);
+      }
+      if (kind === 'timedMutes') {
+        const subs = new Set(list.subs || []);
+        names = names.filter((n) => {
+          const [type, name] = n.split('\t');
+          return (type === 's' ? subs : type === 'u' ? users : words).has(name);
+        });
       }
       if (kind === 'scopes') {
         names = names.filter((n) => {
@@ -378,7 +442,7 @@ const MuteStore = (() => {
   }
 
   return {
-    KINDS, WORD_KINDS, REC_KINDS, KEEP_KINDS, SKIP_KINDS, NOTE_KINDS, SCOPE_KINDS, GROUP_KINDS, ALL_KINDS, subNoteFor, isSubKind, isUserKind,
-    normalize, refKind, normalizeSub, normalizeUser, normalizeWord, scopeOf, withScope, clean, load, save, add, remove, idle, onChange, onDevice, effective
+    KINDS, WORD_KINDS, REC_KINDS, KEEP_KINDS, SKIP_KINDS, NOTE_KINDS, SCOPE_KINDS, GROUP_KINDS, TIMED_KINDS, ALL_KINDS, subNoteFor, isSubKind, isUserKind,
+    normalize, refKind, normalizeSub, normalizeUser, normalizeWord, scopeOf, withScope, timedEnd, withTimed, withoutExpired, nextEnd, clean, load, save, add, remove, idle, onChange, onDevice, effective
   };
 })();

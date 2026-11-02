@@ -42,6 +42,8 @@
 body:not(.extras) .extra, body.extras .core { display: none !important; }
 /* The "Extra features 2 (X)" switch (settings.extrasX). */
 body:not(.extras-x) .extra-x, body.extras-x .extra-x-off { display: none !important; }
+.mute-for { margin-bottom: 0.5rem; }
+.mute-for .hint { margin: 0.25rem 0 0; }
 body:not(.extras) .word-table { --word-cols: minmax(0, 1fr) 4rem 2.4rem 1.8rem; }
 body:not(.extras) :is(.word-head > span, .word-table .list li > *):is(:nth-child(4), :nth-child(5)) { display: none; }
 

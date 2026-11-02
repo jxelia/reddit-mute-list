@@ -39,6 +39,17 @@
         <input id="add-input" type="text" autocomplete="off" spellcheck="false" aria-label="Names to mute">
         <button type="submit">Mute</button>
       </form>
+      <div class="extra-x mute-for">
+        <label class="check">Mute for
+          <select id="add-for">
+            <option value="0">Forever</option>
+            <option value="86400000">24 hours</option>
+            <option value="604800000">7 days</option>
+            <option value="2592000000">30 days</option>
+          </select>
+        </label>
+        <p class="hint">Mute a word, sub or user for a set time, which suits spoilers, sports results and news events. It unmutes itself.</p>
+      </div>
 
       <div class="toolbar">
         <input id="filter" type="search" placeholder="Filter" aria-label="Filter list">
@@ -69,6 +80,17 @@
         <input id="word-input" type="text" autocomplete="off" spellcheck="false" placeholder="Word or phrase; commas for several" aria-label="Words to mute">
         <button type="submit">Mute</button>
       </form>
+      <div class="extra-x mute-for">
+        <label class="check">Mute for
+          <select id="word-for">
+            <option value="0">Forever</option>
+            <option value="86400000">24 hours</option>
+            <option value="604800000">7 days</option>
+            <option value="2592000000">30 days</option>
+          </select>
+        </label>
+        <p class="hint">Mute a word, sub or user for a set time, which suits spoilers, sports results and news events. It unmutes itself.</p>
+      </div>
       <div class="scopes">
         <span>Mute in:</span>
         <label class="check"><input type="checkbox" id="word-comments" checked> Comments</label>
@@ -262,7 +284,7 @@
       <p class="hint" id="hidden-total"></p>
       </div>
       <label class="check"><input type="checkbox" id="extras-x"> Extra features 2 (X)</label>
-      <p class="hint extra-x-off">Feed filters based on X's published feed code: already-seen posts, repeated links, an age limit and crossposts from muted subreddits.</p>
+      <p class="hint extra-x-off">Feed filters based on X's published feed code: already-seen posts, repeated links, an age limit, crossposts from muted subreddits, replies to muted users, and mutes for a set time.</p>
       <div class="extra-x">
       <label class="check"><input type="checkbox" id="hide-seen"> Hide posts I've already seen</label>
       <p class="hint" id="seen-line"></p>
@@ -282,6 +304,10 @@
       <p class="hint">These apply on Home, r/popular, r/all and custom feeds.</p>
       <label class="check"><input type="checkbox" id="hide-crossposts"> Hide crossposts from muted subreddits</label>
       <p class="hint">On every page.</p>
+      <label class="check"><input type="checkbox" id="hide-replies-muted"> Hide replies to muted users' comments</label>
+      <p class="hint">The comment goes too, with everything under it.</p>
+      <label class="check"><input type="checkbox" id="hide-comments-muted-posts"> Hide comments on muted users' posts</label>
+      <p class="hint">On the post's own page.</p>
       </div>
     </details>
 
