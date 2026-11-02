@@ -1921,15 +1921,28 @@ function updatePageScope(force = true) {
 }
 
 // The default feed: background.js redirects page loads of the home page to
-// Reddit's own /?feed= address. Reddit opens links within the page, which that
-// can't see, so links to the home page get the address too.
+// Reddit's own /?feed= address, and the address bar goes back to plain / here,
+// before Reddit's scripts run. Reddit opens links within the page, which that
+// can't see, so a link to the home page has the address while it's being clicked,
+// and the bar is cleaned once that navigation ends: replaceState during one would
+// abort it, and with it Reddit's page load.
+function cleanFeedUrl() {
+  if (location.pathname === '/' && /^\?feed=(following|for-you)$/.test(location.search)) history.replaceState(history.state, '', '/');
+}
+cleanFeedUrl();
+window.addEventListener('afterRoute', () => {
+  (navigation.transition?.finished ?? Promise.resolve()).catch(() => {}).then(cleanFeedUrl);
+});
 document.addEventListener('click', (e) => {
   const feed = mutes.settings.defaultFeed;
   if (isOff() || !feed || feed === 'last') return;
   const link = e.composedPath().find((el) => el.localName === 'a' && el.href);
   if (!link) return;
   const url = new URL(link.href);
-  if (url.hostname === location.hostname && url.pathname === '/' && !url.search) link.href = `/?feed=${feed.replace(' ', '-')}`;
+  if (url.hostname !== location.hostname || url.pathname !== '/' || url.search) return;
+  const href = link.getAttribute('href');
+  link.href = `/?feed=${feed.replace(' ', '-')}`;
+  setTimeout(() => link.setAttribute('href', href));
 }, true);
 
 // The user's custom feeds and joined subs come from Reddit's own API (same
