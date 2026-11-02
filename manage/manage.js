@@ -948,12 +948,13 @@ function renderException(cfg) {
     }
   }
   cfg.box.querySelector('.chips').replaceChildren(...chips.map(([label, group]) => {
-    const chip = document.createElement('span');
+    const chip = document.createElement('button');
+    chip.type = 'button';
     chip.className = 'chip';
-    const x = document.createElement('button');
-    x.type = 'button';
-    x.setAttribute('aria-label', `Filter ${label} again`);
-    x.addEventListener('click', () => saveException(cfg, exceptTags(cfg).filter((t) => !group.includes(t))));
+    chip.setAttribute('aria-label', `${label}: filter again`);
+    const x = document.createElement('span');
+    x.className = 'x';
+    chip.addEventListener('click', () => saveException(cfg, exceptTags(cfg).filter((t) => !group.includes(t))));
     chip.append(label, x);
     return chip;
   }));
