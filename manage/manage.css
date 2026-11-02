@@ -306,14 +306,16 @@ summary { user-select: none; }
 /* No counts on the whitelist and imported groups (the user asked). */
 #skip-group > summary .count, #imports summary .count { display: none; }
 /* The main Subreddits / Users list fills its box edge to edge when open. */
-/* Its header (old header height, grey in the top 23%) is a plain bar (name and count in the tooltip) that scrolls away with the rows. */
+/* Its header (old header height, grey in the top 60%) is a plain bar (name and count in the tooltip) that scrolls away with the rows. */
 #main-group { padding: 0; max-height: 17rem; overflow-y: auto; }
 body:not(.popup) #main-group { max-height: 29rem; }
-#main-group > summary { height: 2.1rem; padding: 0; background: linear-gradient(rgb(128 128 128 / 23%) 23%, transparent 23%); list-style: none; }
+#main-group > summary { height: 2.1rem; padding: 0; background: linear-gradient(rgb(128 128 128 / 23%) 60%, transparent 60%); list-style: none; }
 #main-group > summary::-webkit-details-marker { display: none; }
 #main-group > summary > * { display: none; }
 /* Open, the rows start near the top, over the bar's empty part. What's left of the bar closes it. */
 #main-group[open]::details-content { margin-top: -1.6rem; }
+/* Open rows would sit over the shade; with motion on, motion.css slides it away instead. */
+@media (prefers-reduced-motion: reduce) { #main-group[open] > summary { background: none; } }
 #main-group .list { margin: 0; border: 0; border-radius: 0; max-height: none; overflow: visible; }
 #main-group > .empty { margin: 0; padding: 0.4rem 0.6rem; border-top: 1px solid var(--line); }
 
