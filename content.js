@@ -1925,21 +1925,29 @@ function openDefaultFeed() {
     const now = performance.now();
     if (userPicked || location.pathname !== '/' || isOff() || want === 'last' ||
         tab?.hasAttribute('faceplate-tab-selected') || now - started > 10000) {
-      document.removeEventListener('click', onClick, true);
+      if (clicked < 0) document.removeEventListener('click', onClick, true);
       return;
     }
     if (tab && now - clicked >= 3000 && tab.parentElement?.matches(':defined')) {
+      if (clicked < 0) watchFeedFetch(want, () => userPicked, () => document.removeEventListener('click', onClick, true));
       clicked = now;
-      clickWithoutFocus(tab);
+      clickLikeUser(tab);
     }
     setTimeout(tick, 100);
   };
   tick();
 }
 
-// Reddit focuses a tab when it's selected, which draws a focus ring on a page
-// nobody has touched yet.
-function clickWithoutFocus(el) {
+// A bare el.click() moved the highlight to the tab but made Reddit fetch the
+// other feed, so send what a real click sends. Reddit focuses a selected tab,
+// which draws a ring on a page nobody has touched yet, so focus comes off again.
+function clickLikeUser(el) {
+  const opts = { bubbles: true, composed: true, cancelable: true, button: 0 };
+  el.dispatchEvent(new PointerEvent('pointerdown', opts));
+  el.dispatchEvent(new MouseEvent('mousedown', opts));
+  el.focus({ preventScroll: true });
+  el.dispatchEvent(new PointerEvent('pointerup', opts));
+  el.dispatchEvent(new MouseEvent('mouseup', opts));
   el.click();
   // Checked, not a focus listener: a tab in the background gets no focus event.
   const started = performance.now();
@@ -1948,6 +1956,29 @@ function clickWithoutFocus(el) {
     if (performance.now() - started < 3000) setTimeout(check, 100);
   };
   check();
+}
+
+// If Reddit still fetches the other feed after the click, the tab and the feed
+// disagree. Reddit now remembers the tab, so one reload shows the right feed.
+function watchFeedFetch(want, userPicked, done) {
+  const wantFeed = want.replace(' ', '-');
+  const startedAt = performance.now();
+  const stop = () => { observer.disconnect(); clearTimeout(timer); done(); };
+  const observer = new PerformanceObserver((entries) => {
+    for (const entry of entries.getEntries()) {
+      const feed = entry.startTime >= startedAt && entry.name.match(/\/interest-home-feed\?feed=([a-z-]+)/)?.[1];
+      if (!feed) continue;
+      stop();
+      const last = Number(sessionStorage.getItem('rmute-feed-reload'));
+      if (feed !== wantFeed && !userPicked() && Date.now() - last > 30000) {
+        sessionStorage.setItem('rmute-feed-reload', Date.now());
+        location.reload();
+      }
+      return;
+    }
+  });
+  observer.observe({ type: 'resource' });
+  const timer = setTimeout(stop, 15000);
 }
 
 // The user's custom feeds and joined subs come from Reddit's own API (same
