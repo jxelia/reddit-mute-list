@@ -2,20 +2,36 @@
    Undo one detail: delete its section. Undo all: delete this file's <link> and
    motion.js's <script> in manage.html.
    With reduced motion on, none of it applies and manage.css looks as it did. */
+@property --ring { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+
 @media (prefers-reduced-motion: no-preference) {
   :root { --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1); }
 
-  /* 1. Tab underline: one line that slides to the clicked tab, in place of
-     manage.css's border. motion.js sets its place. */
-  .tabs { position: relative; }
-  .tabs button { transition: color 0.2s; }
-  .tabs[data-slide] button[aria-selected="true"] { border-bottom-color: transparent; }
-  .tabs[data-slide]::after {
-    content: ""; position: absolute; left: 0; bottom: -1px; height: 2px;
-    width: var(--tab-w); transform: translateX(var(--tab-x));
-    background: var(--accent);
+  /* 1. Tabs as a carousel: the titles sit on a ring seen from slightly above, the
+     selected one in front and a little larger, the others further round, smaller and
+     fainter, the opposite one furthest away. motion.js turns --ring, the shortest way
+     round. The line stays under the front title and takes its width. */
+  .tabs { position: relative; height: 3.75rem; container-type: inline-size; }
+  .tabs[data-ring="on"] { transition: --ring 0.55s var(--motion-ease); }
+  .tabs button {
+    --a: calc(var(--ring) + var(--i) * 90deg);
+    position: absolute; left: 50%; bottom: 0; margin: 0;
+    white-space: nowrap; transform-origin: 50% 100%;
+    translate: calc(-50% + sin(var(--a)) * min(35cqw, 13rem)) calc((cos(var(--a)) - 1) * 1rem);
+    scale: calc(0.875 + cos(var(--a)) * 0.275);
+    opacity: calc(0.7 + cos(var(--a)) * 0.3);
+    z-index: calc(10 + cos(var(--a)) * 10);
+    transition: color 0.2s;
   }
-  .tabs[data-slide="on"]::after { transition: width 0.35s var(--motion-ease), transform 0.35s var(--motion-ease); }
+  .tabs button:hover, .tabs button:focus-visible { opacity: 1; }
+  /* The furthest title lies just above the front one's box, so its clicks pass through. */
+  .tabs[data-ring] button[aria-selected="true"] { border-bottom-color: transparent; pointer-events: none; }
+  .tabs[data-ring]::after {
+    content: ""; position: absolute; left: 50%; bottom: -1px; height: 2px;
+    width: calc(var(--tab-w) * 1.15); translate: -50%;
+    background: var(--accent); z-index: 21;
+  }
+  .tabs[data-ring="on"]::after { transition: width 0.35s var(--motion-ease); }
 
   /* 2. Button press: drops 1px. Not tabs, whose line would move off the rule. */
   button:active:not(:disabled, .tabs button) { transform: translateY(1px); }

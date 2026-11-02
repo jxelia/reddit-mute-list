@@ -1,17 +1,26 @@
-// Popup motion trial: the sliding tab underline (motion.css) and lists growing open.
+// Popup motion trial: the tab carousel (motion.css) and lists growing open.
 // Nothing else depends on this file.
 (() => {
+  if (!matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
   const tabs = document.querySelector('.tabs');
+  const buttons = [...tabs.querySelectorAll('[role="tab"]')];
+  const STEP = 360 / buttons.length;
+  let ring = 0;
+
+  buttons.forEach((tab, i) => tab.style.setProperty('--i', i));
 
   function place() {
-    const tab = tabs.querySelector('[aria-selected="true"]');
+    const tab = buttons.find((b) => b.getAttribute('aria-selected') === 'true');
     if (!tab || !tab.offsetWidth) return;
-    tabs.style.setProperty('--tab-x', `${tab.offsetLeft}px`);
+    // The shortest way round from where the ring is now, so it never unwinds.
+    const turn = ((-buttons.indexOf(tab) * STEP - ring) % 360 + 540) % 360 - 180;
+    ring += turn;
+    tabs.style.setProperty('--ring', `${ring}deg`);
     tabs.style.setProperty('--tab-w', `${tab.offsetWidth}px`);
-    // No slide for the first placement, only from then on.
-    if (!tabs.dataset.slide) {
-      tabs.dataset.slide = 'ready';
-      requestAnimationFrame(() => requestAnimationFrame(() => { tabs.dataset.slide = 'on'; }));
+    // No turn for the first placement, only from then on.
+    if (!tabs.dataset.ring) {
+      tabs.dataset.ring = 'ready';
+      requestAnimationFrame(() => requestAnimationFrame(() => { tabs.dataset.ring = 'on'; }));
     }
   }
 
