@@ -1408,6 +1408,7 @@ function compilePresets() {
   const allParts = alternation(partCC.keys());
   return {
     places: new Set(words('places')),
+    placeEnds: new Set(words('placeEnds')),
     airlines: new Set(words('airlines')),
     airlineOf: tagMap(MutePresets.airlineItems),
     placeOf: tagMap(MutePresets.placeItems),
@@ -1433,11 +1434,20 @@ function compilePresets() {
   };
 }
 
+// The place a name ends with, whatever comes before it: r/PizzaChicago.
+function placeAtEnd(name, d) {
+  for (let i = 3; i <= name.length - 3; i++) {
+    if (d.placeEnds.has(name.slice(i))) return name.slice(i);
+  }
+  return null;
+}
+
 function isPlace(name, d) {
   if (d.places.has(name)) return true;
   const bare = name.replace(PLACE_PREFIX, '').replace(PLACE_SUFFIX, '');
   if (bare.length >= 3 && d.places.has(bare)) return true;
   if (d.partSkip.has(name)) return false;
+  if (placeAtEnd(name, d)) return true;
   const start = name.match(d.geoStart);
   if (start && !TOPIC_REST.test(start[2])) return true;
   const end = name.match(d.geoEnd);
@@ -1478,6 +1488,7 @@ function countryTags(name, d) {
   const tags = [...(d.placeOf.get(name) || []), ...(d.airlineOf.get(name) || [])];
   const bare = name.replace(PLACE_PREFIX, '').replace(PLACE_SUFFIX, '');
   if (bare !== name) tags.push(...(d.placeOf.get(bare) || []));
+  tags.push(...(d.placeOf.get(placeAtEnd(name, d)) || []));
   const start = name.match(d.partStart)?.[1];
   const end = name.match(d.partEnd)?.[1];
   for (const part of [start, end]) if (part) tags.push(...(d.partCC.get(part) || []));

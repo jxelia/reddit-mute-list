@@ -169,6 +169,17 @@ news = sorted(news_src.get(('names', ''), set()))
 news_parts = sorted(news_src.get(('parts', ''), set()))
 part_skip |= news_src.get(('skip', ''), set())
 
+# Place names that also count at the end of a sub name (src/placeends.txt).
+ends = {}
+with open(os.path.join(SRC, 'placeends.txt'), encoding='utf-8') as f:
+    for line in f:
+        line = line.split('#', 1)[0].strip()
+        if line:
+            kind, _, rest = line.partition(':')
+            ends.setdefault(kind, set()).update(rest.split())
+place_ends = sorted({n for n in places if len(n) >= 6 and n not in ends['skip']} | ends['short'])
+part_skip |= ends['names']
+
 
 def js_list(names):
     return "'" + ' '.join(names) + "'"
@@ -179,6 +190,7 @@ with open(os.path.join(HERE, 'presets.js'), 'w', encoding='utf-8') as f:
     f.write('// Space-separated subreddit names and name parts; content.js compiles them.\n')
     f.write('const MutePresets = {\n')
     f.write(f'  places: {js_list(places)},\n')
+    f.write(f'  placeEnds: {js_list(place_ends)},\n')
     f.write(f'  placeParts: {js_list(place_parts)},\n')
     f.write(f'  countryParts: {json.dumps(country_parts)},\n')
     f.write('  placeItems: [\n' + ',\n'.join('    ' + json.dumps(a) for a in place_items) + '\n  ],\n')

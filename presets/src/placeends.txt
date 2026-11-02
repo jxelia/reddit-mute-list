@@ -1,0 +1,32 @@
+# A place name at the end of a sub name counts as a place, whatever comes
+# before it: r/PizzaChicago, r/VeganSeattle. Every name in places.txt and
+# countries.txt with 6+ letters qualifies, unless it's listed here. Sorted by
+# hand once, ahead of time; nothing is looked up while browsing.
+# Rerun python3 presets/build.py after editing.
+
+# Also a person, thing or word, so r/LewisHamilton-style names stay out.
+skip: adelaide albany alexandria america american arlington augusta austin
+skip: barrie berkshire bismarck blackburn bolton bradford brandon branson brittany
+skip: brooklyn burbank burlington cairns canton carlisle charleston charlotte chester
+skip: cheshire chihuahua cleveland cologne columbus concepcion conservative cordoba
+skip: darwin dayton democrats denver dundee durango durham eugene everett fontana
+skip: florence fremont georgia gilbert gladstone gloucester granada guerrero
+skip: halifax hanover havana henderson hereford hidalgo houston irvine irving
+skip: jamaica kansas kingston kitchener lafayette lancaster lansing laredo lawrence
+skip: lebanon lexington lorraine madison mackay markham marlborough medicare medina
+skip: memphis montana montgomery napier nassau nelson newport norfolk orlando oxford
+skip: paisley panama paterson pereira perugia plymouth politics prescott preston
+skip: raleigh redding rhodes richmond rosario salisbury salvador santander santiago
+skip: santos sedona somerset stirling stockton sudbury sussex sydney syracuse
+skip: toledo trinidad trujillo turkey vaughan ventura vernon washington waterford
+skip: waterloo wellington worcester republican tories european europeans europe
+skip: socialsecurity bundesliga finanzen wohnen futebol investimentos arbeitsleben
+skip: democrat politicaldiscussion veteransbenefits commercialisti
+skip: braga hamburg bologna cambridge bristol lincolnshire
+
+# Shorter names too distinctive to turn up by accident (not Paris: r/EmilyInParis).
+short: nyc nola dfw slc okc atx pnw tokyo seoul miami dubai delhi kyoto osaka hanoi cairo tulsa omaha
+
+# Whole sub names that end in a place but aren't about it.
+names: realmadrid atleticomadrid fcbarcelona borussiadortmund ajaxamsterdam
+names: livefromnewyork genitalia pianola
