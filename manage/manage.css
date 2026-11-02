@@ -86,8 +86,8 @@ body:not(.popup) .page { padding: 3rem 1rem; }
 h1 { font-size: 1.25rem; margin: 0; }
 h2 { font-size: 0.95rem; margin: 0 0 0.5rem; }
 
-.usage, .hint, .note, .empty { color: var(--muted); font-size: 0.85rem; }
-.header .theme { margin-left: auto; } /* usage stays next to the title */
+.hint, .note, .empty { color: var(--muted); font-size: 0.85rem; }
+.header .theme { margin-left: auto; }
 
 /* On/off switch in the header. */
 .switch { display: inline-flex; align-self: center; cursor: pointer; }
