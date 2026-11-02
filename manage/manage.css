@@ -62,6 +62,8 @@ body {
 }
 
 body.popup { width: 360px; }
+/* Inner border just inside the popup window, whose own frame Chrome draws. Fixed, so it stays on the window's edge while the page scrolls. */
+body.popup::after { content: ""; position: fixed; inset: 3px; z-index: 10; border: 1px solid var(--line); border-radius: 10px; pointer-events: none; }
 
 .page {
   max-width: 34rem;
