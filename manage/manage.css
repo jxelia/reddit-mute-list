@@ -247,6 +247,11 @@ body.popup .word-section .list { max-height: 10rem; }
 .import-group .list { margin-top: 0.4rem; }
 .import-group > .link { margin-top: 0.4rem; }
 .import-group > .hint { margin: 0.4rem 0 0; }
+/* The main Subreddits / Users list fills its box edge to edge when open. */
+#main-group { padding: 0; overflow: hidden; }
+#main-group > summary { padding: 0.4rem 0.6rem; }
+#main-group .list { margin: 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; }
+#main-group > .empty { margin: 0; padding: 0.4rem 0.6rem; border-top: 1px solid var(--line); }
 
 /* Popup: mute every sub showing on the open Reddit tab. */
 .page-subs { position: relative; margin-bottom: 0.75rem; padding: 0.5rem 0.75rem; border: 1px solid var(--line); border-radius: 0.5rem; font-size: 0.85rem; }
