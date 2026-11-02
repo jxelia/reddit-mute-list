@@ -1071,7 +1071,7 @@ let pageKey = null;
 
 function savePageSubs() {
   if (!pageKey) return;
-  const entry = { at: Date.now(), path: pagePath, origin: pageOrigin, subs: pageSubs, open: $('page-subs-details').open };
+  const entry = { at: Date.now(), path: pagePath, origin: pageOrigin, subs: pageSubs };
   chrome.storage.local.set({ [pageKey]: entry }).catch(() => {});
 }
 
@@ -1145,7 +1145,6 @@ async function watchPageSubs() {
   const saved = stale.includes(pageKey) ? null : all[pageKey];
   if (saved?.subs.length && isFeedPath(saved.path)) {
     ({ path: pagePath, origin: pageOrigin, subs: pageSubs } = saved);
-    $('page-subs-details').open = saved.open;
     renderPageSubList();
   }
   const port = chrome.tabs.connect(tab.id, { name: 'rmute:pageSubs' });
@@ -1193,7 +1192,6 @@ function renderCounts({ shown, bar, hidden }) {
   $('page-counts').hidden = !(shown + bar + hidden);
 }
 
-$('page-subs-details').addEventListener('toggle', savePageSubs);
 if (isPopup) watchPageSubs();
 
 /* ---------- Start ---------- */
