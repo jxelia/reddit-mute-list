@@ -2,34 +2,32 @@
    Undo one detail: delete its section. Undo all: delete this file's <link> and
    motion.js's <script> in manage.html.
    With reduced motion on, none of it applies and manage.css looks as it did. */
-@property --ring { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
-
 @media (prefers-reduced-motion: no-preference) {
   :root { --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1); }
 
-  /* 1. Tabs as a carousel: the titles sit on a ring seen from slightly above, the
-     selected one in front and a little larger, the others further round, smaller and
-     fainter, the opposite one furthest away. motion.js turns --ring, the shortest way
-     round. The line stays under the front title and takes its width. */
-  .tabs { position: relative; height: 3.75rem; container-type: inline-size; }
-  .tabs[data-ring="on"] { transition: --ring 0.55s var(--motion-ease); }
-  .tabs button {
-    --a: calc(var(--ring) + var(--i) * 90deg);
-    position: absolute; left: 50%; bottom: 0; margin: 0;
-    white-space: nowrap; transform-origin: 50% 100%;
-    translate: calc(-50% + sin(var(--a)) * min(35cqw, 13rem)) calc((cos(var(--a)) - 1) * 1rem);
-    scale: calc(0.875 + cos(var(--a)) * 0.275);
-    opacity: calc(0.7 + cos(var(--a)) * 0.3);
-    z-index: calc(10 + cos(var(--a)) * 10);
-    transition: color 0.2s;
+  /* 1. Tabs as a lens-shaped carousel: the titles keep their order in one row, wrapped
+     round a drum seen side on, so the row tapers to both ends like an eye. The selected
+     title is always in the middle and a little larger; each step away is smaller, fainter
+     and turned further. motion.js sets each title's place. The line stays under the
+     selected title and takes its width. */
+  .tabs { position: relative; height: 2.75rem; border-bottom: none; }
+  .tabs[data-ring] button {
+    position: absolute; left: 50%; top: 50%; margin: 0; white-space: nowrap;
+    translate: calc(-50% + var(--x)) -50%;
+    scale: var(--s);
+    transform: perspective(320px) rotateY(var(--r));
+    opacity: var(--o);
   }
-  .tabs button:hover, .tabs button:focus-visible { opacity: 1; }
-  /* The furthest title lies just above the front one's box, so its clicks pass through. */
-  .tabs[data-ring] button[aria-selected="true"] { border-bottom-color: transparent; pointer-events: none; }
+  .tabs[data-ring="on"] button {
+    transition: translate 0.45s var(--motion-ease), scale 0.45s var(--motion-ease),
+      transform 0.45s var(--motion-ease), opacity 0.45s var(--motion-ease), color 0.2s;
+  }
+  .tabs[data-ring] button:hover, .tabs[data-ring] button:focus-visible { opacity: 1; }
+  .tabs[data-ring] button[aria-selected="true"] { border-bottom-color: transparent; }
   .tabs[data-ring]::after {
-    content: ""; position: absolute; left: 50%; bottom: -1px; height: 2px;
-    width: calc(var(--tab-w) * 1.15); translate: -50%;
-    background: var(--accent); z-index: 21;
+    content: ""; position: absolute; left: 50%; bottom: 0; height: 2px;
+    width: var(--tab-w); translate: -50%;
+    background: var(--accent);
   }
   .tabs[data-ring="on"]::after { transition: width 0.35s var(--motion-ease); }
 

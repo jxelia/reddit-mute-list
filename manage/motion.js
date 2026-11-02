@@ -4,20 +4,51 @@
   if (!matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
   const tabs = document.querySelector('.tabs');
   const buttons = [...tabs.querySelectorAll('[role="tab"]')];
-  const STEP = 360 / buttons.length;
-  let ring = 0;
-
-  buttons.forEach((tab, i) => tab.style.setProperty('--i', i));
+  // By steps from the selected title: size, turn round the drum, opacity.
+  const SIZE = [1.1, 0.82, 0.66, 0.56];
+  const TURN = [0, 16, 28, 38];
+  const FADE = [1, 0.75, 0.55, 0.42];
+  const OVERHANG = 8; // past the page's edge on each side, still inside its padding
+  const MIN_GAP = 3;
+  const MAX_GAP = 14;
+  const textWidth = (b) => {
+    const box = getComputedStyle(b);
+    return b.offsetWidth - parseFloat(box.paddingLeft) - parseFloat(box.paddingRight);
+  };
+  const setPlace = (b, x, d, side, fit = 1) => {
+    b.style.setProperty('--x', `${x}px`);
+    b.style.setProperty('--s', SIZE[d] * fit);
+    b.style.setProperty('--r', `${side * TURN[d]}deg`);
+    b.style.setProperty('--o', FADE[d]);
+  };
 
   function place() {
     const tab = buttons.find((b) => b.getAttribute('aria-selected') === 'true');
     if (!tab || !tab.offsetWidth) return;
-    // The shortest way round from where the ring is now, so it never unwinds.
-    const turn = ((-buttons.indexOf(tab) * STEP - ring) % 360 + 540) % 360 - 180;
-    ring += turn;
-    tabs.style.setProperty('--ring', `${ring}deg`);
-    tabs.style.setProperty('--tab-w', `${tab.offsetWidth}px`);
-    // No turn for the first placement, only from then on.
+    const middle = buttons.indexOf(tab);
+    const front = textWidth(tab) * SIZE[0];
+    const room = tabs.clientWidth / 2 + OVERHANG - front / 2;
+
+    // Each side shares out its own room: spaced out when it has few or short titles,
+    // shrunk a little when its titles wouldn't otherwise fit.
+    [-1, 1].forEach((side) => {
+      const row = [];
+      for (let d = 1, b; (b = buttons[middle + side * d]); d++) {
+        row.push({ b, d, wide: textWidth(b) * SIZE[d] * Math.cos(TURN[d] * Math.PI / 180) });
+      }
+      const total = row.reduce((sum, t) => sum + t.wide, 0);
+      const fit = Math.min(1, (room - MIN_GAP * row.length) / total);
+      const gap = Math.min(MAX_GAP, (room - total * fit) / row.length);
+      let edge = front / 2;
+      for (const { b, d, wide } of row) {
+        edge += gap + wide * fit / 2;
+        setPlace(b, side * edge, d, side, fit);
+        edge += wide * fit / 2;
+      }
+    });
+    setPlace(tab, 0, 0, 1);
+    tabs.style.setProperty('--tab-w', `${front}px`);
+    // No movement for the first placement, only from then on.
     if (!tabs.dataset.ring) {
       tabs.dataset.ring = 'ready';
       requestAnimationFrame(() => requestAnimationFrame(() => { tabs.dataset.ring = 'on'; }));
