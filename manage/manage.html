@@ -235,6 +235,14 @@
         Also hide comments from muted users
       </label>
       <p class="hint">Off: only hides their posts but allows them to comment in your midst.</p>
+      <label class="check">reddit.com default to
+        <select id="default-feed">
+          <option value="last">Last selected</option>
+          <option value="following">Following</option>
+          <option value="for you">For You</option>
+        </select>
+      </label>
+      <p class="hint">Overrides which feed was selected last to open as your selected feed every time the page loads.</p>
       <label class="check"><input type="checkbox" id="extras"> Extra features</label>
       <p class="hint core">Post text and flair words, limiting words and users to some subreddits, word lists, sorting, hidden-post counts, and more comment and feed options.</p>
       <div class="extra">

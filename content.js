@@ -1737,8 +1737,48 @@ function updatePageScope(force = true) {
   }
   if (scope) document.documentElement.dataset.rmutePage = scope;
   else delete document.documentElement.dataset.rmutePage;
+  if (location.pathname === '/') openDefaultFeed();
+  else feedDone = false;
   // Home and r/popular bars need no re-marking here: each post keeps the
   // scope it was loaded with (postScope).
+}
+
+// On arriving at the home page, pick the default feed's tab (a role=tab button,
+// id feed-tab-N, no URL of its own) once. Clicks repeat until the tab shows as
+// selected, since one made before Reddit's script is ready does nothing. A
+// tab the user clicks meanwhile, or afterwards, stays.
+let feedDone = false;
+function openDefaultFeed() {
+  if (feedDone) return;
+  feedDone = true;
+  const isTabEl = (el) => el.matches?.('[role="tab"]');
+  let userPicked = false;
+  const onClick = (e) => { if (e.isTrusted && e.composedPath().some(isTabEl)) userPicked = true; };
+  document.addEventListener('click', onClick, true);
+  const started = performance.now();
+  let ticks = 0;
+  let clicked = 0;
+  const tick = () => {
+    ticks++;
+    // Before the list loads the setting is missing; wait for it.
+    const want = mutes.settings.defaultFeed;
+    const isTab = (el) => isTabEl(el) && el.textContent.trim().toLowerCase() === want;
+    // The tab is a slotted light-DOM button; shadow roots are searched once a second.
+    const tab = want && ([...document.querySelectorAll('[role="tab"]')].find(isTab) ||
+      (ticks % 10 === 0 ? [...walk(document)].find(isTab) : null));
+    const now = performance.now();
+    if (userPicked || location.pathname !== '/' || isOff() || want === 'last' ||
+        tab?.getAttribute('aria-selected') === 'true' || now - started > 10000) {
+      document.removeEventListener('click', onClick, true);
+      return;
+    }
+    if (tab && now - clicked >= 500) {
+      clicked = now;
+      tab.click();
+    }
+    setTimeout(tick, 100);
+  };
+  tick();
 }
 
 // The user's custom feeds and joined subs come from Reddit's own API (same
