@@ -23,6 +23,18 @@
   /* 3. Theme icon: fades to full color on hover. */
   .header .theme { transition: color 0.2s; }
 
+  /* 4. Mute list bar: its shaded strip slides up into the top border on opening, and
+     back down a little faster on closing. motion.js holds a click's close until the
+     box has shrunk, so data-closing is what starts the way back. */
+  #main-group > summary {
+    background: linear-gradient(rgb(128 128 128 / 23%), rgb(128 128 128 / 23%)) 0 0 / 100% 0.483rem no-repeat;
+    transition: background-position 0.2s ease-out;
+  }
+  #main-group[open]:not([data-closing]) > summary {
+    background-position: 0 -0.483rem;
+    transition: background-position 0.3s ease-out;
+  }
+
   /* Colors change at once during the theme circle, so the new look isn't revealed mid-fade. */
   :root:active-view-transition * { transition: none !important; }
 }

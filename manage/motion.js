@@ -20,32 +20,63 @@
   place();
 })();
 
-// The mute list and built-in filter lists grow open, contents fixed in place. The
-// popup window follows the page's height and resizing it every frame judders, so the
-// page takes its final height at once and the box grows inside that. Opening only.
+// The mute list and built-in filter lists grow open and shrink closed, contents fixed
+// in place. The popup window follows the page's height and resizing it every frame
+// judders, so the page keeps its tall height throughout: the window grows once before
+// opening and shrinks once after closing.
 (() => {
   if (!matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
+  const LISTS = '#main-group, .presets details';
   const page = document.documentElement;
   let running = null;
+  let closing = null;
 
   const stop = () => {
     running?.cancel();
-    running = null;
+    closing?.removeAttribute('data-closing');
+    running = closing = null;
     page.style.minHeight = '';
   };
+
+  const closedHeight = (el) => {
+    const box = getComputedStyle(el);
+    return ['paddingTop', 'paddingBottom', 'borderTopWidth', 'borderBottomWidth']
+      .reduce((sum, side) => sum + parseFloat(box[side]), el.querySelector(':scope > summary').offsetHeight);
+  };
+
+  function resize(el, from, to, duration, end) {
+    page.style.minHeight = `${page.scrollHeight}px`;
+    running = el.animate(
+      { height: [`${from}px`, `${to}px`], overflow: ['hidden', 'hidden'] },
+      { duration, easing: 'ease-out', fill: 'forwards' }
+    );
+    running.onfinish = end;
+  }
 
   // Runs after manage.js's own observer has built a list that fills in on opening.
   new MutationObserver((records) => {
     stop();
-    const el = records.map((r) => r.target).find((t) => t.open && t.matches('#main-group, .presets details') && t.offsetHeight);
-    if (!el) return;
-    const box = getComputedStyle(el);
-    const edges = ['paddingTop', 'paddingBottom', 'borderTopWidth', 'borderBottomWidth'].reduce((sum, side) => sum + parseFloat(box[side]), 0);
-    page.style.minHeight = `${page.scrollHeight}px`;
-    running = el.animate(
-      { height: [`${el.querySelector(':scope > summary').offsetHeight + edges}px`, `${el.offsetHeight}px`], overflow: ['hidden', 'hidden'] },
-      { duration: 300, easing: 'ease-out' }
-    );
-    running.onfinish = stop;
+    const el = records.map((r) => r.target).find((t) => t.open && t.matches(LISTS) && t.offsetHeight);
+    if (el) resize(el, closedHeight(el), el.offsetHeight, 300, stop);
   }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['open'] });
+
+  // A summary click would close at once, so the close is held until the box has shrunk.
+  // A click partway through turns it round from the height it's at.
+  document.addEventListener('click', (e) => {
+    const el = e.target.closest('summary')?.parentElement;
+    if (!el?.open || !el.matches(LISTS)) return;
+    e.preventDefault();
+    const from = el.offsetHeight;
+    if (closing === el) {
+      stop();
+      return resize(el, from, el.offsetHeight, 300, stop);
+    }
+    stop();
+    closing = el;
+    el.setAttribute('data-closing', ''); // the bar's shade comes back as it starts (motion.css)
+    resize(el, from, closedHeight(el), 200, () => {
+      el.open = false;
+      stop();
+    });
+  }, true);
 })();
