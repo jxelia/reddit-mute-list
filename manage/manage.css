@@ -255,6 +255,8 @@ body.popup .word-section .list { max-height: 10rem; }
 .presets { margin-bottom: 0.75rem; }
 .presets .check { margin-bottom: 0.3rem; }
 .presets .hint { margin-top: 0.4rem; }
+/* A double-click on a summary otherwise selects the whole list under it. */
+summary { user-select: none; }
 .presets summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; }
 .presets textarea { height: 10rem; margin-top: 0.4rem; }
 /* Exceptions under each built-in filter (manage.js EXCEPTIONS): chips, an add box and a full list */

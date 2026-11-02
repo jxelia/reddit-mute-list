@@ -23,19 +23,6 @@
   /* 3. Theme icon: fades to full color on hover. */
   .header .theme { transition: color 0.2s; }
 
-  /* 4. Mute list and built-in filter lists: the box itself grows open, contents
-     fixed in place. Height, so the popup window grows with it. The list can be
-     thousands of pixels tall, so the mute list grows to its capped height (manage.css's
-     max-height), not its content's. The transition is on the open state only, so
-     collapsing is instant, and returning to a tab doesn't replay it. */
-  #main-group { height: calc(2.1rem + 2px); } /* summary + borders */
-  #main-group[open] { height: calc-size(auto, min(size, 17rem)); transition: height 0.3s ease-out; }
-  body:not(.popup) #main-group[open] { height: calc-size(auto, min(size, 29rem)); }
-
-  .presets details { interpolate-size: allow-keywords; }
-  .presets details::details-content { height: 0; overflow: clip; overflow-clip-margin: 4px; } /* room for focus rings */
-  .presets details[open]::details-content { height: auto; transition: height 0.3s ease-out; }
-
   /* Colors change at once during the theme circle, so the new look isn't revealed mid-fade. */
   :root:active-view-transition * { transition: none !important; }
 }

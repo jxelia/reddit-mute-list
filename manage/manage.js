@@ -942,7 +942,8 @@ function setupException(cfg) {
     const name = exceptName(input.value);
     if (name) { input.value = ''; setException(cfg, name, true); }
   });
-  box.querySelector('.see-all').addEventListener('toggle', () => renderException(cfg));
+  // Not the toggle event, which comes after the box's height is measured (motion.js).
+  new MutationObserver(() => renderException(cfg)).observe(box.querySelector('.see-all'), { attributes: true, attributeFilter: ['open'] });
 }
 
 const exceptTags = (cfg) => state.settings[cfg.key] || [];
