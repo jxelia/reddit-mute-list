@@ -253,7 +253,7 @@ html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toa
   color: var(--color-neutral-content-weak, #576f76);
 }
 
-/* A comment with a muted word, shrunk to one line (markComment). */
+/* A muted user's or muted-word comment, shrunk to one line (markComment). */
 .rmute-cbar {
   display: flex;
   align-items: center;
@@ -278,6 +278,23 @@ html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toa
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.rmute-cbar button {
+  flex: none;
+  margin-left: 0.75rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-neutral-content-strong, currentColor);
+  font: inherit;
+  font-style: normal;
+  cursor: pointer;
+}
+.rmute-cbar button:hover {
+  text-decoration: underline;
+}
+.rmute-cbar button[hidden] {
+  display: none;
 }
 
 /* Popup's page list: a double-clicked sub's post, scrolled to. */

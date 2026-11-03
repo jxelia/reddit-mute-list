@@ -103,11 +103,11 @@ function buildCss(list) {
     const where = (kind) => (scope ? scopeSel(scope, kind) : '');
     posts.push(`:is(${POST_SELECTOR})${attrMatch('author', u)}${where('post')}`);
     other.push(`.thing.link${attrMatch('data-author', u)}${where('old')}`);
-    // Only the comment itself goes, not its replies (ownParts). Old Reddit
-    // keeps replies in .child.
+    // Only the comment itself goes, not its replies (ownParts), down to the bar
+    // markComment() puts in it. Old Reddit keeps replies in .child.
     if (list.settings.hideComments) {
       hiddenAuthors.push(`${attrMatch('author', u)}${where('comment')}`);
-      other.push(`.thing.comment${attrMatch('data-author', u)}${where('old')} > :not(.child)`);
+      other.push(`.thing.comment${attrMatch('data-author', u)}${where('old')}:not([data-rmute-open]) > :not(.child, .rmute-cbar)`);
     }
     // The comment with everything under it.
     if (list.settings.hideRepliesToMuted) {
@@ -117,7 +117,7 @@ function buildCss(list) {
   // One selector per 100 users: its cost grows with the number of selectors,
   // much less with the names in one.
   for (let i = 0; i < hiddenAuthors.length; i += 100) {
-    commentRules.push(ownParts(`shreddit-comment:is(${hiddenAuthors.slice(i, i + 100).join(', ')})`));
+    commentRules.push(ownParts(`shreddit-comment:is(${hiddenAuthors.slice(i, i + 100).join(', ')}):not([data-rmute-open])`, '.rmute-cbar'));
   }
   // Comments with a muted word shrink to the bar markComment() puts in them
   // (long-pressing it hides the replies too), or go completely.
@@ -131,9 +131,9 @@ function buildCss(list) {
   } else {
     const cword = 'shreddit-comment[data-rmute-cword]:not([data-rmute-open])';
     commentRules.push(ownParts(cword, '.rmute-cbar'));
-    other.push('.thing.comment[data-rmute-cword]:not([data-rmute-open]) > :not(.child, .rmute-cbar)',
-      ':is(shreddit-comment, .thing.comment)[data-rmute-noreplies] > :not(.rmute-cbar)');
+    other.push('.thing.comment[data-rmute-cword]:not([data-rmute-open]) > :not(.child, .rmute-cbar)');
   }
+  other.push(':is(shreddit-comment, .thing.comment)[data-rmute-noreplies] > :not(.rmute-cbar)');
   if (list.settings.hideCommentAvatars) other.push('shreddit-comment [slot="commentAvatar"] > *', '.thing.comment > .entry .tagline .author-avatar');
   if (list.settings.commentNames === 'hide') {
     other.push(`${COMMENT_NAME}, .thing.comment > .entry .tagline :is(.author, .userattrs)`);
@@ -193,14 +193,16 @@ const COMMENT_NAME = 'shreddit-comment [slot="commentMeta"] faceplate-tracker[no
 
 // A comment's own parts (header, text, actions) but not its replies. Replies
 // sit deep inside the comment (details > div > div > shreddit-comment[slot="children-…"]),
-// so walk the path down to them: at each level hide the siblings that hold
-// no reply, and never touch anything inside a reply. keep: also left showing.
+// so go down to them: at each level hide what holds no reply, and never go
+// through a reply. keep: also left showing, contents included.
 // This runs on every element of every page, so the check that it's in a comment
 // comes first (Chrome tests a compound left to right). With :has() first, it
 // scanned each element's subtree: style passes took 10 times as long, adding a post 25.
 function ownParts(c, keep) {
   const reply = `shreddit-comment, [slot^="children"], [slot*="more" i]`;
-  return `:is(${c} > *, :is(${c} *):not(${c} shreddit-comment *):has(${reply}) > *):not(${reply}, :has(${reply})${keep ? ', ' + keep : ''})`;
+  const step = ` > :not(${reply}${keep ? ', ' + keep : ''})`;
+  const levels = [0, 1, 2, 3, 4].map((n) => `${c}${step.repeat(n)} > *`);
+  return `:is(${c} *):is(${levels.join(', ')}):not(${reply}, :has(${reply})${keep ? ', ' + keep : ''})`;
 }
 
 // The popup's on/off switch. Off: no hiding, nothing added to the page
@@ -1484,48 +1486,63 @@ function commentSub(c) {
 }
 
 function markComment(c) {
-  const hit = wordHit(wordMatchers.commentWords, commentText(c), commentSub(c));
+  const sub = commentSub(c);
+  const hit = wordHit(wordMatchers.commentWords, commentText(c), sub);
   if (hit) c.dataset.rmuteCword = hit.text;
   else delete c.dataset.rmuteCword;
-  // Hidden completely: no bar.
-  syncCommentBar(c, mutes.settings.commentAction === 'hide' ? null : hit?.text);
+  const author = c.getAttribute('author') || c.dataset.author;
+  const user = mutes.settings.hideComments && userMuted(author?.toLowerCase(), sub);
+  // Word comments hidden completely: no bar for the word.
+  const word = hit && mutes.settings.commentAction !== 'hide';
+  syncCommentBar(c, [user && 'user', word && 'word'].filter(Boolean).join(', '));
 }
 
-// The bar a muted-word comment shrinks to: click shows the comment (and
-// shrinks it again), pressing and holding hides its replies too, like
-// clicking Reddit's thread line.
+// The bar a muted user's or muted-word comment shrinks to, with only the name
+// on it. A click adds why ("user", "word") and a Show comment button, pressing
+// and holding hides its replies too, like clicking Reddit's thread line.
 const LONG_PRESS_MS = 500;
 
-function syncCommentBar(c, word) {
+function syncCommentBar(c, reason) {
   let bar = c.querySelector(':scope > .rmute-cbar');
-  if (!word) {
+  if (!reason) {
     bar?.remove();
     c.removeAttribute('data-rmute-open');
     c.removeAttribute('data-rmute-noreplies');
     return;
   }
   const names = mutes.settings.commentNames === 'show';
-  const key = `${word} ${names}`;
+  const key = `${reason} ${names}`;
   if (bar?.dataset.key === key) return;
   bar?.remove();
   // Replies start hidden too when the popup says so.
-  if (!bar && mutes.settings.commentHideReplies) c.setAttribute('data-rmute-noreplies', '');
+  if (!bar && mutes.settings.commentHideReplies && reason.includes('word')) c.setAttribute('data-rmute-noreplies', '');
   bar = document.createElement('div');
   bar.dataset.key = key;
   bar.className = 'rmute-cbar';
-  bar.dataset.word = word;
   bar.setAttribute('role', 'button');
   bar.tabIndex = 0;
   const author = names ? c.getAttribute('author') || c.dataset.author : null;
   const label = document.createElement('span');
+  const show = document.createElement('button');
+  show.type = 'button';
+  let why = false;
   const update = () => {
     const open = c.hasAttribute('data-rmute-open');
     const noReplies = c.hasAttribute('data-rmute-noreplies');
-    const state = noReplies ? ' and its replies hidden' : open ? ' shown' : '';
-    label.textContent = `${author ? `u/${author}: ` : ''}comment with hidden word${state}`;
-    bar.setAttribute('aria-expanded', String(open));
-    bar.title = noReplies ? 'Click to show the replies again' : `Click to ${open ? 'hide' : 'show'}. Press and hold to hide the replies too.`;
+    label.textContent = [author && `u/${author}`, why && reason].filter(Boolean).join(' · ') || '…';
+    show.hidden = !why;
+    show.textContent = open ? 'Hide comment' : 'Show comment';
+    bar.setAttribute('aria-expanded', String(why));
+    bar.title = noReplies ? 'Click to show the replies again' : 'Press and hold to hide the replies too';
   };
+  show.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    c.toggleAttribute('data-rmute-open');
+    update();
+  });
+  // Not the bar's click, hold or keys.
+  for (const type of ['pointerdown', 'keydown']) show.addEventListener(type, (e) => e.stopPropagation());
   let timer = null;
   let held = false;
   bar.addEventListener('pointerdown', (e) => {
@@ -1541,7 +1558,10 @@ function syncCommentBar(c, word) {
   for (const type of ['pointerup', 'pointerleave', 'pointercancel']) bar.addEventListener(type, () => clearTimeout(timer));
   const toggle = () => {
     if (c.hasAttribute('data-rmute-noreplies')) c.removeAttribute('data-rmute-noreplies');
-    else c.toggleAttribute('data-rmute-open');
+    else if (c.hasAttribute('data-rmute-open')) {
+      c.removeAttribute('data-rmute-open');
+      why = false;
+    } else why = !why;
     update();
   };
   bar.addEventListener('click', (e) => {
@@ -1556,7 +1576,7 @@ function syncCommentBar(c, word) {
     toggle();
   });
   bar.addEventListener('contextmenu', (e) => { if (held) e.preventDefault(); }); // touch long-press
-  bar.append(label);
+  bar.append(label, show);
   update();
   c.prepend(bar);
 }
@@ -1901,12 +1921,12 @@ function markTitles(root = document) {
       if (bar.nextElementSibling) syncDecideBar(bar.nextElementSibling, null);
       else bar.remove();
     });
-    document.querySelectorAll('.rmute-cbar').forEach((bar) => syncCommentBar(bar.parentElement, null));
+    document.querySelectorAll('.rmute-cbar').forEach((bar) => syncCommentBar(bar.parentElement, ''));
     return;
   }
   if (root.matches?.(`${POST_SELECTOR}, .thing.link`)) markTitle(root);
   root.querySelectorAll?.(`${POST_SELECTOR}, .thing.link`).forEach(markTitle);
-  if (!wordMatchers.commentWords && !document.querySelector('.rmute-cbar')) return;
+  if (!wordMatchers.commentWords && !(mutes.settings.hideComments && mutes.users.length) && !document.querySelector('.rmute-cbar')) return;
   if (root.matches?.(COMMENT_SELECTOR)) markComment(root);
   root.querySelectorAll?.(COMMENT_SELECTOR).forEach(markComment);
 }
