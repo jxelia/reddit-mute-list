@@ -5,6 +5,7 @@ const isOldReddit = location.hostname === 'old.reddit.com';
 // Material icons (Apache 2.0), 24x24. mute is our own: an outline speaker with
 // a slash (same winding as the outline so the overlap stays filled).
 const ICONS = {
+  expand: 'M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16zm1-13h-2v4H7v2h4v4h2v-4h4v-2h-4V7z',
   join: 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z',
   mute: 'M6 9h4l5-5v16l-5-5H6zm2 2v2h2.83L13 15.17V8.83L10.83 11zM4.71 3.29l16 16-1.42 1.42-16-16z',
   unmute: 'M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z',
@@ -98,6 +99,7 @@ function buildCss(list) {
   // A hidden post takes its bar with it.
   other.push(`.rmute-decide:has(+ :is(${rename ? '' : wordAnywhere.join(', ') + ', '}${feedHidden}))`);
   const hiddenAuthors = [];
+  const lineRules = [];
   for (const u of list.users) {
     const scope = MuteStore.scopeOf(list, 'u', u);
     const where = (kind) => (scope ? scopeSel(scope, kind) : '');
@@ -117,7 +119,9 @@ function buildCss(list) {
   // One selector per 100 users: its cost grows with the number of selectors,
   // much less with the names in one.
   for (let i = 0; i < hiddenAuthors.length; i += 100) {
-    commentRules.push(ownParts(`shreddit-comment:is(${hiddenAuthors.slice(i, i + 100).join(', ')}):not([data-rmute-open])`, '.rmute-cbar'));
+    const c = `shreddit-comment:is(${hiddenAuthors.slice(i, i + 100).join(', ')}):not([data-rmute-open])`;
+    commentRules.push(ownParts(c, '.rmute-cbar'));
+    lineRules.push(...threadLine(c));
   }
   // Comments with a muted word shrink to the bar markComment() puts in them
   // (long-pressing it hides the replies too), or go completely.
@@ -126,14 +130,18 @@ function buildCss(list) {
     if (list.settings.commentHideReplies) other.push(anyCword);
     else {
       commentRules.push(ownParts('shreddit-comment[data-rmute-cword]'));
+      lineRules.push(...threadLine('shreddit-comment[data-rmute-cword]'));
       other.push('.thing.comment[data-rmute-cword] > :not(.child)');
     }
   } else {
     const cword = 'shreddit-comment[data-rmute-cword]:not([data-rmute-open])';
     commentRules.push(ownParts(cword, '.rmute-cbar'));
+    lineRules.push(...threadLine(cword));
     other.push('.thing.comment[data-rmute-cword]:not([data-rmute-open]) > :not(.child, .rmute-cbar)');
   }
   other.push(':is(shreddit-comment, .thing.comment)[data-rmute-noreplies] > :not(.rmute-cbar)');
+  // A thread closed with Reddit's line: the bar is its row, with a + (syncCommentBar).
+  other.push('shreddit-comment:has(> .rmute-cbar) > details:not([open])');
   if (list.settings.hideCommentAvatars) other.push('shreddit-comment [slot="commentAvatar"] > *', '.thing.comment > .entry .tagline .author-avatar');
   if (list.settings.commentNames === 'hide') {
     other.push(`${COMMENT_NAME}, .thing.comment > .entry .tagline :is(.author, .userattrs)`);
@@ -165,6 +173,7 @@ function buildCss(list) {
   // few hundred muted subs left the end of the list, and the bar collapse
   // after it, doing nothing.
   const rules = commentRules.map((sel) => `${sel} { display: none !important; }`);
+  rules.push(...lineRules);
   for (let i = 0; i < selectors.length; i += 100) {
     rules.push(selectors.slice(i, i + 100).join(',\n') + ' { display: none !important; }');
   }
@@ -198,11 +207,25 @@ const COMMENT_NAME = 'shreddit-comment [slot="commentMeta"] faceplate-tracker[no
 // This runs on every element of every page, so the check that it's in a comment
 // comes first (Chrome tests a compound left to right). With :has() first, it
 // scanned each element's subtree: style passes took 10 times as long, adding a post 25.
+// With the comment's text and action row gone, the line's click strip has no
+// avatar to start under, and the replies would take the first grid row, above
+// the ⊖ (fixed in row 2).
+function threadLine(c) {
+  return [
+    `${c} > details[open] > summary > .threadline-strip { top: 0 !important; margin-top: 0 !important; }`,
+    `${c} > details[open] > .comment-main-grid > #comment-children { grid-row-start: 3; }`
+  ];
+}
+
 function ownParts(c, keep) {
   const reply = `shreddit-comment, [slot^="children"], [slot*="more" i]`;
-  const step = ` > :not(${reply}${keep ? ', ' + keep : ''})`;
+  // Reddit's thread line stays: the line, its ⊖, the mask under a last reply, and
+  // the summary, since the click strip on the line lives in it (and a closed
+  // comment's row, which is the way to open it again).
+  const kept = `summary, .ssr-thread-line, .collapse-container, .branchline${keep ? ', ' + keep : ''}`;
+  const step = ` > :not(${reply}, ${kept})`;
   const levels = [0, 1, 2, 3, 4].map((n) => `${c}${step.repeat(n)} > *`);
-  return `:is(${c} *):is(${levels.join(', ')}):not(${reply}, :has(${reply})${keep ? ', ' + keep : ''})`;
+  return `:is(${c} *):is(${levels.join(', ')}):not(${reply}, :has(${reply}), ${kept}), ${c} > details[open] > summary > :not(.threadline-strip)`;
 }
 
 // The popup's on/off switch. Off: no hiding, nothing added to the page
@@ -1523,6 +1546,10 @@ function syncCommentBar(c, reason) {
   bar.tabIndex = 0;
   const author = names ? c.getAttribute('author') || c.dataset.author : null;
   const label = document.createElement('span');
+  // Shown by CSS while the thread is closed; the bar then opens it.
+  const plus = makeSvg(ICONS.expand);
+  const details = () => c.querySelector(':scope > details');
+  const closed = () => details()?.open === false;
   const show = document.createElement('button');
   show.type = 'button';
   let why = false;
@@ -1530,10 +1557,10 @@ function syncCommentBar(c, reason) {
     const open = c.hasAttribute('data-rmute-open');
     const noReplies = c.hasAttribute('data-rmute-noreplies');
     label.textContent = [author && `u/${author}`, why && reason].filter(Boolean).join(' · ') || '…';
-    show.hidden = !why;
+    show.hidden = !why || closed();
     show.textContent = open ? 'Hide comment' : 'Show comment';
     bar.setAttribute('aria-expanded', String(why));
-    bar.title = noReplies ? 'Click to show the replies again' : 'Press and hold to hide the replies too';
+    bar.title = closed() ? 'Click to expand' : noReplies ? 'Click to show the replies again' : 'Press and hold to hide the replies too';
   };
   show.addEventListener('click', (e) => {
     e.preventDefault();
@@ -1558,6 +1585,7 @@ function syncCommentBar(c, reason) {
   for (const type of ['pointerup', 'pointerleave', 'pointercancel']) bar.addEventListener(type, () => clearTimeout(timer));
   const toggle = () => {
     if (c.hasAttribute('data-rmute-noreplies')) c.removeAttribute('data-rmute-noreplies');
+    else if (closed()) details().querySelector(':scope > summary')?.click(); // as Reddit's own collapse does
     else if (c.hasAttribute('data-rmute-open')) {
       c.removeAttribute('data-rmute-open');
       why = false;
@@ -1576,7 +1604,9 @@ function syncCommentBar(c, reason) {
     toggle();
   });
   bar.addEventListener('contextmenu', (e) => { if (held) e.preventDefault(); }); // touch long-press
-  bar.append(label, show);
+  // Reddit's line closes the thread without telling the bar. Doesn't bubble, hence capture.
+  c.addEventListener('toggle', update, true);
+  bar.append(plus, label, show);
   update();
   c.prepend(bar);
 }

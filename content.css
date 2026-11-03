@@ -279,6 +279,18 @@ html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toa
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.rmute-cbar > svg {
+  display: none;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-right: 0.5rem;
+  color: var(--color-neutral-content-strong, currentColor);
+}
+/* The thread is closed: the bar opens it. */
+.rmute-cbar:has(~ details:not([open])) > svg {
+  display: block;
+}
 .rmute-cbar button {
   flex: none;
   margin-left: 0.75rem;
