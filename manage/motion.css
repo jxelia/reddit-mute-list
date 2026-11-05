@@ -29,11 +29,11 @@
   /* 4. Mute list bar: its shaded strip slides up into the top border on opening, and
      back down a little faster on closing. motion.js holds a click's close until the
      box has shrunk, so data-closing is what starts the way back. */
-  #main-group > summary {
+  :is(#main-group, #word-group) > summary {
     background: linear-gradient(rgb(128 128 128 / 23%), rgb(128 128 128 / 23%)) 0 0 / 100% 1.26rem no-repeat;
     transition: background-position 0.2s ease-out;
   }
-  #main-group[open]:not([data-closing]) > summary {
+  :is(#main-group, #word-group)[open]:not([data-closing]) > summary {
     background-position: 0 -1.26rem;
     transition: background-position 0.3s ease-out;
   }

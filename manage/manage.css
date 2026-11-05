@@ -309,17 +309,20 @@ summary { user-select: none; }
 #skip-group > summary .count, #imports summary .count { display: none; }
 /* The main Subreddits / Users list fills its box edge to edge when open. */
 /* Its header (old header height, grey in the top 60%) is a plain bar (name and count in the tooltip) that scrolls away with the rows. */
-#main-group { padding: 0; max-height: 17rem; overflow-y: auto; }
-body:not(.popup) #main-group { max-height: 29rem; }
-#main-group > summary { height: 2.1rem; padding: 0; background: linear-gradient(rgb(128 128 128 / 23%) 60%, transparent 60%); list-style: none; }
-#main-group > summary::-webkit-details-marker { display: none; }
-#main-group > summary > * { display: none; }
+/* The Muted words list (#word-group) looks the same. */
+:is(#main-group, #word-group) { padding: 0; max-height: 17rem; overflow-y: auto; }
+body:not(.popup) :is(#main-group, #word-group) { max-height: 29rem; }
+:is(#main-group, #word-group) > summary { height: 2.1rem; padding: 0; background: linear-gradient(rgb(128 128 128 / 23%) 60%, transparent 60%); list-style: none; }
+:is(#main-group, #word-group) > summary::-webkit-details-marker { display: none; }
+:is(#main-group, #word-group) > summary > * { display: none; }
 /* Open, the rows start near the top, over the bar's empty part. What's left of the bar closes it. */
-#main-group[open]::details-content { margin-top: -1.6rem; }
+:is(#main-group, #word-group)[open]::details-content { margin-top: -1.6rem; }
 /* Open rows would sit over the shade; with motion on, motion.css slides it away instead. */
-@media (prefers-reduced-motion: reduce) { #main-group[open] > summary { background: none; } }
-#main-group .list { margin: 0; border: 0; border-radius: 0; max-height: none; overflow: visible; }
-#main-group > .empty { margin: 0; padding: 0.4rem 0.6rem; border-top: 1px solid var(--line); }
+@media (prefers-reduced-motion: reduce) { :is(#main-group, #word-group)[open] > summary { background: none; } }
+:is(#main-group, #word-group) .list { margin: 0; border: 0; border-radius: 0; max-height: none; overflow: visible; }
+:is(#main-group, #word-group) > .empty { margin: 0; padding: 0.4rem 0.6rem; border-top: 1px solid var(--line); }
+/* The column names stay in view while the words scroll. */
+#word-group .word-head { position: sticky; top: 0; z-index: 1; padding-top: 0.35rem; background: var(--bg); border-bottom: 1px solid var(--line); }
 
 /* Popup: mute every sub showing on the open Reddit tab. */
 .page-subs { position: relative; margin-bottom: 0.75rem; padding: 0.5rem 0.75rem; border: 1px solid var(--line); border-radius: 0.5rem; font-size: 0.85rem; }

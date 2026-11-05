@@ -33,7 +33,7 @@
       <button type="button" role="tab" data-kind="subs" aria-selected="true">Subreddits</button>
       <button type="button" role="tab" data-kind="users" aria-selected="false">Users</button>
       <button type="button" role="tab" data-kind="words" aria-selected="false">Muted words</button>
-      <button type="button" role="tab" data-kind="rec" aria-selected="false">Recommended</button>
+      <button type="button" role="tab" data-kind="rec" aria-selected="false">reddit.com page</button>
     </nav>
 
     <section id="list-view">
@@ -112,18 +112,21 @@
         </select>
       </div>
 
-      <div class="word-table" id="word-table">
-        <div class="word-head" aria-hidden="true">
-          <span>Word <span class="count" id="count-words">0</span></span>
-          <span>Comments</span>
-          <span>Titles</span>
-          <span>Text</span>
-          <span>Flair</span>
-          <span></span>
+      <details class="import-group" id="word-group">
+        <summary><span>Muted words</span> <span class="count" id="count-words">0</span></summary>
+        <div class="word-table" id="word-table">
+          <div class="word-head" aria-hidden="true">
+            <span>Word</span>
+            <span>Comments</span>
+            <span>Titles</span>
+            <span>Text</span>
+            <span>Flair</span>
+            <span></span>
+          </div>
+          <ul class="list" id="list-words"></ul>
         </div>
-        <ul class="list" id="list-words"></ul>
-      </div>
-      <p class="empty" id="empty-words" hidden></p>
+        <p class="empty" id="empty-words" hidden></p>
+      </details>
       <div class="extra" id="word-groups"></div>
 
       <details class="fold extra" id="word-lists">

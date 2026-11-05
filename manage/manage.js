@@ -491,6 +491,9 @@ function renderWords(filter) {
   const grouped = new Set(extras() ? groups().flatMap((g) => g.words) : []);
   const words = sortNames(all.filter((w) => !grouped.has(w) && w.includes(filter)), wordAge);
   $('count-words').textContent = all.length;
+  $('word-group').firstElementChild.title = $('word-group').firstElementChild.ariaLabel = `Muted words ${all.length}`;
+  // Starts collapsed like the Subreddits / Users list; filtering opens it.
+  if (filter) $('word-group').open = true;
   $('list-words').replaceChildren(...words.map(wordRow));
   $('word-table').hidden = !words.length;
   const shown = words.length || [...grouped].some((w) => w.includes(filter));
@@ -550,7 +553,6 @@ function renderGroups(filter) {
     const table = document.createElement('div');
     table.className = 'word-table';
     table.append($('word-table').querySelector('.word-head').cloneNode(true));
-    table.querySelector('.count')?.remove();
     const list = document.createElement('ul');
     list.className = 'list';
     list.append(...sortNames(filter ? words : g.words, wordAge).map(wordRow));
@@ -745,6 +747,7 @@ document.querySelectorAll('.tabs [role="tab"]').forEach((tab) => {
     try { localStorage.setItem(TAB_KEY, kind); } catch {}
     textKind = null;
     $('main-group').open = false;
+    $('word-group').open = false;
     render();
   });
 });
