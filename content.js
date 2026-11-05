@@ -83,11 +83,12 @@ function buildCss(list) {
     }
   }
   // Muted words: markTitles() tags each post with what matched (see
-  // markTitle): popular/subs (title lists) and body apply on r/popular and on
-  // pages of subs not joined; flair, and words scoped "only in r/…", anywhere.
+  // markTitle): popular/subs (title lists) and body apply on r/popular, on
+  // pages of subs not joined, and subs/body on posts the home feed recommends
+  // (subs not joined); flair, and words scoped "only in r/…", anywhere.
   const P = `:is(${POST_SELECTOR}, .thing.link)`;
   const tagged = (tag) => `[data-rmute-words~="${tag}"]`;
-  const wordAnywhere = [`${P}${POPULAR}${tagged('popular')}`, `${P}${POPULAR}${tagged('body')}`, `${P}${tagged('flair')}`, `${P}${tagged('only')}`];
+  const wordAnywhere = [`${P}${POPULAR}${tagged('popular')}`, `${P}${POPULAR}${tagged('body')}`, `${REC}${tagged('subs')}`, `${REC}${tagged('body')}`, `${P}${tagged('flair')}`, `${P}${tagged('only')}`];
   const wordOnSubs = [`${P}${tagged('subs')}`, `${P}${tagged('body')}`];
   const rename = list.settings.wordAction === 'rename';
   // Feed posts under the minimum score (markScore), or seen, repeated or too
