@@ -18,14 +18,14 @@ importScripts('presets/presets.js', 'storage.js');
 
 // The default feed: Reddit serves the tab named in /?feed=, and plain / serves
 // the last feed fetched, remembered on its server (no cookie). So a page load of
-// the home page only needs the redirect, which shows in the address bar, when
+// the main page only needs the redirect, which shows in the address bar, when
 // that memory isn't the default: feedKnown is the feed it last held, from
 // content.js. Dynamic rules last until changed.
 async function syncFeedRule() {
   const { settings } = await MuteStore.load();
   const { feedKnown } = await chrome.storage.local.get('feedKnown');
   const feed = settings.enabled !== false && settings.defaultFeed !== 'last' ? settings.defaultFeed.replace(' ', '-') : null;
-  // Rule 2 is Reddit's in-page load of home (the logo), which always carries
+  // Rule 2 is Reddit's in-page load of the main page (the logo), which always carries
   // screen_view_count.
   await chrome.declarativeNetRequest.updateDynamicRules({
     removeRuleIds: [1, 2],

@@ -96,8 +96,7 @@
       <div class="scopes">
         <span>Mute in:</span>
         <label class="check"><input type="checkbox" id="word-comments" checked> Comments</label>
-        <label class="check"><input type="checkbox" id="word-popular" checked> r/popular titles</label>
-        <label class="check"><input type="checkbox" id="word-subs" checked> Subreddit titles</label>
+        <label class="check"><input type="checkbox" id="word-titles" checked> Titles</label>
         <label class="check extra"><input type="checkbox" id="word-body" checked> Post text</label>
         <label class="check extra"><input type="checkbox" id="word-flair"> Flair</label>
       </div>
@@ -117,7 +116,7 @@
         <div class="word-head" aria-hidden="true">
           <span>Word <span class="count" id="count-words">0</span></span>
           <span>Comments</span>
-          <span>Title</span>
+          <span>Titles</span>
           <span>Text</span>
           <span>Flair</span>
           <span></span>
@@ -157,12 +156,11 @@
         </select>
       </label>
       <label class="check word-action extra"><input type="checkbox" id="comment-hide-replies"> Hide their replies too</label>
-      <p class="hint core">Comments: the comment shrinks to one line (click it to see why and show the comment, press and hold to hide its replies too). Title applies on r/popular and on subreddits you haven’t joined (not in your custom feeds); a half-ticked Title box means only one of those.</p>
-      <p class="hint extra">Title and Text apply on r/popular and on subreddits you haven’t joined (not in your custom feeds); a half-ticked Title box means only one of those. Flair applies anywhere. Click a word to limit it to some subreddits.</p>
+      <p class="hint core">Comments: the comment shrinks to one line (click it to see why and show the comment, press and hold to hide its replies too). Titles apply on r/popular, r/all, custom feeds, subreddits you haven’t joined (not in your custom feeds) and posts recommended on the main page; opening such a post shows a bar, which opens it and its comments.</p>
+      <p class="hint extra">Titles and Text apply on r/popular, r/all, custom feeds, subreddits you haven’t joined (not in your custom feeds) and posts recommended on the main page; opening such a post shows a bar, which opens it and its comments. Flair applies anywhere. Click a word to limit it to some subreddits.</p>
       <p class="hint edit-links">Edit as text:
         <button type="button" class="link" data-edit="commentWords">Comments</button> ·
-        <button type="button" class="link" data-edit="popularWords">r/popular titles</button> ·
-        <button type="button" class="link" data-edit="subWords">Subreddit titles</button><span class="extra"> ·
+        <button type="button" class="link" data-edit="titleWords">Titles</button><span class="extra"> ·
         <button type="button" class="link" data-edit="bodyWords">Post text</button> ·
         <button type="button" class="link" data-edit="flairWords">Flair</button></span>
       </p>
@@ -283,7 +281,7 @@
       <label class="check"><input type="checkbox" id="hide-sections"> Turn off comment sections</label>
       <label class="check">Hide feed posts under
         <input type="number" id="min-score" min="0" step="1" inputmode="numeric" aria-label="Minimum upvotes"> upvotes</label>
-      <p class="hint">On Home, r/popular, r/all and custom feeds. 0 turns it off.</p>
+      <p class="hint">On the main page, r/popular, r/all and custom feeds. 0 turns it off.</p>
       <label class="check"><input type="checkbox" id="show-counter"> Show how many posts are hidden on the toolbar icon</label>
       <p class="hint" id="hidden-total"></p>
       </div>
@@ -305,7 +303,7 @@
           <option value="720">30 days</option>
         </select>
       </label>
-      <p class="hint">These apply on Home, r/popular, r/all and custom feeds.</p>
+      <p class="hint">These apply on the main page, r/popular, r/all and custom feeds.</p>
       <label class="check"><input type="checkbox" id="hide-crossposts"> Hide crossposts from muted subreddits</label>
       <p class="hint">On every page.</p>
       <label class="check"><input type="checkbox" id="hide-replies-muted"> Hide replies to muted users' comments</label>

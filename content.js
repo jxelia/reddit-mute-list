@@ -17,7 +17,7 @@ const ICONS = {
 };
 const BLOCK_HASH = '#rmute-block';
 
-let mutes = { subs: [], users: [], popularWords: [], subWords: [], commentWords: [], bodyWords: [], flairWords: [], recSubs: [], recUsers: [], keepSubs: [], userSubs: [], scopes: [], timedMutes: [], settings: { hideComments: true } };
+let mutes = { subs: [], users: [], titleWords: [], commentWords: [], bodyWords: [], flairWords: [], recSubs: [], recUsers: [], keepSubs: [], userSubs: [], scopes: [], timedMutes: [], settings: { hideComments: true } };
 let me = null; // signed-in username (see loadMe)
 
 /* ---------- Hiding ---------- */
@@ -49,6 +49,9 @@ function scopeSel(scope, where) {
   return scope.mode === '+' ? `:is(${any})` : `:not(${any})`;
 }
 
+// A post page's comment box, sort and search bar, and tree (post page dump 2026-11-02).
+const COMMENT_SECTIONS = 'comment-body-header, shreddit-comments-sort-dropdown, shreddit-comment-tree, shreddit-comment-tree-ads, shreddit-comment, .commentarea';
+
 function buildCss(list) {
   const posts = [];
   const other = [];
@@ -59,9 +62,9 @@ function buildCss(list) {
   }
   // Recommendation-only mutes: Reddit puts recommendation-source on feed
   // posts it recommends (from subreddits the user hasn't joined). Posts on
-  // r/popular carry it too, so these rules only apply on the home feed
+  // r/popular carry it too, so these rules only apply on the main page
   // (data-rmute-scope, see postScope).
-  const REC = `shreddit-post[data-rmute-scope="home"][recommendation-source]:not([recommendation-source=""])`;
+  const REC = `shreddit-post[data-rmute-scope="main"][recommendation-source]:not([recommendation-source=""])`;
   const recPosts = [];
   for (const entry of list.recSubs) recPosts.push(...subMatch(entry).post.map((a) => REC + a));
   for (const u of list.recUsers) recPosts.push(REC + attrMatch('author', u));
@@ -83,13 +86,18 @@ function buildCss(list) {
     }
   }
   // Muted words: markTitles() tags each post with what matched (see
-  // markTitle): popular/subs (title lists) and body apply on r/popular, on
-  // pages of subs not joined, and subs/body on posts the home feed recommends
-  // (subs not joined); flair, and words scoped "only in r/…", anywhere.
+  // markTitle): title and body apply on r/popular, r/all, a+b and custom feeds
+  // (MIXED), on pages of subs not joined, and on posts the main page recommends
+  // (subs not joined); flair, and words scoped "only in r/…", anywhere. On a
+  // post's own page any of them shrinks it to a bar instead (markWordPage).
   const P = `:is(${POST_SELECTOR}, .thing.link)`;
   const tagged = (tag) => `[data-rmute-words~="${tag}"]`;
-  const wordAnywhere = [`${P}${POPULAR}${tagged('popular')}`, `${P}${POPULAR}${tagged('body')}`, `${REC}${tagged('subs')}`, `${REC}${tagged('body')}`, `${P}${tagged('flair')}`, `${P}${tagged('only')}`];
-  const wordOnSubs = [`${P}${tagged('subs')}`, `${P}${tagged('body')}`];
+  const MIXED = ':is([data-rmute-scope="popular"], [data-rmute-scope="feed"])';
+  const OWN = ':not([data-rmute-word-page])';
+  const wordAnywhere = [`${P}${MIXED}${tagged('title')}`, `${P}${MIXED}${tagged('body')}`, `${REC}${tagged('title')}`, `${REC}${tagged('body')}`, `${P}${tagged('flair')}${OWN}`, `${P}${tagged('only')}${OWN}`];
+  const wordOnSubs = [`${P}${tagged('title')}`, `${P}${tagged('body')}`];
+  // Only the post, not what holds its bar; the comments go with it until it's opened.
+  other.push(`${P}[data-rmute-word-page]:not([data-rmute-open])`, `html[data-rmute-word-post] :is(${COMMENT_SECTIONS})`);
   const rename = list.settings.wordAction === 'rename';
   // Feed posts under the minimum score (markScore), or seen, repeated or too
   // old, and crossposts from muted subs (markFeedFilters).
@@ -149,11 +157,11 @@ function buildCss(list) {
   }
   // The comment box, sort and search bar, and the tree (post page dump 2026-11-02).
   if (list.settings.hideCommentSections) {
-    other.push('comment-body-header, shreddit-comments-sort-dropdown, shreddit-comment-tree, shreddit-comment-tree-ads, shreddit-comment, .commentarea');
+    other.push(COMMENT_SECTIONS);
   }
   // The comments on the page of a muted user's post (markMutedPostPage).
   if (list.settings.hideCommentsOnMutedPosts) {
-    other.push('html[data-rmute-muted-op] :is(comment-body-header, shreddit-comments-sort-dropdown, shreddit-comment-tree, shreddit-comment-tree-ads, shreddit-comment, .commentarea)');
+    other.push(`html[data-rmute-muted-op] :is(${COMMENT_SECTIONS})`);
   }
   posts.push(...recPosts);
   const pagePosts = rename ? [] : wordOnSubs.map((p) => ['html[data-rmute-page="subs"]', p]);
@@ -266,7 +274,7 @@ async function unmute(kind, name) {
   await MuteStore.remove(kind, name);
 }
 
-// Pages that mix many subs: home, r/popular, r/all, a+b multis and custom
+// Pages that mix many subs: the main page, r/popular, r/all, a+b multis and custom
 // feeds. Elsewhere (a sub, a post) the popup's "Mute all" card isn't wanted.
 const SORT = '(?:(?:best|hot|new|top|rising|controversial)/?)?';
 const FEED_RE = new RegExp(`^/(?:${SORT}|r/(?:popular|all|[^/]+\\+[^/]+)/${SORT}|(?:user/[^/]+|me)/m/[^/]+/${SORT}|m/[^/]+/${SORT})$`, 'i');
@@ -442,7 +450,7 @@ function postInfo(post) {
 }
 
 // The subreddit a post, comment or link is in: its post's, else the page's
-// (/r/<sub>/…, as on a comments page). Null on profiles and home without a post.
+// (/r/<sub>/…, as on a comments page). Null on profiles and the main page without a post.
 function subOf(el) {
   const post = el && ancestors(el).find((n) => n.matches?.(POST_SELECTOR));
   if (post) return postInfo(post).sub;
@@ -464,13 +472,14 @@ function clickJoin(join) {
 }
 
 // Reddit marks the feed posts it recommends (subs the user hasn't joined).
-// Only the home feed counts: r/popular posts carry the attribute too.
-const HOME_RE = /^\/(?:(?:best|hot|new|top|rising)\/?)?$/i;
-const onHome = () => HOME_RE.test(location.pathname);
+// Only the main page (reddit.com) counts: r/popular posts carry the attribute too.
+const MAIN_PAGE_RE = /^\/(?:(?:best|hot|new|top|rising)\/?)?$/i;
+const onMainPage = () => MAIN_PAGE_RE.test(location.pathname);
 const onPopular = () => location.pathname.match(LISTING_RE)?.[1].toLowerCase() === 'popular';
-const isRecommended = (post) => postScope(post) === 'home' && !!post.getAttribute('recommendation-source');
+const isRecommended = (post) => postScope(post) === 'main' && !!post.getAttribute('recommendation-source');
 
-// The page a post was loaded on (home, popular or other), kept on the post as
+// The page a post was loaded on (main, popular, feed for r/all, a+b and custom
+// feeds, or other), kept on the post as
 // data-rmute-scope. Reddit changes the URL before it swaps the old feed out,
 // so going by the URL expanded the old page's bars for a moment after a
 // click. r/popular's feed also names itself (reload-url .../popular-feed).
@@ -478,7 +487,7 @@ function postScope(post) {
   if (/\/popular-feed\b/.test(post.closest('shreddit-feed')?.getAttribute('reload-url') || '')) {
     post.dataset.rmuteScope = 'popular';
   }
-  return post.dataset.rmuteScope ||= onPopular() ? 'popular' : onHome() ? 'home' : 'other';
+  return post.dataset.rmuteScope ||= onPopular() ? 'popular' : onMainPage() ? 'main' : onFeed() ? 'feed' : 'other';
 }
 
 // Actions in menu order. Mute r/… has its own button under the ⋯ (see
@@ -1300,8 +1309,7 @@ function markTitle(post) {
     label ||= hit.text;
   };
   const title = postTitle(post);
-  check('popularWords', title, 'popular');
-  check('subWords', title, 'subs');
+  check('titleWords', title, 'title');
   if (wordMatchers.bodyWords) check('bodyWords', postBody(post), 'body');
   if (wordMatchers.flairWords) check('flairWords', postFlair(post), 'flair');
   if (tags.size) post.dataset.rmuteWords = [...tags].join(' ');
@@ -1312,6 +1320,7 @@ function markTitle(post) {
   else link?.removeAttribute('data-rmute-hit');
   markFeedFilters(post);
   markMutedPostPage(post, sub);
+  markWordPage(post, sub, tags);
 }
 
 // On a post's own page, tags <html> when a muted user wrote it. Cleared on
@@ -1327,12 +1336,35 @@ function markMutedPostPage(post, sub) {
   html.toggleAttribute('data-rmute-muted-op', on && userMuted(author.toLowerCase(), sub));
 }
 
+// A post's own page, not a feed post still on screen after a link to it was clicked.
+function isOpenedPost(post) {
+  const thread = threadOf(location.pathname);
+  return !!thread && post.getAttribute('view-context') !== 'AggregateFeed' &&
+    thread === threadOf(post.getAttribute('permalink') || post.dataset.permalink);
+}
+
+// An opened post with a muted word shrinks to a bar, its comments with it, and
+// the bar opens both. The comments are tagged through <html> until the post
+// itself leaves the page (updatePageScope), since Reddit changes the URL first.
+let wordPagePost = null;
+
+function markWordPage(post, sub, tags) {
+  if (!isOpenedPost(post)) return;
+  const author = (post.getAttribute('author') || post.dataset.author || '').toLowerCase();
+  const on = !!sub && tags.size > 0 && mutes.settings.wordAction !== 'rename' &&
+    !post.hasAttribute('data-rmute-xpost') && !inList(mutes.subs, sub) && !userMuted(author, sub);
+  post.toggleAttribute('data-rmute-word-page', on);
+  syncDecideBar(post, on ? sub : null, 'page');
+  wordPagePost = on ? post : null;
+  document.documentElement.toggleAttribute('data-rmute-word-post', on && !post.hasAttribute('data-rmute-open'));
+}
+
 /* ---------- Minimum score ---------- */
 
 // Old Reddit's front page, r/all, r/popular and multireddits.
 const OLD_FEED_RE = /^\/(?:(?:hot|new|top|rising|controversial)\/?)?$|^\/r\/(?:all|popular)\b|^\/(?:me|user\/[^/]+)\/m\//i;
 
-// Only in feeds (home, r/popular, r/all, custom feeds), not on a sub's own page.
+// Only in feeds (the main page, r/popular, r/all, custom feeds), not on a sub's own page.
 const inFeed = (post) => (post.matches('.thing') ? OLD_FEED_RE.test(location.pathname) : post.getAttribute('view-context') === 'AggregateFeed');
 
 function markScore(post) {
@@ -1794,6 +1826,7 @@ function presetsOn() {
 
 function markPreset(post) {
   if (postScope(post) === 'popular' && post.localName === 'shreddit-post') return markPopular(post);
+  if (isOpenedPost(post) || post.hasAttribute('data-rmute-word-page')) return; // markWordPage's bar
   const { sub, author } = isRecommended(post) && presetsOn() ? postInfo(post) : {};
   const hits = sub ? presetsFor(sub) : [];
   if (hits.length) post.dataset.rmutePreset = hits.join(' ');
@@ -1801,7 +1834,7 @@ function markPreset(post) {
   // No bar for posts the mute lists already hide.
   const muted = sub && (inList(mutes.subs, sub) || inList(mutes.recSubs, sub) ||
     userMuted(author, sub) || inList(mutes.recUsers, author));
-  syncDecideBar(post, hits.includes('undecided') && !muted ? sub : null);
+  syncDecideBar(post, hits.includes('undecided') && !muted ? sub : null, 'rec');
 }
 
 // r/popular: every post becomes a bar, except kept subs and posts the mute
@@ -1815,14 +1848,15 @@ function markPopular(post) {
   if (hits.length) post.dataset.rmutePreset = hits.join(' ');
   else if (bar) post.dataset.rmutePreset = 'undecided';
   else delete post.dataset.rmutePreset;
-  syncDecideBar(post, bar ? sub : null, true);
+  syncDecideBar(post, bar ? sub : null, 'popular');
 }
 
-// Keep mode's one-line stand-in for an undecided recommended post: the sub
-// name as a link (clicking the rest of the bar shows or hides the post itself) and a menu with Keep and Mute.
+// A post's one-line stand-in: the sub name as a link (clicking the rest of the
+// bar shows or hides the post itself), then by kind: 'rec' a menu with Keep and
+// Mute, 'popular' the Mute r/ button, 'page' (an opened post) nothing.
 const hiddenNames = new WeakMap(); // post -> its own sub name link, hidden under a bar
 
-function syncDecideBar(post, sub, popular = false) {
+function syncDecideBar(post, sub, kind = 'rec') {
   const prev = post.previousElementSibling;
   const bar = prev?.classList.contains('rmute-decide') ? prev : null;
   if (bar?.dataset.sub === sub) return;
@@ -1848,12 +1882,14 @@ function syncDecideBar(post, sub, popular = false) {
   el.setAttribute('role', 'button');
   el.tabIndex = 0;
   el.setAttribute('aria-expanded', 'false');
-  el.title = 'Show post';
+  const what = kind === 'page' ? 'post and comments' : 'post';
+  el.title = `Show ${what}`;
   const toggle = () => {
     const open = post.toggleAttribute('data-rmute-open');
+    if (kind === 'page') document.documentElement.toggleAttribute('data-rmute-word-post', !open);
     if (!hiddenNames.has(post)) matchSubName(post, sub, label);
     el.setAttribute('aria-expanded', String(open));
-    el.title = open ? 'Hide post' : 'Show post';
+    el.title = `${open ? 'Hide' : 'Show'} ${what}`;
   };
   el.addEventListener('click', toggle);
   el.addEventListener('keydown', (e) => {
@@ -1863,7 +1899,8 @@ function syncDecideBar(post, sub, popular = false) {
   });
 
   // r/popular: the same Mute r/ button as under a post's ⋯ (mutes everywhere,
-  // since recommendation mutes only apply on the home feed). Elsewhere a menu.
+  // since recommendation mutes only apply on the main page). Recommended posts: a menu.
+  const popular = kind === 'popular';
   const menu = popular ? iconButton(ICONS.mute, `Mute r/${sub}`) : iconButton(ICONS.menu, `Options for r/${sub}`);
   if (popular) {
     menu.classList.add('rmute-faint');
@@ -1883,7 +1920,8 @@ function syncDecideBar(post, sub, popular = false) {
     });
   }
 
-  el.append(label, menu);
+  el.append(label);
+  if (kind !== 'page') el.append(menu);
   post.before(el);
 
   matchSubName(post, sub, label);
@@ -1974,28 +2012,32 @@ const needsMarking = () => Object.values(wordMatchers).some(Boolean) || presetsO
   mutes.settings.hideSeen || mutes.settings.hideDuplicates || Number(mutes.settings.maxAgeHours) > 0 || mutes.settings.hideCrossposts ||
   mutes.settings.hideCommentsOnMutedPosts;
 
-// "popular" on r/popular, "subs" on the home page of a subreddit that isn't
+// "popular" on r/popular, "subs" on the page of a subreddit that isn't
 // joined or in any custom feed, otherwise nothing. Reddit navigates without reloading, so
 // this reruns from the mutation observer whenever the URL changes.
 let lastPath = null;
 function updatePageScope(force = true) {
+  if (wordPagePost && !wordPagePost.isConnected) {
+    wordPagePost = null;
+    document.documentElement.removeAttribute('data-rmute-word-post');
+  }
   if (!force && location.pathname === lastPath) return;
   if (location.pathname !== lastPath) document.documentElement.removeAttribute('data-rmute-muted-op');
   lastPath = location.pathname;
   const sub = location.pathname.match(LISTING_RE)?.[1].toLowerCase();
   let scope = '';
   if (sub === 'popular') scope = 'popular';
-  else if (sub && sub !== 'all' && !sub.includes('+') && (mutes.subWords.length || mutes.bodyWords.length)) {
+  else if (sub && sub !== 'all' && !sub.includes('+') && (mutes.titleWords.length || mutes.bodyWords.length)) {
     if (!feedSubs) loadFeedSubs();
     else if (!feedSubs.has(sub)) scope = 'subs';
   }
   if (scope) document.documentElement.dataset.rmutePage = scope;
   else delete document.documentElement.dataset.rmutePage;
-  // Home and r/popular bars need no re-marking here: each post keeps the
+  // Main page and r/popular bars need no re-marking here: each post keeps the
   // scope it was loaded with (postScope).
 }
 
-// The default feed: background.js redirects Reddit's loads of the home page to
+// The default feed: background.js redirects Reddit's loads of the main page to
 // its own ?feed= address while Reddit's remembered feed isn't the default, and the
 // address bar stays on plain / here. A full page load is cleaned before Reddit's
 // scripts run. After an in-page load Reddit copies the redirected address to the

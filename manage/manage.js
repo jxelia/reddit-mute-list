@@ -8,7 +8,7 @@ document.body.classList.toggle('popup', isPopup);
 // tabs don't keep running code older than this page.
 try { chrome.runtime.sendMessage('rmute:checkBuild').catch(() => {}); } catch (_) { /* not loaded as an extension */ }
 
-const PREFIX = { subs: 'r/', users: 'u/', popularWords: '', subWords: '', commentWords: '', bodyWords: '', flairWords: '', recSubs: 'r/', recUsers: 'u/', keepSubs: 'r/', skipSubs: 'r/' };
+const PREFIX = { subs: 'r/', users: 'u/', titleWords: '', commentWords: '', bodyWords: '', flairWords: '', recSubs: 'r/', recUsers: 'u/', keepSubs: 'r/', skipSubs: 'r/' };
 const EMPTY_TEXT = {
   subs: 'No subreddits muted. Use “Mute r/…” in a post’s ⋯ menu on Reddit, or add names above.',
   users: 'No users muted. Use “Mute u/…” in a post’s ⋯ menu on Reddit, or add names above.',
@@ -21,8 +21,7 @@ const WHERE = { recSubs: ' in recommendations', recUsers: ' in recommendations' 
 const TEXT_HINT = {
   subs: 'One name per line. Links and r/ prefixes are fine. *cat* mutes every sub with “cat” in its name.',
   users: 'One name per line. Links and u/ prefixes are fine. *bot* mutes every user with “bot” in their name.',
-  popularWords: 'One word or phrase per line. * matches any letters, as in spoil*.',
-  subWords: 'One word or phrase per line. * matches any letters, as in spoil*.',
+  titleWords: 'One word or phrase per line. * matches any letters, as in spoil*.',
   commentWords: 'One word or phrase per line. * matches any letters, as in spoil*.',
   bodyWords: 'One word or phrase per line. * matches any letters, as in spoil*.',
   flairWords: 'One word or phrase per line. * matches any letters, as in spoil*.',
@@ -416,10 +415,8 @@ function render() {
 
 /* ---------- Muted words table ---------- */
 
-// Each word is one row: Comments (commentWords), Title (popularWords and
-// subWords together; half-ticked when it's in only one of them), Text
+// Each word is one row: Comments (commentWords), Titles (titleWords), Text
 // (bodyWords) and Flair (flairWords).
-const TITLE_KINDS = ['popularWords', 'subWords'];
 
 function allWords() {
   return [...new Set(MuteStore.WORD_KINDS.flatMap((k) => state[k]))].sort();
@@ -460,14 +457,12 @@ function wordRow(word) {
   label.textContent = display('commentWords', word);
   const cell = nameCell('w', word, label.textContent, timeLeft('w', word));
   const inComments = state.commentWords.includes(word);
-  const titleIn = TITLE_KINDS.filter((k) => state[k].includes(word));
   const comments = wordBox(`Mute ${label.textContent} in comments`, inComments, false, async (on) => {
     if (await setWord(word, ['commentWords'], on)) setStatus(`${on ? 'Muted' : 'Unmuted'} ${label.textContent} in comments`);
   });
-  const title = wordBox(`Mute ${label.textContent} in post titles`, titleIn.length === 2, titleIn.length === 1, async (on) => {
-    if (await setWord(word, TITLE_KINDS, on)) setStatus(`${on ? 'Muted' : 'Unmuted'} ${label.textContent} in post titles`);
+  const title = wordBox(`Mute ${label.textContent} in post titles`, state.titleWords.includes(word), false, async (on) => {
+    if (await setWord(word, ['titleWords'], on)) setStatus(`${on ? 'Muted' : 'Unmuted'} ${label.textContent} in post titles`);
   });
-  if (titleIn.length === 1) title.title = titleIn[0] === 'popularWords' ? 'Only on r/popular' : 'Only on subreddit pages';
   const body = wordBox(`Mute ${label.textContent} in post text`, state.bodyWords.includes(word), false, async (on) => {
     if (await setWord(word, ['bodyWords'], on)) setStatus(`${on ? 'Muted' : 'Unmuted'} ${label.textContent} in post text`);
   });
@@ -514,7 +509,7 @@ const groups = () => state.wordGroups.map((e) => {
 });
 
 // The places ticked under the Mute box, where new words go.
-const WORD_BOX = { commentWords: 'word-comments', popularWords: 'word-popular', subWords: 'word-subs', bodyWords: 'word-body', flairWords: 'word-flair' };
+const WORD_BOX = { commentWords: 'word-comments', titleWords: 'word-titles', bodyWords: 'word-body', flairWords: 'word-flair' };
 const tickedKinds = () => MuteStore.WORD_KINDS.filter((k) => $(WORD_BOX[k]).checked && (extras() || !EXTRA_WORDS.includes(k)));
 
 // Adds (or adds to) a named list; its new words go to the ticked places.
@@ -675,9 +670,8 @@ function renderSummary() {
   const { good } = parseWords($('word-input').value, /[,\n]+/);
   const what = good.length ? good.slice(0, 3).map((w) => `“${w}”`).join(', ') + (good.length > 3 ? ` and ${good.length - 3} more` : '') : 'A word';
   const on = (k) => $(WORD_BOX[k]).checked;
-  const pages = on('popularWords') && on('subWords') ? 'on r/popular and on subreddits you haven’t joined'
-    : on('popularWords') ? 'on r/popular' : 'on subreddits you haven’t joined';
-  const fields = [on('popularWords') || on('subWords') ? 'title' : '', on('bodyWords') ? 'text' : ''].filter(Boolean).join(' or ');
+  const pages = 'on r/popular, r/all, custom feeds and subreddits you haven’t joined';
+  const fields = [on('titleWords') ? 'title' : '', on('bodyWords') ? 'text' : ''].filter(Boolean).join(' or ');
   const many = good.length > 1;
   const it = many ? 'any of them' : 'it';
   const s = many ? '' : 's';
@@ -718,7 +712,7 @@ async function renderFeeds() {
   const joinedText = feeds.joinedError || !feeds.joined
     ? `couldn’t read your joined subreddits (${feeds.joinedError || 'not checked'})`
     : `${plural(feeds.joined.length, 'joined subreddit')}`;
-  status.textContent = `Subreddit titles skip ${feedText} and ${joinedText}, checked ${ago(feeds.at)}. `;
+  status.textContent = `Titles on a subreddit’s page skip ${feedText} and ${joinedText}, checked ${ago(feeds.at)}. `;
   const recheck = document.createElement('button');
   recheck.type = 'button';
   recheck.className = 'link';
@@ -812,7 +806,7 @@ $('word-form').addEventListener('submit', async (e) => {
     $('word-input').value = bad.join(', ');
     renderSummary();
   }
-  const PLACE = { commentWords: 'comments', popularWords: 'r/popular titles', subWords: 'subreddit titles', bodyWords: 'post text', flairWords: 'flair' };
+  const PLACE = { commentWords: 'comments', titleWords: 'titles', bodyWords: 'post text', flairWords: 'flair' };
   const where = targets.map((k) => PLACE[k]).join(', ').replace(/, ([^,]*)$/, ' and $1');
   setStatus(bad.length
     ? `Too short or long (2–100 characters): ${bad.join(', ')}`
@@ -1041,7 +1035,7 @@ $('preset-list').value = PRESET_LISTS
 /* ---------- Text view ---------- */
 
 const SAVED_LABEL = {
-  subs: 'subreddits', users: 'users', popularWords: 'words for r/popular titles', subWords: 'words for subreddit page titles', commentWords: 'words for comments',
+  subs: 'subreddits', users: 'users', titleWords: 'words for titles', commentWords: 'words for comments',
   bodyWords: 'words for post text', flairWords: 'words for flair',
   recSubs: 'subreddits for recommendations', recUsers: 'users for recommendations', keepSubs: 'kept subreddits'
 };
@@ -1241,12 +1235,11 @@ $('export').addEventListener('click', () => {
 $('backup').addEventListener('click', () => {
   const data = {
     app: 'reddit-mute-list',
-    version: 10,
+    version: 11,
     exportedAt: new Date().toISOString(),
     subs: state.subs,
     users: state.users,
-    popularWords: state.popularWords,
-    subWords: state.subWords,
+    titleWords: state.titleWords,
     commentWords: state.commentWords,
     bodyWords: state.bodyWords,
     flairWords: state.flairWords,
@@ -1294,7 +1287,10 @@ $('restore-file').addEventListener('change', async (e) => {
   }
 
   const replace = document.querySelector('input[name="restore-mode"]:checked').value === 'replace';
-  // Version 1 backups have no word lists; 1-2 no recommendation lists; 1-3 no keep list; 1-4 no comment words; 1-5 no user subreddit notes; 1-6 no Mute all whitelist; 1-7 no text or flair words or scopes; 1-8 no word lists; 1-9 no timed mutes.
+  // Version 1 backups have no word lists; 1-2 no recommendation lists; 1-3 no keep list; 1-4 no comment words; 1-5 no user subreddit notes; 1-6 no Mute all whitelist; 1-7 no text or flair words or scopes; 1-8 no word lists; 1-9 no timed mutes; 1-10 have two title lists, merged here.
+  if (!Array.isArray(data.titleWords)) {
+    data.titleWords = [...new Set([data.popularWords, data.subWords].flatMap((l) => (Array.isArray(l) ? l : [])))];
+  }
   const next = { settings: { ...state.settings, ...(data.settings || {}) } };
   for (const k of ALL_KINDS) {
     const restored = Array.isArray(data[k]) ? data[k] : [];

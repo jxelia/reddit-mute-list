@@ -7,13 +7,13 @@
 // and restore from a web address such as a shared public drive link.
 const MuteStore = (() => {
   const KINDS = ['subs', 'users'];
-  // Title words muted on r/popular, and on home pages of subreddits that
-  // aren't joined or in any of the user's custom feeds; and words that
-  // collapse comments containing them.
+  // titleWords: post titles, on r/popular, r/all, custom feeds, pages of subs
+  // not joined or in a custom feed, posts the main page recommends, and opened
+  // posts (see content.js). commentWords collapse comments containing them.
   // bodyWords: post text, on the same pages as title words. flairWords: post
   // flair, everywhere.
-  const WORD_KINDS = ['popularWords', 'subWords', 'commentWords', 'bodyWords', 'flairWords'];
-  // Subs and users muted only where Reddit recommends them (home feed posts
+  const WORD_KINDS = ['titleWords', 'commentWords', 'bodyWords', 'flairWords'];
+  // Subs and users muted only where Reddit recommends them (main page posts
   // from subreddits the user hasn't joined); see content.js.
   const REC_KINDS = ['recSubs', 'recUsers'];
   // Subs always shown in full in recommendations (keep mode, see content.js).
@@ -37,7 +37,7 @@ const MuteStore = (() => {
   const TIMED_KINDS = ['timedMutes'];
   const ALL_KINDS = [...KINDS, ...WORD_KINDS, ...REC_KINDS, ...KEEP_KINDS, ...SKIP_KINDS, ...NOTE_KINDS, ...SCOPE_KINDS, ...GROUP_KINDS, ...TIMED_KINDS];
   const SEP = {
-    subs: ',', users: ',', popularWords: '\n', subWords: '\n', commentWords: '\n', bodyWords: '\n', flairWords: '\n',
+    subs: ',', users: ',', titleWords: '\n', commentWords: '\n', bodyWords: '\n', flairWords: '\n',
     recSubs: ',', recUsers: ',', keepSubs: ',', skipSubs: ',', userSubs: ',', scopes: '\n', wordGroups: '\n', timedMutes: '\n'
   };
   const CHUNK_CHARS = 7000;
@@ -63,7 +63,7 @@ const MuteStore = (() => {
     showCounter: true, // hidden-post count on the toolbar icon
     theme: 'system', // the popup's own light/dark theme
     hideJoin: true, // the header Join button moves to the top of the post's ⋯ menu
-    defaultFeed: 'last', // the home page's tab: 'following', 'for you', or 'last' (Reddit's own memory)
+    defaultFeed: 'last', // the main page's tab: 'following', 'for you', or 'last' (Reddit's own memory)
     extras: false, // the popup's "Extra features" switch (see effective)
     extrasX: false, // the popup's "Extra features 2 (X)" switch (see effective)
     hideSeen: false, // feed posts already on screen before this page load are hidden
@@ -243,17 +243,26 @@ const MuteStore = (() => {
     return ends.length ? Math.min(...ends) : null;
   }
 
+  const RETIRED = /^(?:popularWords|subWords)\./; // lists merged away, see MIGRATIONS
+
   // Version of the stored data's shape. Raise it, and add a step below, only
   // when the shape changes in a way old lists need converting for; a new
   // setting with a default doesn't need it. Lists from before this have none (1).
-  const SCHEMA = 2;
+  const SCHEMA = 3;
   // Steps run on every read of an older list, in memory (nothing is written
   // until the next save), so each takes and returns the raw stored items.
   const MIGRATIONS = {
     // India and Australia were built in as never filtered before the country
     // picker; lists saved back then keep them ticked.
     2: (all) => (all.settings && !('placeExcept' in all.settings)
-      ? { ...all, settings: { ...all.settings, placeExcept: ['IN', 'AU'] } } : all)
+      ? { ...all, settings: { ...all.settings, placeExcept: ['IN', 'AU'] } } : all),
+    // popularWords and subWords became one list. The old keys go at the next save (removeStale).
+    3: (all) => {
+      const words = (kind) => Array.from({ length: all[kind + '.count'] || 0 }, (_, i) => all[kind + '.' + i] || '').join('\n').split('\n');
+      const merged = [...new Set([...words('popularWords'), ...words('subWords')])].filter(Boolean);
+      const next = Object.fromEntries(Object.entries(all).filter(([k]) => !RETIRED.test(k)));
+      return { ...next, 'titleWords.count': merged.length ? 1 : 0, 'titleWords.0': merged.join('\n') };
+    }
   };
 
   function migrate(all) {
@@ -280,7 +289,7 @@ const MuteStore = (() => {
   // 100 KB (see save).
   const onDevice = async () => !!(await chrome.storage.local.get(ON_DEVICE))[ON_DEVICE];
   const area = async () => (await onDevice() ? chrome.storage.local : chrome.storage.sync);
-  const isListKey = (key) => key === 'settings' || key === 'schema' || key === ON_DEVICE || ALL_KINDS.includes(key.replace(/\.(?:count|\d+)$/, ''));
+  const isListKey = (key) => key === 'settings' || key === 'schema' || key === ON_DEVICE || RETIRED.test(key) || ALL_KINDS.includes(key.replace(/\.(?:count|\d+)$/, ''));
 
   async function load() {
     const all = await (await area()).get(null);
@@ -364,9 +373,10 @@ const MuteStore = (() => {
     }
   }
 
-  // Chunks a list no longer needs, e.g. subs.3 after the list shrank to 3 chunks.
+  // Chunks a list no longer needs, e.g. subs.3 after the list shrank to 3
+  // chunks, and everything of a list merged away.
   function removeStale(store, prev, data) {
-    const stale = Object.keys(prev).filter((k) => /\.\d+$/.test(k) && isListKey(k) && !(k in data));
+    const stale = Object.keys(prev).filter((k) => /\.(?:count|\d+)$/.test(k) && isListKey(k) && !(k in data));
     return stale.length ? store.remove(stale) : Promise.resolve();
   }
 

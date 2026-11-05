@@ -209,11 +209,11 @@ function applyCss() {
 }
 
 // ---- The frame: the real manage.html with stand-in chrome.* APIs.
-const SEP = { subs: ',', users: ',', popularWords: '\n', subWords: '\n', commentWords: '\n', bodyWords: '\n', flairWords: '\n', recSubs: ',', recUsers: ',', keepSubs: ',', skipSubs: ',', userSubs: ',', scopes: '\n', wordGroups: '\n' };
+const SEP = { subs: ',', users: ',', titleWords: '\n', commentWords: '\n', bodyWords: '\n', flairWords: '\n', recSubs: ',', recUsers: ',', keepSubs: ',', skipSubs: ',', userSubs: ',', scopes: '\n', wordGroups: '\n' };
 const SAMPLE = {
   subs: ['funny', 'gaming', 'memes', 'nba', 'soccer', 'pics', 'aww', 'movies', '*cat*', '*dog*', '*bird*'],
   users: ['spez', 'automoderator', 'gallowboob'], userSubs: ['spez:announcements'],
-  popularWords: ['election', 'trump'], subWords: ['election'], commentWords: ['spoiler', 'election'],
+  titleWords: ['election', 'trump'], commentWords: ['spoiler', 'election'],
   recSubs: ['askmen', 'lawyertalk'], recUsers: ['someuser'], keepSubs: ['programming', 'space'], skipSubs: ['india'],
   settings: {},
 };
