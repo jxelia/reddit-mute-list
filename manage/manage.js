@@ -626,14 +626,14 @@ function groupEditor(g) {
 }
 
 $('list-add').addEventListener('click', async () => {
-  const shared = parseShared($('list-words').value);
+  const shared = parseShared($('new-list-words').value);
   const name = $('list-name').value.replace(/\s+/g, ' ').trim() || shared.name;
   if (!name) return setStatus('Give the list a name.', true);
   const { good, bad } = parseWords(shared.text, /[,\n]+/);
   if (!good.length) return setStatus('Add some words to the list.', true);
   if (await addList(name, good)) {
     $('list-name').value = '';
-    $('list-words').value = bad.join(', ');
+    $('new-list-words').value = bad.join(', ');
     $('new-list').open = false;
     setStatus(`Added the list “${name}” (${plural(good.length, 'word')})` + (bad.length ? `. Skipped: ${bad.join(', ')}` : ''), bad.length > 0);
   }
