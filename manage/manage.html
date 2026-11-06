@@ -127,6 +127,7 @@
         </div>
         <p class="empty" id="empty-words" hidden></p>
       </details>
+      <div id="x-group"></div>
       <div class="extra" id="word-groups"></div>
 
       <details class="fold extra" id="word-lists">
@@ -322,9 +323,11 @@
       <div class="row">
         <button type="button" id="import">Import list…</button>
         <button type="button" class="secondary" id="export">Export list</button>
+        <button type="button" class="secondary" id="import-x">Import X muted words…</button>
       </div>
       <input type="file" id="import-file" accept=".txt,text/plain" hidden>
-      <p class="note">A text file of subreddits and users (r/name, u/name, *word* or links; spaces, commas or new lines between them). Imported names are listed under “Imported from …” at the bottom of the Subreddits and Users tabs.</p>
+      <input type="file" id="import-x-file" accept=".txt,text/plain" hidden>
+      <p class="note">A text file of subreddits and users (r/name, u/name, *word* or links; spaces, commas or new lines between them). Imported names are listed under “Imported from …” at the bottom of the Subreddits and Users tabs. X muted words: a text file with one word or phrase per line; they go to the ticked places and are listed under “Imported from X” on the Muted words tab.</p>
 
       <h2 class="spaced">Backup</h2>
       <div class="row">

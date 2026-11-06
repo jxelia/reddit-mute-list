@@ -487,8 +487,8 @@ function wordRow(word) {
 // Words in a named list are shown in that list's group, not the main table.
 function renderWords(filter) {
   const all = allWords();
-  // Without extras, list groups aren't shown, so all words are in the table.
-  const grouped = new Set(extras() ? groups().flatMap((g) => g.words) : []);
+  // Without extras only the X list is shown, so other lists' words are in the table.
+  const grouped = new Set(shownGroups().flatMap((g) => g.words));
   const words = sortNames(all.filter((w) => !grouped.has(w) && w.includes(filter)), wordAge);
   $('count-words').textContent = all.length;
   $('word-group').firstElementChild.title = $('word-group').firstElementChild.ariaLabel = `Muted words ${all.length}`;
@@ -510,6 +510,11 @@ const groups = () => state.wordGroups.map((e) => {
   const [name, ...words] = e.split('\t');
   return { name, words };
 });
+
+// Words imported from X: a list of its own, shown even without extras.
+const X_LIST = 'Imported from X';
+const isX = (g) => g.name === X_LIST;
+const shownGroups = () => groups().filter((g) => extras() || isX(g));
 
 // The places ticked under the Mute box, where new words go.
 const WORD_BOX = { commentWords: 'word-comments', titleWords: 'word-titles', bodyWords: 'word-body', flairWords: 'word-flair' };
@@ -538,55 +543,59 @@ function parseShared(text) {
 }
 
 function renderGroups(filter) {
-  $('word-groups').replaceChildren(...groups().map((g) => {
-    const words = g.words.filter((w) => w.includes(filter));
-    if (filter && !words.length && !g.name.toLowerCase().includes(filter)) return '';
-    const box = document.createElement('details');
-    box.className = 'import-group';
-    if (filter && words.length) box.open = true;
-    const summary = document.createElement('summary');
-    summary.textContent = g.name + ' ';
-    const count = document.createElement('span');
-    count.className = 'count';
-    count.textContent = g.words.length;
-    summary.append(count);
-    const table = document.createElement('div');
-    table.className = 'word-table';
-    table.append($('word-table').querySelector('.word-head').cloneNode(true));
-    const list = document.createElement('ul');
-    list.className = 'list';
-    list.append(...sortNames(filter ? words : g.words, wordAge).map(wordRow));
-    table.append(list);
-    const actions = document.createElement('div');
-    actions.className = 'group-actions';
-    const button = (text, run) => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'link';
-      b.textContent = text;
-      b.addEventListener('click', run);
-      actions.append(b);
-    };
-    button('Edit', () => box.replaceChildren(summary, groupEditor(g)));
-    button('Share', async () => {
-      const text = `${g.name}: ${g.words.join(', ')}`;
-      try {
-        await navigator.clipboard.writeText(text);
-        setStatus(`Copied “${g.name}”. Paste it into “New list” to add it, here or in another browser.`);
-      } catch (_) {
-        setStatus(text);
-      }
-    });
-    button(`Unmute all ${g.words.length}`, async () => {
-      const before = state;
-      const gone = new Set(g.words);
-      const next = { ...state };
-      for (const k of MuteStore.WORD_KINDS) next[k] = state[k].filter((w) => !gone.has(w));
-      if (await save(next)) setStatus(`Unmuted the list “${g.name}”`, false, () => restoreNames(MuteStore.WORD_KINDS, g.words, before));
-    });
-    box.append(summary, table, actions);
-    return box;
-  }));
+  const boxes = shownGroups().map((g) => [g, groupBox(g, filter)]);
+  $('x-group').replaceChildren(...boxes.filter(([g]) => isX(g)).map(([, b]) => b));
+  $('word-groups').replaceChildren(...boxes.filter(([g]) => !isX(g)).map(([, b]) => b));
+}
+
+function groupBox(g, filter) {
+  const words = g.words.filter((w) => w.includes(filter));
+  if (filter && !words.length && !g.name.toLowerCase().includes(filter)) return '';
+  const box = document.createElement('details');
+  box.className = 'import-group';
+  if (filter && words.length) box.open = true;
+  const summary = document.createElement('summary');
+  summary.textContent = g.name + ' ';
+  const count = document.createElement('span');
+  count.className = 'count';
+  count.textContent = g.words.length;
+  summary.append(count);
+  const table = document.createElement('div');
+  table.className = 'word-table';
+  table.append($('word-table').querySelector('.word-head').cloneNode(true));
+  const list = document.createElement('ul');
+  list.className = 'list';
+  list.append(...sortNames(filter ? words : g.words, wordAge).map(wordRow));
+  table.append(list);
+  const actions = document.createElement('div');
+  actions.className = 'group-actions';
+  const button = (text, run) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'link';
+    b.textContent = text;
+    b.addEventListener('click', run);
+    actions.append(b);
+  };
+  button('Edit', () => box.replaceChildren(summary, groupEditor(g)));
+  button('Share', async () => {
+    const text = `${g.name}: ${g.words.join(', ')}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setStatus(`Copied “${g.name}”. Paste it into “New list” to add it, here or in another browser.`);
+    } catch (_) {
+      setStatus(text);
+    }
+  });
+  button(`Unmute all ${g.words.length}`, async () => {
+    const before = state;
+    const gone = new Set(g.words);
+    const next = { ...state };
+    for (const k of MuteStore.WORD_KINDS) next[k] = state[k].filter((w) => !gone.has(w));
+    if (await save(next)) setStatus(`Unmuted the list “${g.name}”`, false, () => restoreNames(MuteStore.WORD_KINDS, g.words, before));
+  });
+  box.append(summary, table, actions);
+  return box;
 }
 
 function groupEditor(g) {
@@ -1222,6 +1231,28 @@ $('import-file').addEventListener('change', async (e) => {
   }
 });
 
+// X's muted words export: one word or phrase per line, into the "Imported from X" list.
+$('import-x').addEventListener('click', () => {
+  if (isPopup) {
+    chrome.tabs.create({ url: chrome.runtime.getURL('manage/manage.html?import=x') });
+    window.close();
+    return;
+  }
+  $('import-x-file').click();
+});
+
+$('import-x-file').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const { good, bad } = parseWords(await file.text(), /\r?\n/);
+  const words = [...new Set(good)];
+  if (!words.length) return setStatus('No words found in that file.', true);
+  if (await addList(X_LIST, words)) {
+    setStatus(`Imported ${plural(words.length, 'word')} from X` + (bad.length ? `. Skipped (2–100 characters): ${bad.join(', ')}` : ''), bad.length > 0);
+  }
+});
+
 // A text file the import above reads back: r/ and u/ names, one per line.
 $('export').addEventListener('click', () => {
   const text = [...state.subs.map((n) => 'r/' + n), ...state.users.map((n) => 'u/' + n)].join('\n') + '\n';
@@ -1522,5 +1553,6 @@ Promise.all([MuteStore.load(), chrome.storage.local.get([IMPORTS_KEY, SORT_KEY])
   renderTotal();
   renderPageMuted();
   if (new URLSearchParams(location.search).has('restore')) $('restore-panel').hidden = false;
-  if (new URLSearchParams(location.search).has('import')) setStatus('Click “Import list…” to pick the file.');
+  const importing = new URLSearchParams(location.search).get('import');
+  if (importing !== null) setStatus(`Click “${importing === 'x' ? 'Import X muted words…' : 'Import list…'}” to pick the file.`);
 });

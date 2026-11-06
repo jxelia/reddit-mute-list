@@ -366,7 +366,7 @@ select { font: inherit; color: inherit; background: var(--surface); border: 1px 
 /* Muted words: the summary under the add box, and named word lists. */
 .summary { margin: -0.4rem 0 0.75rem; }
 #words-view .word-section h2 { margin-bottom: 0.4rem; }
-#word-groups .import-group .word-table { margin-top: 0.4rem; }
+#word-groups .import-group .word-table, #x-group .import-group .word-table { margin-top: 0.4rem; }
 .group-actions { display: flex; gap: 0.25rem; flex-wrap: wrap; margin-top: 0.3rem; }
 .group-actions .link { padding: 0.15rem 0.4rem; font-size: 0.85rem; }
 #new-list input, #new-list textarea, .group-edit input, .group-edit textarea { margin-top: 0.4rem; }
