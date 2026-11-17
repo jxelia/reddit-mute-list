@@ -163,9 +163,6 @@ html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toa
   cursor: pointer;
   user-select: none;
 }
-.rmute-decide:hover {
-  background: var(--color-secondary-background-hover, rgba(128, 128, 128, 0.12));
-}
 .rmute-decide:focus-visible {
   outline: 2px solid var(--color-neutral-content-strong, currentColor);
   outline-offset: 1px;
@@ -208,6 +205,40 @@ html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toa
 .rmute-decide button:hover,
 .rmute-decide button:focus-visible {
   background: var(--color-secondary-background-hover, rgba(128, 128, 128, 0.2));
+}
+
+/* Recommended bars: a small × (mute); hovering it slides a ✓ (keep) out to its
+   left, as Auto Hyperlink's chip tools stretch out. */
+.rmute-pick {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+.rmute-decide .rmute-pick button {
+  width: 28px;
+  height: 28px;
+  color: var(--color-neutral-content-weak, #8a8a8a);
+}
+.rmute-decide .rmute-pick button:hover,
+.rmute-decide .rmute-pick button:focus-visible {
+  color: var(--color-neutral-content-strong, inherit);
+}
+.rmute-pick svg {
+  width: 16px;
+  height: 16px;
+}
+.rmute-tools {
+  display: inline-flex;
+  width: 0;
+  overflow: hidden;
+  transition: width 0.15s ease-out;
+}
+.rmute-pick:hover .rmute-tools,
+.rmute-pick:focus-within .rmute-tools {
+  width: 28px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rmute-tools { transition: none; }
 }
 
 /* The Mute r/ button on r/popular bars: greyed until hovered. */

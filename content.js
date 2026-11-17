@@ -13,6 +13,9 @@ const ICONS = {
   fewer: 'M12 6c3.79 0 7.17 2.13 8.82 5.5-.59 1.22-1.42 2.27-2.41 3.12l1.41 1.41c1.39-1.23 2.49-2.77 3.18-4.53C21.27 7.11 17 4 12 4c-1.27 0-2.49.2-3.64.57l1.65 1.65C10.66 6.09 11.32 6 12 6zm-1.07 1.14L13 9.21c.57.25 1.03.71 1.28 1.28l2.07 2.07c.08-.34.14-.7.14-1.07C16.5 9.01 14.48 7 12 7c-.37 0-.72.05-1.07.14zM2.01 3.87l2.68 2.68C3.06 7.83 1.77 9.53 1 11.5 2.73 15.89 7 19 12 19c1.52 0 2.98-.29 4.32-.82l3.42 3.42 1.41-1.41L3.42 2.45 2.01 3.87zm7.5 7.5l2.61 2.61c-.04.01-.08.02-.12.02-1.38 0-2.5-1.12-2.5-2.5 0-.05.01-.08.01-.13zm-3.4-3.4l1.75 1.75c-.23.55-.36 1.15-.36 1.78 0 2.48 2.02 4.5 4.5 4.5.63 0 1.23-.13 1.77-.36l.98.98c-.88.24-1.8.38-2.75.38-3.79 0-7.17-2.13-8.82-5.5.7-1.43 1.72-2.61 2.93-3.53z',
   menu: 'M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z',
   keep: 'M16.59 7.58 10 14.17l-3.59-3.58L5 12l5 5 8-8zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z',
+  // Material check and close, no circle: the recommended bar's keep and mute.
+  tick: 'M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z',
+  close: 'M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z',
   block: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.69L5.69 16.9C4.63 15.55 4 13.85 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.69L18.31 7.1C19.37 8.45 20 10.15 20 12c0 4.42-3.58 8-8 8z'
 };
 const BLOCK_HASH = '#rmute-block';
@@ -1899,10 +1902,12 @@ function syncDecideBar(post, sub, kind = 'rec') {
   });
 
   // r/popular: the same Mute r/ button as under a post's ⋯ (mutes everywhere,
-  // since recommendation mutes only apply on the main page). Recommended posts: a menu.
+  // since recommendation mutes only apply on the main page). Recommended posts:
+  // a small × (mute in recommendations); hovering it slides a ✓ (keep) out to its left.
   const popular = kind === 'popular';
-  const menu = popular ? iconButton(ICONS.mute, `Mute r/${sub}`) : iconButton(ICONS.menu, `Options for r/${sub}`);
+  let menu;
   if (popular) {
+    menu = iconButton(ICONS.mute, `Mute r/${sub}`);
     menu.classList.add('rmute-faint');
     menu.addEventListener('click', (e) => {
       e.stopPropagation(); // not a toggle
@@ -1910,14 +1915,16 @@ function syncDecideBar(post, sub, kind = 'rec') {
       markTitles();
     });
   } else {
-    menu.setAttribute('aria-haspopup', 'menu');
-    menu.addEventListener('click', (e) => {
-      e.stopPropagation(); // not a toggle
-      showFallbackMenu(menu, [
-        { label: `Keep r/${sub} in recommendations`, icon: ICONS.keep, run: () => keepSub(sub) },
-        { label: `Mute r/${sub} in recommendations`, icon: ICONS.mute, run: () => { mute('recSubs', sub); markTitles(); } }
-      ]);
-    });
+    const keep = iconButton(ICONS.tick, `Keep r/${sub} in recommendations`);
+    const drop = iconButton(ICONS.close, `Mute r/${sub} in recommendations`);
+    keep.addEventListener('click', (e) => { e.stopPropagation(); keepSub(sub); });
+    drop.addEventListener('click', (e) => { e.stopPropagation(); mute('recSubs', sub); markTitles(); });
+    const tools = document.createElement('span');
+    tools.className = 'rmute-tools';
+    tools.append(keep);
+    menu = document.createElement('span');
+    menu.className = 'rmute-pick';
+    menu.append(tools, drop);
   }
 
   el.append(label);
