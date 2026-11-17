@@ -398,6 +398,8 @@ function render() {
   if (kind === 'rec') {
     const filter = $('rec-filter').value.trim().toLowerCase().replace(/^[ru]\//, '');
     for (const k of REC_LISTS) renderList(k, $('list-' + k), $('empty-' + k), filter);
+    $('rec-group').firstElementChild.title = $('rec-group').firstElementChild.ariaLabel = `Subreddits ${state.recSubs.length}`;
+    if (filter) $('rec-group').open = true;
     return;
   }
   $('add-input').placeholder = kind === 'subs' ? 'r/name, word, or paste links' : 'u/name, *bot*, or paste links';
@@ -757,6 +759,7 @@ document.querySelectorAll('.tabs [role="tab"]').forEach((tab) => {
     textKind = null;
     $('main-group').open = false;
     $('word-group').open = false;
+    $('rec-group').open = false;
     render();
   });
 });

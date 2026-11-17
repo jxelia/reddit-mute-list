@@ -301,7 +301,7 @@
 // opening and shrinks once after closing.
 (() => {
   if (!matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
-  const LISTS = '#main-group, #word-group, .presets details';
+  const LISTS = '#main-group, #word-group, #rec-group, .presets details';
   const page = document.documentElement;
   let running = null;
   let lifting = null;
