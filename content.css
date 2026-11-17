@@ -167,7 +167,7 @@ html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toa
   outline: 2px solid var(--color-neutral-content-strong, currentColor);
   outline-offset: 1px;
 }
-.rmute-decide span {
+.rmute-decide span:not(.rmute-pick, .rmute-tools) {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -211,6 +211,7 @@ html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toa
    left, as Auto Hyperlink's chip tools stretch out. */
 .rmute-pick {
   display: inline-flex;
+  flex: none !important;
   flex: none;
   align-items: center;
 }
@@ -224,11 +225,20 @@ html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toa
   color: var(--color-neutral-content-strong, inherit);
 }
 .rmute-pick svg {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
+  /* A stroke over the fill makes the thin Material lines a little bolder. */
+  stroke: currentColor;
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+}
+.rmute-pick > button svg {
+  width: 12px;
+  height: 12px;
 }
 .rmute-tools {
   display: inline-flex;
+  flex: none !important;
   width: 0;
   overflow: hidden;
   transition: width 0.15s ease-out;
