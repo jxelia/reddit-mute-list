@@ -1865,10 +1865,15 @@ function stretchParts(post) {
   const link = head?.querySelector('a[data-testid="subreddit-name"]');
   if (!link) return [];
   const parts = [];
+  // Wrappers with display: contents (rpl-hovercard around the community status
+  // icon, post tag loaders) have no box of their own: take their children.
+  const add = (el) => {
+    if (el.querySelector('shreddit-post-overflow-menu')) return;
+    if (getComputedStyle(el).display === 'contents') [...el.children].forEach(add);
+    else if (el.offsetWidth) parts.push(el);
+  };
   for (let n = link; n && n.parentElement !== head; n = n.parentElement) {
-    for (let sib = n.nextElementSibling; sib; sib = sib.nextElementSibling) {
-      if (sib.offsetWidth && !sib.querySelector('shreddit-post-overflow-menu')) parts.push(sib);
-    }
+    for (let sib = n.nextElementSibling; sib; sib = sib.nextElementSibling) add(sib);
   }
   parts.sort((x, y) => x.getBoundingClientRect().left - y.getBoundingClientRect().left);
   const left = parts[0]?.getBoundingClientRect().left;
