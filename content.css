@@ -270,13 +270,60 @@ html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toa
 .rmute-decide[aria-expanded="true"] {
   display: none !important;
 }
-/* The bar's × left fading where it was as the post opens (fadeGhost). */
-.rmute-decide.rmute-ghost {
-  position: fixed;
-  z-index: 1;
+/* Collapsed tile (syncTile): the post itself, cut to its header line, with
+   only the sub name showing, bigger and moved into the icon's spot, and the
+   × or Mute r/ where the ⋯ goes. Opening transitions back to the plain post. */
+html:not([data-rmute-off]) shreddit-post[data-rmute-tile]:not([data-rmute-open]) {
+  /* Content box: 28px + 4px padding each side = the 32px header line. Reddit
+     sometimes pads the bottom for the action row; the tile doesn't need it. */
+  height: 28px;
+  padding-bottom: 4px;
+  overflow: clip;
+}
+/* Every part, since Reddit sets visibility: visible on the time. */
+html:not([data-rmute-off]) shreddit-post[data-rmute-tile]:not([data-rmute-open]) [slot="credit-bar"],
+html:not([data-rmute-off]) shreddit-post[data-rmute-tile]:not([data-rmute-open]) [slot="credit-bar"] * {
+  visibility: hidden;
+  /* Hidden once the closing fades are done. */
+  transition: visibility 0s linear 0.3s;
+}
+shreddit-post[data-rmute-tile] [slot="credit-bar"] a[data-testid="subreddit-name"] > span:last-child {
+  visibility: visible;
+  transform-origin: 0 50%;
+  transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1);
+}
+html:not([data-rmute-off]) shreddit-post[data-rmute-tile]:not([data-rmute-open]) [slot="credit-bar"] a[data-testid="subreddit-name"] > span:last-child {
+  /* 12px → 14px, left over the 30px icon. */
+  transform: translateX(-30px) scale(1.1667);
+}
+shreddit-post[data-rmute-tile] [slot="credit-bar"] a[data-testid="subreddit-name"] > :first-child {
+  transition: opacity 0.2s ease-out;
+}
+html:not([data-rmute-off]) shreddit-post[data-rmute-tile]:not([data-rmute-open]) [slot="credit-bar"] a[data-testid="subreddit-name"] > :first-child {
+  opacity: 0;
+}
+.rmute-decide.rmute-tile-tools {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: 9px;
+  height: 32px;
   margin: 0;
   padding: 0;
-  pointer-events: none;
+  justify-content: flex-end;
+  transition: opacity 0.22s ease-out;
+}
+.rmute-tile-tools .rmute-pick {
+  /* The × centred where the ⋯ is. */
+  margin-right: 2px;
+}
+shreddit-post[data-rmute-open] > .rmute-tile-tools {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.22s ease-out, visibility 0s linear 0.22s;
+}
+@media (prefers-reduced-motion: reduce) {
+  shreddit-post[data-rmute-tile] *, .rmute-tile-tools { transition: none !important; }
 }
 shreddit-post[data-rmute-open] [slot="credit-bar"] {
   cursor: pointer;

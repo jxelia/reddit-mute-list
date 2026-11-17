@@ -76,12 +76,9 @@ function buildCss(list) {
   for (const preset of PRESETS) {
     if (list.settings[PRESET_SETTING[preset]]) recPosts.push(`${REC}[data-rmute-preset~="${preset}"]`);
   }
-  // Keep mode: other recommended posts shrink to the bar markPreset() puts
-  // before them, so only the post goes (not its article, which holds the bar).
-  if (list.settings.keepMode) other.push(`${REC}[data-rmute-preset~="undecided"]:not([data-rmute-open])`);
-  // r/popular: every post starts as a bar (markPopular), recommended or not.
+  // Keep mode, and every r/popular post: these collapse in place to their
+  // header line instead (syncTile, content.css [data-rmute-tile]).
   const POPULAR = '[data-rmute-scope="popular"]';
-  if (list.settings.collapsePopular) other.push(`shreddit-post${POPULAR}[data-rmute-preset~="undecided"]:not([data-rmute-open])`);
   // Extra feature: the built-in filters apply there too (markPopular).
   if (list.settings.popularFilters) {
     for (const preset of PRESETS) {
@@ -413,7 +410,8 @@ function pageCounts() {
     const id = post.id || post.getAttribute('permalink');
     if (!id) continue;
     const bar = post.previousElementSibling?.classList.contains('rmute-decide') ? post.previousElementSibling : null;
-    counted.set(id, post.checkVisibility() ? 'shown' : bar?.checkVisibility() ? 'bar' : 'hidden');
+    const tile = post.hasAttribute('data-rmute-tile') && !post.hasAttribute('data-rmute-open');
+    counted.set(id, post.checkVisibility() ? (tile ? 'bar' : 'shown') : bar?.checkVisibility() ? 'bar' : 'hidden');
   }
   const counts = { shown: 0, bar: 0, hidden: 0 };
   let added = 0;
@@ -1872,7 +1870,7 @@ function stretchParts(post) {
 
 // Opening: the post grows down out of the bar's height, and the header's •
 // and time stretch out from just under full width at their left, a touch
-// past it and back. The ⋯ just shows (the bar's × fades out over it, fadeGhost).
+// past it and back. The ⋯ just shows.
 function expandIn(post, from) {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const to = post.offsetHeight;
@@ -1882,6 +1880,10 @@ function expandIn(post, from) {
       { duration: Math.min(380, 180 + to / 4), easing: 'cubic-bezier(0.2, 0, 0, 1)' },
     );
   }
+  stretchIn(post);
+}
+
+function stretchIn(post) {
   for (const [n, origin] of stretchParts(post)) {
     n.animate([
       { transform: 'scaleX(0.9)', transformOrigin: origin, opacity: 0 },
@@ -1891,18 +1893,16 @@ function expandIn(post, from) {
   }
 }
 
-// A copy of the bar's × (or Mute r/) left where it was, fading out, since
-// the bar itself goes at once.
-function fadeGhost(node) {
-  const r = node.getBoundingClientRect();
-  if (!r.width || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const ghost = document.createElement('div');
-  ghost.className = 'rmute-decide rmute-ghost';
-  ghost.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;
-  ghost.append(node.cloneNode(true));
-  document.documentElement.append(ghost);
-  ghost.animate({ opacity: [1, 0] }, { duration: 220, easing: 'ease-out', fill: 'forwards' })
-    .finished.then(() => ghost.remove(), () => ghost.remove());
+// Closing: • and time shrink a little toward their left edge as they fade,
+// and the ⋯ fades out as the ×  does on opening. Held at the end.
+function stretchOut(post) {
+  const anims = stretchParts(post).map(([n, origin]) => n.animate(
+    { transform: ['scaleX(1)', 'scaleX(0.9)'], transformOrigin: [origin, origin], opacity: [1, 0] },
+    { duration: 180, easing: 'ease-in', fill: 'forwards' },
+  ));
+  const dots = post.querySelector('[slot="credit-bar"] shreddit-post-overflow-menu');
+  if (dots) anims.push(dots.animate({ opacity: [1, 0] }, { duration: 220, easing: 'ease-out', fill: 'forwards' }));
+  return anims;
 }
 
 // Closing, the reverse: • and time shrink a little toward their left edge as
@@ -1910,16 +1910,7 @@ function fadeGhost(node) {
 function collapseOut(post, to) {
   post.getAnimations({ subtree: true }).forEach((a) => a.cancel());
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return Promise.resolve();
-  const anims = [];
-  for (const [n, origin] of stretchParts(post)) {
-    anims.push(n.animate(
-      { transform: ['scaleX(1)', 'scaleX(0.9)'], transformOrigin: [origin, origin], opacity: [1, 0] },
-      { duration: 180, easing: 'ease-in', fill: 'forwards' },
-    ));
-  }
-  // The ⋯ fades out as the bar's × did on opening.
-  const dots = post.querySelector('[slot="credit-bar"] shreddit-post-overflow-menu');
-  if (dots) anims.push(dots.animate({ opacity: [1, 0] }, { duration: 220, easing: 'ease-out', fill: 'forwards' }));
+  const anims = stretchOut(post);
   const from = post.offsetHeight;
   if (to && from > to) {
     anims.push(post.animate(
@@ -1934,27 +1925,124 @@ function collapseOut(post, to) {
   );
 }
 
-// An opened post's header line (sub, time, ⋯) closes it again, as the bar
-// would: a click in its free space, not on a link or button. Reddit's
-// full-post link lies over that space, so it goes by the click's position.
+// A collapsed tile opens on a click anywhere but its sub name and buttons;
+// an opened post's header line (sub, time, ⋯) closes it again, by a click in
+// its free space. Reddit's full-post link lies over both, so the header goes
+// by the click's position.
+const ACTIVE = 'a[href]:not([slot="full-post-link"]), button, input, [role="button"], [role="menu"], .rmute-tile-tools';
+const onActive = (e, post) => {
+  for (const n of e.composedPath()) {
+    if (n === post) return false;
+    if (n.matches?.(ACTIVE)) return true;
+  }
+  return false;
+};
 window.addEventListener('click', (e) => {
   if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-  const post = e.target.closest?.('shreddit-post[data-rmute-open]');
+  const post = e.target.closest?.('shreddit-post');
   const toggle = post && barToggles.get(post);
-  const head = toggle && post.querySelector('[slot="credit-bar"]');
-  if (!head) return;
-  const r = head.getBoundingClientRect();
-  if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
-  for (const n of e.composedPath()) {
-    if (n === post) break;
-    if (n.matches?.('a[href]:not([slot="full-post-link"]), button, input, [role="button"], [role="menu"]')) return;
+  if (!toggle || onActive(e, post)) return;
+  if (!post.hasAttribute('data-rmute-open')) {
+    if (!post.hasAttribute('data-rmute-tile')) return;
+  } else {
+    const r = post.querySelector('[slot="credit-bar"]')?.getBoundingClientRect();
+    if (!r || e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
   }
   e.preventDefault();
   e.stopPropagation();
   toggle();
 }, true);
+// Enter on a collapsed tile's own post link opens it instead of the post page.
+window.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' || !e.target.matches?.('[slot="full-post-link"]')) return;
+  const post = e.target.closest('shreddit-post[data-rmute-tile]:not([data-rmute-open])');
+  const toggle = post && barToggles.get(post);
+  if (!toggle) return;
+  e.preventDefault();
+  e.stopPropagation();
+  toggle();
+}, true);
 
+// Recommended and r/popular posts collapse in place to their header line
+// (content.css: only the sub name shows, bigger and in the icon's spot, with
+// the × or Mute r/ where the ⋯ goes); an opened post's own page gets a bar.
 function syncDecideBar(post, sub, kind = 'rec') {
+  if (kind !== 'page' || !sub) syncTile(post, kind === 'page' ? null : sub, kind);
+  if (kind === 'page' || !sub) syncPageBar(post, kind === 'page' ? sub : null);
+}
+
+const tiles = new WeakMap(); // post -> { sub, tools }
+
+function syncTile(post, sub, kind) {
+  const ui = tiles.get(post);
+  if (ui && ui.sub === sub && ui.tools.isConnected) return;
+  if (ui) {
+    ui.tools.remove();
+    tiles.delete(post);
+  }
+  if (post.hasAttribute('data-rmute-tile')) {
+    post.getAnimations({ subtree: true }).forEach((a) => a.cancel());
+    post.removeAttribute('data-rmute-tile');
+    post.removeAttribute('data-rmute-open');
+    barToggles.delete(post);
+  }
+  if (!sub) return;
+
+  const tools = document.createElement('span');
+  tools.className = 'rmute-decide rmute-tile-tools';
+  tools.append(decideButtons(sub, kind === 'popular'));
+  post.append(tools);
+  post.setAttribute('data-rmute-tile', kind);
+  tiles.set(post, { sub, tools });
+
+  barToggles.set(post, () => {
+    post.getAnimations({ subtree: true }).forEach((a) => a.cancel());
+    const cs = getComputedStyle(post);
+    const from = [cs.height, cs.paddingBottom];
+    const open = post.toggleAttribute('data-rmute-open');
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    // The tile grows to the full post or shrinks back; the name's size and
+    // spot, the icon and the × fade are CSS transitions.
+    const to = [cs.height, cs.paddingBottom]; // live: cs updates with the attribute
+    const h = parseFloat(open ? to[0] : from[0]);
+    post.animate(
+      { height: [from[0], to[0]], paddingBottom: [from[1], to[1]], overflow: ['clip', 'clip'] },
+      open
+        ? { duration: Math.min(380, 180 + h / 4), easing: 'cubic-bezier(0.2, 0, 0, 1)' }
+        : { duration: Math.min(320, 160 + h / 5), easing: 'cubic-bezier(0.3, 0, 0.8, 0.15)' },
+    );
+    if (open) stretchIn(post);
+    else stretchOut(post);
+  });
+}
+
+// r/popular: the same Mute r/ button as under a post's ⋯ (mutes everywhere,
+// since recommendation mutes only apply on the main page). Recommended posts:
+// a small × (mute in recommendations); hovering it slides a ✓ (keep) out to its left.
+function decideButtons(sub, popular) {
+  if (popular) {
+    const button = iconButton(ICONS.mute, `Mute r/${sub}`);
+    button.classList.add('rmute-faint');
+    button.addEventListener('click', () => {
+      mute('subs', sub);
+      markTitles();
+    });
+    return button;
+  }
+  const keep = iconButton(ICONS.tick, `Keep r/${sub} in recommendations`);
+  const drop = iconButton(ICONS.close, `Mute r/${sub} in recommendations`);
+  keep.addEventListener('click', () => keepSub(sub));
+  drop.addEventListener('click', () => { mute('recSubs', sub); markTitles(); });
+  const tools = document.createElement('span');
+  tools.className = 'rmute-tools';
+  tools.append(keep);
+  const pick = document.createElement('span');
+  pick.className = 'rmute-pick';
+  pick.append(tools, drop);
+  return pick;
+}
+
+function syncPageBar(post, sub) {
   const prev = post.previousElementSibling;
   const bar = prev?.classList.contains('rmute-decide') ? prev : null;
   if (bar?.dataset.sub === sub) return;
@@ -1980,7 +2068,7 @@ function syncDecideBar(post, sub, kind = 'rec') {
   el.setAttribute('role', 'button');
   el.tabIndex = 0;
   el.setAttribute('aria-expanded', 'false');
-  const what = kind === 'page' ? 'post and comments' : 'post';
+  const what = 'post and comments';
   el.title = `Show ${what}`;
   let barHeight = 0;
   let closing = false;
@@ -1999,13 +2087,8 @@ function syncDecideBar(post, sub, kind = 'rec') {
     }
   };
   const flip = () => {
-    if (!post.hasAttribute('data-rmute-open') && menu) fadeGhost(menu);
     const open = post.toggleAttribute('data-rmute-open');
-    // Closed again: the × fades back in where the ⋯ was.
-    if (!open && menu && kind !== 'page' && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      menu.animate({ opacity: [0, 1] }, { duration: 220, easing: 'ease-out' });
-    }
-    if (kind === 'page') document.documentElement.toggleAttribute('data-rmute-word-post', !open);
+    document.documentElement.toggleAttribute('data-rmute-word-post', !open);
     // Open, the bar goes (content.css) and the post looks as it would without
     // one, its own sub name back; closed, the bar names the sub again.
     if (open) {
@@ -2023,34 +2106,7 @@ function syncDecideBar(post, sub, kind = 'rec') {
     toggle();
   });
 
-  // r/popular: the same Mute r/ button as under a post's ⋯ (mutes everywhere,
-  // since recommendation mutes only apply on the main page). Recommended posts:
-  // a small × (mute in recommendations); hovering it slides a ✓ (keep) out to its left.
-  const popular = kind === 'popular';
-  let menu;
-  if (popular) {
-    menu = iconButton(ICONS.mute, `Mute r/${sub}`);
-    menu.classList.add('rmute-faint');
-    menu.addEventListener('click', (e) => {
-      e.stopPropagation(); // not a toggle
-      mute('subs', sub);
-      markTitles();
-    });
-  } else {
-    const keep = iconButton(ICONS.tick, `Keep r/${sub} in recommendations`);
-    const drop = iconButton(ICONS.close, `Mute r/${sub} in recommendations`);
-    keep.addEventListener('click', (e) => { e.stopPropagation(); keepSub(sub); });
-    drop.addEventListener('click', (e) => { e.stopPropagation(); mute('recSubs', sub); markTitles(); });
-    const tools = document.createElement('span');
-    tools.className = 'rmute-tools';
-    tools.append(keep);
-    menu = document.createElement('span');
-    menu.className = 'rmute-pick';
-    menu.append(tools, drop);
-  }
-
   el.append(label);
-  if (kind !== 'page') el.append(menu);
   post.before(el);
 
   matchSubName(post, sub, label);
@@ -2135,6 +2191,7 @@ function markTitles(root = document) {
       if (bar.nextElementSibling) syncDecideBar(bar.nextElementSibling, null);
       else bar.remove();
     });
+    document.querySelectorAll('shreddit-post[data-rmute-tile]').forEach((post) => syncDecideBar(post, null));
     document.querySelectorAll('.rmute-cbar').forEach((bar) => syncCommentBar(bar.parentElement, ''));
     return;
   }
