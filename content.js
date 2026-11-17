@@ -2128,15 +2128,17 @@ function syncTile(post, sub, kind) {
   post.setAttribute('data-rmute-tile', kind);
   tiles.set(post, { sub, tools });
 
-  // Opening: the header is there as usual at once and the tile grows; a copy of
-  // the tile's label fades out over it. Closing, the reverse: the copy fades in
-  // as the tile shrinks, then it swaps to the tile.
+  // Opening: the tile grows while a copy of the tile's label fades out, then the
+  // header shows as usual (at once, never under the label). Closing, the
+  // reverse: the header goes at once, the copy fades in as the tile shrinks,
+  // then it swaps to the tile.
   let closing = null;
   barToggles.set(post, () => {
     if (closing) return closing.cancel(); // back to open
     post.getAnimations({ subtree: true }).forEach((a) => a.cancel());
     post.querySelector(':scope > .rmute-tile-ghost')?.remove();
     const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const bar = post.querySelector('[slot="credit-bar"]');
     const cs = getComputedStyle(post);
     const box = () => [cs.height, cs.paddingBottom]; // live: cs follows the attribute
     const grow = (from, to, opts) => post.animate(
@@ -2147,7 +2149,9 @@ function syncTile(post, sub, kind) {
       post.setAttribute('data-rmute-open', '');
       if (!ghost) return;
       grow(from, box(), { duration: 300, easing: 'cubic-bezier(0.2, 0, 0, 1)' });
-      ghost.animate({ opacity: [1, 0] }, { duration: 200, easing: 'ease-out', fill: 'forwards' })
+      // The header only shows once the label has gone, never under it.
+      bar?.animate({ opacity: [0, 0] }, { duration: 150 });
+      ghost.animate({ opacity: [1, 0] }, { duration: 150, easing: 'ease-out', fill: 'forwards' })
         .finished.finally(() => ghost.remove()).catch(() => {});
       return;
     }
@@ -2159,13 +2163,15 @@ function syncTile(post, sub, kind) {
     post.setAttribute('data-rmute-open', '');
     const duration = Math.min(320, 160 + parseFloat(from[0]) / 5);
     closing = grow(from, to, { duration, easing: 'cubic-bezier(0.3, 0, 0.8, 0.15)', fill: 'forwards' });
-    ghost.animate({ opacity: [0, 1] }, { duration, easing: 'ease-in', fill: 'forwards' });
+    const hide = bar?.animate({ opacity: [0, 0] }, { duration, fill: 'forwards' }); // gone at once
+    ghost.animate({ opacity: [0, 1] }, { duration: 150, easing: 'ease-in', fill: 'forwards' });
     closing.finished.then(() => {
       post.removeAttribute('data-rmute-open');
       requestAnimationFrame(() => post.getAnimations().forEach((x) => x.cancel()));
     }, () => {}).finally(() => {
       closing = null;
       ghost.remove();
+      hide?.cancel();
     });
   });
 }
