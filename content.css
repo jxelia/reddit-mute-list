@@ -303,22 +303,28 @@ html:not([data-rmute-off]) shreddit-post[data-rmute-tile]:not([data-rmute-open])
   /* Same size, left over the 30px icon. */
   transform: translateX(-30px);
 }
+/* The icon shows from its left as the name slides off it, with a soft 8px
+   right edge. The edge runs 16px (a few characters) ahead of the name, as if
+   the r/ had further to go: 0 closed, 46px open (box 30px), so the 24px icon
+   is fully shown about 90 ms in. A length property so it animates. */
+@property --rmute-icon-edge {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 46px;
+}
 shreddit-post[data-rmute-tile] [slot="credit-bar"] a[data-testid="subreddit-name"] > :first-child {
-  /* Stays put; its right edge is cut at the name's left edge as the name
-     slides over it (same 30px box, same curve), so it's fully shown once the
-     name passes its 24px icon, about 120 ms in. inset(0), not none, which
-     doesn't animate. It also stretches a little rightward from its left edge,
-     done by the same moment. */
-  clip-path: inset(0);
+  --rmute-icon-edge: 46px;
+  mask-image: linear-gradient(to right, #000 calc(var(--rmute-icon-edge) - 8px), transparent var(--rmute-icon-edge));
+  /* It also stretches a little rightward from its left edge, done by then. */
   transform-origin: 0 50%;
-  transition: clip-path 0.3s cubic-bezier(0.2, 0, 0, 1), transform 0.12s ease-out;
+  transition: --rmute-icon-edge 0.3s cubic-bezier(0.2, 0, 0, 1), transform 0.09s ease-out;
 }
 html:not([data-rmute-off]) shreddit-post[data-rmute-tile]:not([data-rmute-open]) [slot="credit-bar"] a[data-testid="subreddit-name"] > :first-child {
-  clip-path: inset(0 100% 0 0);
+  --rmute-icon-edge: 0px;
   transform: scaleX(0.95);
-  /* Stays visible while its clip closes: the credit bar's delayed hide doesn't
+  /* Stays visible while its edge closes: the credit bar's delayed hide doesn't
      reach an icon drawn inside a shadow root, which would vanish at once. */
-  transition: clip-path 0.3s cubic-bezier(0.2, 0, 0, 1), transform 0.12s ease-out, visibility 0s linear 0.3s;
+  transition: --rmute-icon-edge 0.3s cubic-bezier(0.2, 0, 0, 1), transform 0.09s ease-out, visibility 0s linear 0.3s;
 }
 .rmute-decide.rmute-tile-tools {
   position: absolute;
