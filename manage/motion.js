@@ -105,6 +105,10 @@
       // its centre, and its letters turn round a small one.
       const own = Math.max(0, 1 - away);
       const small = (width * size / 2) / wordReach(width * size / 2, round);
+      // Where the title rests on the row, for finding the hovered one.
+      const half = width * size / 2;
+      t.left = project(rest - restMiddle - half, round, 0);
+      t.right = project(rest - restMiddle + half, round, 0);
       // Coming out spreads it by mag, so its centre is set back to land on its spot,
       // and it slides back only as far as it would leave the page.
       const off = spot - middle;
@@ -116,9 +120,8 @@
         el.style.transform = `translateX(${slide}px) perspective(${VIEW}px) translateZ(${-round}px) rotateY(${along / round}rad) translateZ(${round + pop}px) perspective(${small * WORD_VIEW}px) translateZ(${-small}px) rotateY(${own * at * size / small}rad) translateZ(${small}px) scale(${size * grow}) translate(-50%, -50%)`;
       }
     }
-    // The line stays under the current page's title as the row scrolls or makes room.
-    const page = strip[selected()];
-    if (page) line.style.translate = `${project(page.spot - middle, round, 0)}px 0`;
+    // The line follows the selected title when a hover pushes it aside.
+    line.style.translate = `${project(between('spot') - middle, round, 0)}px 0`;
     drawLine(round);
   }
 
@@ -174,34 +177,8 @@
     if (!frame) frame = requestAnimationFrame(step);
   }
 
-  const selected = () => strip.findIndex((t) => t.button.getAttribute('aria-selected') === 'true');
-
-  // Where each title rests with the row on the current page, for finding the hovered
-  // one: fixed while the row scrolls to a hovered title, so the pointer doesn't chase it.
-  function zones() {
-    const at = selected();
-    let across = 0;
-    const spots = strip.map((t, i) => {
-      const wide = t.width * sizeAt(Math.abs(i - at));
-      const spot = across + wide / 2;
-      across += wide + GAP;
-      return [spot, wide / 2];
-    });
-    across -= GAP;
-    const middle = spots[at]?.[0] ?? 0;
-    const round = Math.max(middle, across - middle, 200) * 1.08 / REACH;
-    strip.forEach((t, i) => {
-      const [spot, half] = spots[i];
-      t.left = project(spot - middle - half, round, 0);
-      t.right = project(spot - middle + half, round, 0);
-    });
-  }
-
-  // The row scrolls to a hovered title, and back to the current page's when the
-  // pointer leaves; only a click changes the page.
   function place(animate) {
-    zones();
-    const tab = hovered ? strip.findIndex((t) => t.button === hovered) : selected();
+    const tab = strip.findIndex((t) => t.button.getAttribute('aria-selected') === 'true');
     if (tab < 0) return;
     if (animate) {
       moving = { from: pos, to: tab, start: performance.now() };
@@ -218,11 +195,11 @@
     button?.setAttribute('data-hover', '');
     tabs.style.cursor = button ? 'pointer' : '';
     hovered = button;
-    place(true);
+    run();
   }
 
-  // By where the titles rest with the row on the current page, not the letters, so a
-  // title moving out from under the pointer stays hovered.
+  // By where the titles rest, not the letters, so a title moving out from under the
+  // pointer stays hovered.
   tabs.addEventListener('pointermove', (e) => {
     const box = tabs.getBoundingClientRect();
     const x = e.clientX - box.left - box.width / 2;
