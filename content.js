@@ -2036,6 +2036,22 @@ function matchSubName(post, sub, label) {
   }
   link.style.setProperty('display', 'none', 'important');
   hiddenNames.set(post, link);
+  addSubCard(link, label);
+}
+
+// The bar's name opens the same sub hover card as the post's own name: a copy
+// of Reddit's hovercard wrapper (it upgrades itself) around the bar's link,
+// with the card content the post already holds.
+function addSubCard(link, label) {
+  const own = link.closest('faceplate-hovercard');
+  const content = own?.querySelector(':scope > [slot="content"]');
+  const anchor = label.querySelector(':scope > a');
+  if (!content || !anchor) return;
+  const card = own.cloneNode(false);
+  card.title = ''; // no "Show post" tooltip over the card
+  card.addEventListener('click', (e) => e.stopPropagation()); // not a toggle
+  anchor.replaceWith(card);
+  card.append(anchor, content.cloneNode(true));
 }
 
 // The text link to the sub in a post's header (light DOM or open shadow

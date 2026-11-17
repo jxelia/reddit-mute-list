@@ -163,11 +163,21 @@ html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toa
   cursor: pointer;
   user-select: none;
 }
+.rmute-decide faceplate-hovercard { display: inline; }
+/* The sub hover card in the bar reads like Reddit's own, not like the bar. */
+.rmute-decide [slot="content"] {
+  cursor: auto;
+  user-select: text;
+  white-space: normal;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 20px;
+}
 .rmute-decide:focus-visible {
   outline: 2px solid var(--color-neutral-content-strong, currentColor);
   outline-offset: 1px;
 }
-.rmute-decide span:not(.rmute-pick, .rmute-tools) {
+.rmute-decide span:not(.rmute-pick, .rmute-tools, [slot="content"] *) {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -177,7 +187,7 @@ html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toa
   font-size: 14px !important;
   line-height: 20px !important;
 }
-.rmute-decide a {
+.rmute-decide a:not([slot="content"] *) {
   /* The label carries the copied font; Reddit's own link styles mustn't win. */
   font: inherit !important;
   letter-spacing: inherit !important;
@@ -185,11 +195,11 @@ html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toa
   text-decoration: none;
   cursor: pointer;
 }
-.rmute-decide a:hover,
-.rmute-decide a:focus-visible {
+.rmute-decide a:not([slot="content"] *):hover,
+.rmute-decide a:not([slot="content"] *):focus-visible {
   text-decoration: underline;
 }
-.rmute-decide button {
+.rmute-decide button:not([slot="content"] *) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -202,8 +212,8 @@ html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toa
   color: var(--color-neutral-content-strong, inherit);
   cursor: pointer;
 }
-.rmute-decide button:hover,
-.rmute-decide button:focus-visible {
+.rmute-decide button:not([slot="content"] *):hover,
+.rmute-decide button:not([slot="content"] *):focus-visible {
   background: var(--color-secondary-background-hover, rgba(128, 128, 128, 0.2));
 }
 
