@@ -282,12 +282,17 @@ html:not([data-rmute-off]) shreddit-post[data-rmute-tile]:not([data-rmute-open])
   /* No hover or focus highlight until it opens. */
   background-color: var(--color-neutral-background) !important;
 }
-/* Every part, since Reddit sets visibility: visible on the time. */
+/* Every part, since Reddit sets visibility: visible on the time, but not the
+   sub hover card's content, which would show blank. */
 html:not([data-rmute-off]) shreddit-post[data-rmute-tile]:not([data-rmute-open]) [slot="credit-bar"],
-html:not([data-rmute-off]) shreddit-post[data-rmute-tile]:not([data-rmute-open]) [slot="credit-bar"] * {
+html:not([data-rmute-off]) shreddit-post[data-rmute-tile]:not([data-rmute-open]) [slot="credit-bar"] *:where(:not([slot="content"], [slot="content"] *)) {
   visibility: hidden;
   /* Hidden once the closing fades are done. */
   transition: visibility 0s linear 0.3s;
+}
+html:not([data-rmute-off]) shreddit-post[data-rmute-tile]:not([data-rmute-open]) [slot="credit-bar"] faceplate-hovercard > [slot="content"] {
+  visibility: visible;
+  transition: none;
 }
 shreddit-post[data-rmute-tile] [slot="credit-bar"] a[data-testid="subreddit-name"] > span:last-child {
   visibility: visible;
