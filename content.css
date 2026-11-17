@@ -300,8 +300,8 @@ shreddit-post[data-rmute-tile] [slot="credit-bar"] a[data-testid="subreddit-name
   transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1);
 }
 html:not([data-rmute-off]) shreddit-post[data-rmute-tile]:not([data-rmute-open]) [slot="credit-bar"] a[data-testid="subreddit-name"] > span:last-child {
-  /* 12px → 14px, left over the 30px icon. */
-  transform: translateX(-30px) scale(1.1667);
+  /* Same size, left over the 30px icon. */
+  transform: translateX(-30px);
 }
 shreddit-post[data-rmute-tile] [slot="credit-bar"] a[data-testid="subreddit-name"] > :first-child {
   /* Stays put; its right edge is cut at the name's left edge as the name
