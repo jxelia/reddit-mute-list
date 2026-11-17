@@ -1893,7 +1893,8 @@ function stretchIn(post) {
   for (const [n, origin] of stretchParts(post)) {
     n.animate(
       { transform: ['scaleX(0.975)', 'scaleX(1)'], transformOrigin: [origin, origin], opacity: [0, 1] },
-      { duration: 260, delay: 60, easing: 'cubic-bezier(0.2, 0, 0, 1)', fill: 'backwards' },
+      // Starts once the sub name (0.3s CSS slide) is almost in place; both end together.
+      { duration: 120, delay: 180, easing: 'cubic-bezier(0.2, 0, 0, 1)', fill: 'backwards' },
     );
   }
 }
