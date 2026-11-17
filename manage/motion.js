@@ -20,7 +20,7 @@
   const LINE = 11; // the line's distance below the middle of the title, in px
   const TIME = 450;
   const pen = document.createElement('canvas').getContext('2d');
-  let strip = null; // [{ button, width, letters: [{ el, from, wide, d }] }]
+  let strip = null; // [{ button, width, letters: [{ el, from, wide, d }], lift }]
   let pos = 0; // which title is in the middle; between two while moving
   let lineWidth = 0; // the shortest title's, whichever is selected
   let frame = 0;
@@ -66,45 +66,62 @@
     strip.forEach((t, i) => {
       t.away = Math.abs(i - pos);
       t.size = sizeAt(t.away);
-      t.spot = across + t.width * t.size / 2;
+      t.rest = across + t.width * t.size / 2;
       across += t.width * t.size + GAP;
     });
     across -= GAP;
     const low = Math.floor(pos);
     const high = Math.min(low + 1, strip.length - 1);
-    const middle = strip[low].spot + (strip[high].spot - strip[low].spot) * (pos - low);
+    const between = (key) => strip[low][key] + (strip[high][key] - strip[low][key]) * (pos - low);
+    const restMiddle = between('rest');
     // Tighter when the longer side is short, so the curve always reaches as far round.
-    const round = Math.max(middle, across - middle, 200) * 1.08 / REACH;
+    const round = Math.max(restMiddle, across - restMiddle, 200) * 1.08 / REACH;
+    // A hovered title's letters each grow, from the middle out, pushing the next ones
+    // along, and it comes out of the carousel; the titles round it, the selected one
+    // too, move aside by as much, so nothing overlaps.
+    let grown = 0;
+    let hover = null;
     for (const t of strip) {
-      const { width, away, size, lift, spot, letters } = t;
+      let extra = 0;
+      for (const l of t.letters) {
+        const grow = 1 + GROW * Math.max(0, Math.min(1, t.lift * (1 + RIPPLE) - RIPPLE * l.d));
+        l.grow = grow;
+        l.mid = l.from + extra + l.wide * grow / 2;
+        extra += l.wide * (grow - 1);
+      }
+      t.extra = extra;
+      t.pop = POP * t.lift;
+      t.mag = (1 + t.pop / round) * VIEW / (VIEW - t.pop);
+      const wide = (t.width + extra) * t.size * t.mag;
+      t.spot = grown + wide / 2;
+      grown += wide + GAP;
+      if (t.lift && t.lift > (hover?.lift ?? 0)) hover = t;
+    }
+    // The hovered title stays where it rests; everything else moves away from it.
+    const middle = between('spot') + (hover ? (hover.spot - hover.rest) - (between('spot') - restMiddle) : 0);
+    for (const t of strip) {
+      const { width, away, size, lift, spot, rest, letters, extra, pop, mag } = t;
       // The title in the middle is a little carousel of its own: the main one carries
       // its centre, and its letters turn round a small one.
       const own = Math.max(0, 1 - away);
       const small = (width * size / 2) / wordReach(width * size / 2, round);
       // Where the title rests on the row, for finding the hovered one.
       const half = width * size / 2;
+      t.left = project(rest - restMiddle - half, round, 0);
+      t.right = project(rest - restMiddle + half, round, 0);
+      // Coming out spreads it by mag, so its centre is set back to land on its spot,
+      // and it slides back only as far as it would leave the page.
       const off = spot - middle;
-      t.left = project(off - half, round, 0);
-      t.right = project(off + half, round, 0);
-      // It comes straight out, and slides back only as far as it would leave the page.
-      // Each letter grows on its own, from the middle out, and pushes the next ones along,
-      // so the word widens because its letters do.
-      let extra = 0;
-      for (const l of letters) {
-        const grow = 1 + GROW * Math.max(0, Math.min(1, lift * (1 + RIPPLE) - RIPPLE * l.d));
-        l.grow = grow;
-        l.mid = l.from + extra + l.wide * grow / 2;
-        extra += l.wide * (grow - 1);
-      }
-      const pop = POP * lift;
-      const outer = Math.abs(off) + (width + extra) * size / 2;
-      const slide = lift ? -Math.sign(off) * Math.max(0, project(outer, round, pop) - tabs.clientWidth / 2 - POP_ROOM) : 0;
+      const outer = Math.abs(off) + (width + extra) * size * mag / 2;
+      const slide = lift ? -Math.sign(off) * Math.max(0, project(outer, round, 0) - tabs.clientWidth / 2 - POP_ROOM) : 0;
       for (const { el, mid, grow } of letters) {
         const at = mid - (width + extra) / 2;
-        const along = spot + at * size * (1 - own) - middle;
+        const along = off / mag + at * size * (1 - own);
         el.style.transform = `translateX(${slide}px) perspective(${VIEW}px) translateZ(${-round}px) rotateY(${along / round}rad) translateZ(${round + pop}px) perspective(${small * WORD_VIEW}px) translateZ(${-small}px) rotateY(${own * at * size / small}rad) translateZ(${small}px) scale(${size * grow}) translate(-50%, -50%)`;
       }
     }
+    // The line follows the selected title when a hover pushes it aside.
+    line.style.translate = `${project(between('spot') - middle, round, 0)}px 0`;
     drawLine(round);
   }
 

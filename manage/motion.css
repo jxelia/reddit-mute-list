@@ -14,8 +14,8 @@
     font-size: 14px;
     transition: color 0.2s, opacity 0.2s;
   }
-  /* While a title is hovered, the other unselected ones fade so it reads clearly over them. */
-  .tabs[data-ring]:has(button[data-hover]:not([aria-selected="true"])) button:not([data-hover], [aria-selected="true"]) { opacity: 0.3; }
+  /* While a title is hovered, the other unselected ones fade a little. */
+  .tabs[data-ring]:has(button[data-hover]:not([aria-selected="true"])) button:not([data-hover], [aria-selected="true"]) { opacity: 0.8; }
   .tabs[data-ring] button[data-hover]:not([aria-selected="true"]) { color: color-mix(in srgb, var(--fg) 30%, var(--muted)); z-index: 1; }
   .tabs[data-ring] button:focus-visible { outline: none; color: var(--accent); }
   .tabs .letter { position: absolute; left: 0; top: 0; padding: 0.4rem 1px; white-space: pre; transform-origin: 0 0; }
