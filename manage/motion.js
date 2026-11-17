@@ -1,7 +1,8 @@
 // Popup motion trial: the tab drum (motion.css) and lists growing open.
 // Nothing else depends on this file.
 (() => {
-  if (!matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
+  const DRUM = false; // off since the 2026-11-17 redesign (segmented tabs); true brings it back with motion.css's old section 1
+  if (!DRUM || !matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
   const tabs = document.querySelector('.tabs');
   const buttons = [...tabs.querySelectorAll('[role="tab"]')];
   const REACH = 0.6; // both ends of the row sit this far round the eye, in radians, whichever page
