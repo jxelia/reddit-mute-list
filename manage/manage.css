@@ -317,6 +317,9 @@ body:not(.popup) :is(#main-group, #word-group, #rec-group) { max-height: 29rem; 
 :is(#main-group, #word-group, #rec-group) > summary > * { display: none; }
 /* Open, the rows start near the top, over the bar's empty part. What's left of the bar closes it. */
 :is(#main-group, #word-group, #rec-group)[open]::details-content { margin-top: -1.6rem; }
+/* The strip above the first row's name (bar remnant + the row's top padding) closes it too. */
+:is(#main-group, #word-group, #rec-group) > summary { position: relative; }
+:is(#main-group, #word-group, #rec-group)[open] > summary::after { content: ""; position: absolute; inset: 0 0 auto; height: 0.8rem; z-index: 1; }
 /* Open rows would sit over the shade; with motion on, motion.css slides it away instead. */
 @media (prefers-reduced-motion: reduce) { :is(#main-group, #word-group, #rec-group)[open] > summary { background: none; } }
 :is(#main-group, #word-group, #rec-group) .list { margin: 0; border: 0; border-radius: 0; max-height: none; overflow: visible; }
