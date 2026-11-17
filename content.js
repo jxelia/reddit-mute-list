@@ -1552,7 +1552,8 @@ function markComment(c) {
   const user = mutes.settings.hideComments && userMuted(author?.toLowerCase(), sub);
   // Word comments hidden completely: no bar for the word.
   const word = hit && mutes.settings.commentAction !== 'hide';
-  const reason = [user && 'user', word && 'word'].filter(Boolean).join(', ');
+  // "god" reads as "gword" (the user's wording); it still contains "word" for the reply checks.
+  const reason = [user && 'user', word && (/^god$/i.test(hit.text) ? 'gword' : 'word')].filter(Boolean).join(', ');
   if (c.matches('.thing')) syncCommentBar(c, reason);
   else syncCommentTile(c, reason);
 }
