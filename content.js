@@ -1880,6 +1880,33 @@ function expandIn(post, from) {
   }
 }
 
+// Closing, the reverse: time and ⋯ slide back right as they fade, and the
+// post shrinks to the bar's height. Resolves when done.
+function collapseOut(post, to) {
+  post.getAnimations({ subtree: true }).forEach((a) => a.cancel());
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return Promise.resolve();
+  const anims = [];
+  const head = post.querySelector('[slot="credit-bar"]');
+  for (const n of head?.querySelectorAll('faceplate-timeago, shreddit-post-overflow-menu') || []) {
+    anims.push(n.animate(
+      { transform: ['none', 'translateX(10px)'], opacity: [1, 0] },
+      { duration: 150, easing: 'ease-in', fill: 'forwards' },
+    ));
+  }
+  const from = post.offsetHeight;
+  if (to && from > to) {
+    anims.push(post.animate(
+      { height: [`${from}px`, `${to}px`], overflow: ['clip', 'clip'] },
+      { duration: Math.min(320, 160 + from / 5), easing: 'cubic-bezier(0.3, 0, 0.8, 0.15)', fill: 'forwards' },
+    ));
+  }
+  // Held at the end until after the swap, so the full post doesn't flash back.
+  return Promise.all(anims.map((a) => a.finished)).then(
+    () => requestAnimationFrame(() => anims.forEach((a) => a.cancel())),
+    () => {},
+  );
+}
+
 // An opened post's header line (sub, time, ⋯) closes it again, as the bar
 // would: a click in its free space, not on a link or button. Reddit's
 // full-post link lies over that space, so it goes by the click's position.
@@ -1928,8 +1955,23 @@ function syncDecideBar(post, sub, kind = 'rec') {
   el.setAttribute('aria-expanded', 'false');
   const what = kind === 'page' ? 'post and comments' : 'post';
   el.title = `Show ${what}`;
+  let barHeight = 0;
+  let closing = false;
   const toggle = () => {
-    const barHeight = el.offsetHeight;
+    if (closing) return;
+    if (post.hasAttribute('data-rmute-open')) {
+      // Closing: the post folds back to the bar's height first, then swaps.
+      closing = true;
+      collapseOut(post, barHeight).then(() => {
+        closing = false;
+        if (post.hasAttribute('data-rmute-open') && el.isConnected) flip();
+      });
+    } else {
+      barHeight = el.offsetHeight;
+      flip();
+    }
+  };
+  const flip = () => {
     const open = post.toggleAttribute('data-rmute-open');
     if (kind === 'page') document.documentElement.toggleAttribute('data-rmute-word-post', !open);
     // Open, the bar goes (content.css) and the post looks as it would without
