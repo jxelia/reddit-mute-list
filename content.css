@@ -21,7 +21,7 @@ html:not([data-rmute-off]) shreddit-feed-page-loading {
 }
 
 /* Switched off in the popup: what the extension already added goes away. */
-html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toast, .rmute-pop, .rmute-native, .rmute-cbar) {
+html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toast, .rmute-pop, .rmute-native, .rmute-cbar, .rmute-ctools) {
   display: none !important;
 }
 
@@ -394,9 +394,6 @@ shreddit-post[data-rmute-open] [slot="credit-bar"] {
   user-select: none;
   -webkit-touch-callout: none;
 }
-.rmute-cbar:hover {
-  background: var(--color-secondary-background-hover, rgba(128, 128, 128, 0.12));
-}
 .rmute-cbar:focus-visible {
   outline: 2px solid var(--color-neutral-content-strong, currentColor);
   outline-offset: 1px;
@@ -435,6 +432,89 @@ shreddit-post[data-rmute-open] [slot="credit-bar"] {
 }
 .rmute-cbar button[hidden] {
   display: none;
+}
+
+/* Reddit's comments (syncCommentTile): the comment itself, cut to its header
+   line, with only u/name, slid left onto the avatar's spot. --rmute-p goes
+   0 (tile) to 1 (open) with the sub name's curve; the header's slide and the
+   avatar's cut both follow it, so the avatar shows as the name's left edge
+   passes it. The body is hidden by buildCss (ownParts). */
+@property --rmute-p {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+shreddit-comment[data-rmute-ctile] > details {
+  transition: --rmute-p 0.3s cubic-bezier(0.2, 0, 0, 1);
+}
+shreddit-comment[data-rmute-ctile][data-rmute-open]:not([data-rmute-closing]) > details,
+shreddit-comment[data-rmute-ctile] > details:not([open]),
+html[data-rmute-off] shreddit-comment[data-rmute-ctile] > details {
+  --rmute-p: 1;
+}
+html:not([data-rmute-off]) shreddit-comment[data-rmute-ctile]:is(:not([data-rmute-open]), [data-rmute-closing]) > details[open] {
+  --rmute-p: 0;
+}
+shreddit-comment[data-rmute-ctile] > details > summary {
+  cursor: pointer;
+}
+shreddit-comment[data-rmute-ctile] > details > summary [slot="commentMeta"] {
+  transform: translateX(calc((var(--rmute-p) - 1) * var(--rmute-shift, 40px)));
+}
+/* Cut at the name's left edge; nothing cut once open (round: 1 only at the end),
+   so its hover card isn't clipped. */
+shreddit-comment[data-rmute-ctile] > details > summary [slot="commentAvatar"] {
+  clip-path: inset(-100vh calc(100% - var(--rmute-p) * var(--rmute-shift, 40px) - round(down, var(--rmute-p), 1) * 100vw) -100vh -100vw);
+}
+/* Everything but the name and hover cards; hidden once the closing fades are done. */
+html:not([data-rmute-off]) shreddit-comment[data-rmute-ctile]:is(:not([data-rmute-open]), [data-rmute-closing]) > details[open] > summary [slot="commentMeta"] *:where(:not([slot="content"], [slot="content"] *, [data-testid="nameplate"], [data-testid="nameplate"] *)) {
+  visibility: hidden;
+  transition: visibility 0s linear 0.3s;
+}
+html:not([data-rmute-off]) shreddit-comment[data-rmute-ctile] > details > summary [slot="commentMeta"] :is([data-testid="nameplate"], [data-testid="nameplate"] *) {
+  visibility: visible;
+}
+/* Why and Show comment, at the header line's right, after a click on it. */
+.rmute-ctools {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  height: 36px;
+  color: var(--color-neutral-content-weak, #576f76);
+  font: italic 12px/16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.22s ease-out;
+}
+.rmute-ctools:not(:has(> span:not(:empty), > button:not([hidden]))) {
+  display: none;
+}
+.rmute-ctools button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-neutral-content-strong, currentColor);
+  font: inherit;
+  font-style: normal;
+  cursor: pointer;
+}
+.rmute-ctools button:hover {
+  text-decoration: underline;
+}
+.rmute-ctools button[hidden] {
+  display: none;
+}
+shreddit-comment[data-rmute-open]:not([data-rmute-closing]) > .rmute-ctools,
+shreddit-comment:has(> details:not([open])) > .rmute-ctools {
+  opacity: 0;
+  visibility: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+  shreddit-comment[data-rmute-ctile] *, .rmute-ctools { transition: none !important; }
 }
 
 /* Popup's page list: a double-clicked sub's post, scrolled to. */

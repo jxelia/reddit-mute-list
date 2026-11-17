@@ -129,8 +129,8 @@ function buildCss(list) {
   // much less with the names in one.
   for (let i = 0; i < hiddenAuthors.length; i += 100) {
     const c = `shreddit-comment:is(${hiddenAuthors.slice(i, i + 100).join(', ')}):not([data-rmute-open])`;
-    commentRules.push(ownParts(c, '.rmute-cbar'));
-    lineRules.push(...threadLine(c));
+    commentRules.push(ownParts(c, '.rmute-ctools', true));
+    lineRules.push(...threadLine(c, true));
   }
   // Comments with a muted word shrink to the bar markComment() puts in them
   // (long-pressing it hides the replies too), or go completely.
@@ -144,13 +144,11 @@ function buildCss(list) {
     }
   } else {
     const cword = 'shreddit-comment[data-rmute-cword]:not([data-rmute-open])';
-    commentRules.push(ownParts(cword, '.rmute-cbar'));
-    lineRules.push(...threadLine(cword));
+    commentRules.push(ownParts(cword, '.rmute-ctools', true));
+    lineRules.push(...threadLine(cword, true));
     other.push('.thing.comment[data-rmute-cword]:not([data-rmute-open]) > :not(.child, .rmute-cbar)');
   }
-  other.push(':is(shreddit-comment, .thing.comment)[data-rmute-noreplies] > :not(.rmute-cbar)');
-  // A thread closed with Reddit's line: the bar is its row, with a + (syncCommentBar).
-  other.push('shreddit-comment:has(> .rmute-cbar) > details:not([open])');
+  other.push('.thing.comment[data-rmute-noreplies] > :not(.rmute-cbar)', 'shreddit-comment[data-rmute-noreplies] > details > :not(summary)');
   if (list.settings.hideCommentAvatars) other.push('shreddit-comment [slot="commentAvatar"] > *', '.thing.comment > .entry .tagline .author-avatar');
   if (list.settings.commentNames === 'hide') {
     other.push(`${COMMENT_NAME}, .thing.comment > .entry .tagline :is(.author, .userattrs)`);
@@ -219,14 +217,16 @@ const COMMENT_NAME = 'shreddit-comment [slot="commentMeta"] faceplate-tracker[no
 // With the comment's text and action row gone, the line's click strip has no
 // avatar to start under, and the replies would take the first grid row, above
 // the ⊖ (fixed in row 2).
-function threadLine(c) {
+// head: the comment keeps its header line (a comment tile), so the line's
+// click strip stays where Reddit puts it.
+function threadLine(c, head) {
   return [
-    `${c} > details[open] > summary > .threadline-strip { top: 0 !important; margin-top: 0 !important; }`,
+    !head && `${c} > details[open] > summary > .threadline-strip { top: 0 !important; margin-top: 0 !important; }`,
     `${c} > details[open] > .comment-main-grid > #comment-children { grid-row-start: 3; }`
-  ];
+  ].filter(Boolean);
 }
 
-function ownParts(c, keep) {
+function ownParts(c, keep, head) {
   const reply = `shreddit-comment, [slot^="children"], [slot*="more" i]`;
   // Reddit's thread line stays: the line, its ⊖, the mask under a last reply, and
   // the summary, since the click strip on the line lives in it (and a closed
@@ -234,7 +234,8 @@ function ownParts(c, keep) {
   const kept = `summary, .ssr-thread-line, .collapse-container, .branchline${keep ? ', ' + keep : ''}`;
   const step = ` > :not(${reply}, ${kept})`;
   const levels = [0, 1, 2, 3, 4].map((n) => `${c}${step.repeat(n)} > *`);
-  return `:is(${c} *):is(${levels.join(', ')}):not(${reply}, :has(${reply}), ${kept}), ${c} > details[open] > summary > :not(.threadline-strip)`;
+  const own = `:is(${c} *):is(${levels.join(', ')}):not(${reply}, :has(${reply}), ${kept})`;
+  return head ? own : `${own}, ${c} > details[open] > summary > :not(.threadline-strip)`;
 }
 
 // The popup's on/off switch. Off: no hiding, nothing added to the page
@@ -1551,10 +1552,12 @@ function markComment(c) {
   const user = mutes.settings.hideComments && userMuted(author?.toLowerCase(), sub);
   // Word comments hidden completely: no bar for the word.
   const word = hit && mutes.settings.commentAction !== 'hide';
-  syncCommentBar(c, [user && 'user', word && 'word'].filter(Boolean).join(', '));
+  const reason = [user && 'user', word && 'word'].filter(Boolean).join(', ');
+  if (c.matches('.thing')) syncCommentBar(c, reason);
+  else syncCommentTile(c, reason);
 }
 
-// The bar a muted user's or muted-word comment shrinks to, with only the name
+// Old Reddit: the bar a muted user's or muted-word comment shrinks to, with only the name
 // on it. A click adds why ("user", "word") and a Show comment button, pressing
 // and holding hides its replies too, like clicking Reddit's thread line.
 const LONG_PRESS_MS = 500;
@@ -1644,6 +1647,202 @@ function syncCommentBar(c, reason) {
   update();
   c.prepend(bar);
 }
+
+// Reddit's comments: the comment itself, cut to its header line like a sub
+// tile (content.css), with only u/name, slid left over the avatar. A click on
+// the line adds why and Show comment at its right; Show comment opens it the
+// way a sub tile opens, and the opened header's free space closes it again.
+// Pressing and holding hides the replies too. A thread closed with Reddit's
+// line shows Reddit's own row.
+const ctiles = new WeakMap(); // comment -> { key, tools, stop, toggle }
+const ctileSummary = (c) => c.querySelector(':scope > details > summary');
+
+// How far the name sits right of the avatar, so it lands on it. The header's
+// slide is taken back out, so it's right in either state.
+function measureShift(c) {
+  const sum = ctileSummary(c);
+  const av = sum?.querySelector('[slot="commentAvatar"]');
+  const meta = sum?.querySelector('[slot="commentMeta"]');
+  if (!av?.offsetWidth || !meta) return 0;
+  const name = meta.querySelector('[data-testid="nameplate"]');
+  const left = (name?.offsetWidth ? name : meta).getBoundingClientRect().left;
+  return left - new DOMMatrix(getComputedStyle(meta).transform).m41 - av.getBoundingClientRect().left;
+}
+// All tiles of a page load measured in one layout.
+const shiftQueue = new Set();
+function queueShift(c) {
+  if (!shiftQueue.size) {
+    requestAnimationFrame(() => {
+      const list = [...shiftQueue];
+      shiftQueue.clear();
+      list.map((n) => [n, measureShift(n)]).forEach(([n, x]) => { if (x > 0) n.style.setProperty('--rmute-shift', `${x}px`); });
+    });
+  }
+  shiftQueue.add(c);
+}
+
+// After the name: the •, the time and badges (stretchIn / stretchOut).
+const ctileParts = (c) => {
+  const meta = ctileSummary(c)?.querySelector('[slot="commentMeta"]');
+  return stretchParts(c, meta, meta?.querySelector('[data-testid="nameplate"]'));
+};
+
+function syncCommentTile(c, reason) {
+  const names = mutes.settings.commentNames === 'show';
+  const key = reason && `${reason} ${names}`;
+  const ui = ctiles.get(c);
+  if (ui ? ui.key === key && ui.tools.isConnected : !key) return;
+  if (ui) {
+    ui.tools.remove();
+    ui.stop.abort();
+    ctiles.delete(c);
+  }
+  if (!key) {
+    c.getAnimations({ subtree: true }).forEach((a) => a.cancel());
+    for (const a of ['ctile', 'open', 'closing', 'noreplies']) c.removeAttribute(`data-rmute-${a}`);
+    c.style.removeProperty('--rmute-shift');
+    ctileSummary(c)?.removeAttribute('title');
+    return;
+  }
+  // Replies start hidden too when the popup says so.
+  if (!ui && mutes.settings.commentHideReplies && reason.includes('word')) c.setAttribute('data-rmute-noreplies', '');
+  const stop = new AbortController();
+  const on = { signal: stop.signal };
+  const tools = document.createElement('span');
+  tools.className = 'rmute-ctools';
+  const label = document.createElement('span');
+  const show = document.createElement('button');
+  show.type = 'button';
+  show.textContent = 'Show comment';
+  tools.append(label, show);
+  let why = false;
+  const update = () => {
+    const sum = ctileSummary(c);
+    label.textContent = [!names && '…', why && reason].filter(Boolean).join(' · ');
+    show.hidden = !why;
+    if (sum) {
+      tools.style.height = `${sum.offsetHeight}px`;
+      sum.title = c.hasAttribute('data-rmute-noreplies') ? 'Click to show the replies again' : 'Press and hold to hide the replies too';
+    }
+  };
+  const settle = () => {
+    c.getAnimations({ subtree: true }).forEach((a) => a.cancel());
+    if (c.hasAttribute('data-rmute-closing')) c.removeAttribute('data-rmute-open');
+    c.removeAttribute('data-rmute-closing');
+  };
+  const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // The body grows down out of the header line as the name slides back onto
+  // its spot (CSS), then the • and time stretch in; all done at 300 ms.
+  const open = () => {
+    settle();
+    const x = measureShift(c);
+    if (x > 0) c.style.setProperty('--rmute-shift', `${x}px`);
+    const from = c.offsetHeight;
+    c.setAttribute('data-rmute-open', '');
+    if (still()) return;
+    const to = c.offsetHeight;
+    if (to > from) {
+      c.animate({ height: [`${from}px`, `${to}px`], overflow: ['clip', 'clip'] },
+        { duration: 300, easing: 'cubic-bezier(0.2, 0, 0, 1)' });
+    }
+    stretchIn(c, ctileParts(c));
+  };
+  // The reverse; the body stays until the comment has shrunk over it.
+  const close = () => {
+    settle();
+    why = false;
+    if (still()) {
+      c.removeAttribute('data-rmute-open');
+      return;
+    }
+    const from = c.offsetHeight;
+    c.removeAttribute('data-rmute-open');
+    const to = c.offsetHeight;
+    c.setAttribute('data-rmute-open', '');
+    c.setAttribute('data-rmute-closing', '');
+    const anims = stretchOut(c, ctileParts(c));
+    if (from > to) {
+      anims.push(c.animate({ height: [`${from}px`, `${to}px`], overflow: ['clip', 'clip'] },
+        { duration: Math.min(320, 160 + (from - to) / 5), easing: 'cubic-bezier(0.3, 0, 0.8, 0.15)', fill: 'forwards' }));
+    }
+    Promise.all(anims.map((a) => a.finished)).then(() => {
+      c.removeAttribute('data-rmute-open');
+      c.removeAttribute('data-rmute-closing');
+      requestAnimationFrame(() => anims.forEach((a) => a.cancel()));
+    }, () => {});
+  };
+  const toggle = () => {
+    if (c.hasAttribute('data-rmute-noreplies')) c.removeAttribute('data-rmute-noreplies');
+    else if (c.hasAttribute('data-rmute-open') && !c.hasAttribute('data-rmute-closing')) close();
+    else why = !why;
+    update();
+  };
+  show.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    why = false;
+    open();
+    update();
+  }, on);
+  // The reason works like the line itself.
+  tools.addEventListener('click', (e) => {
+    if (e.target.closest('button')) return;
+    e.stopPropagation();
+    toggle();
+  }, on);
+  let timer = null;
+  let held = false;
+  c.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 || !inHead(e, c)) return;
+    held = false;
+    timer = setTimeout(() => {
+      held = true;
+      settle();
+      c.removeAttribute('data-rmute-open');
+      c.setAttribute('data-rmute-noreplies', '');
+      why = false;
+      update();
+    }, LONG_PRESS_MS);
+  }, on);
+  for (const type of ['pointerup', 'pointerleave', 'pointercancel']) c.addEventListener(type, () => clearTimeout(timer), on);
+  c.addEventListener('contextmenu', (e) => { if (held) e.preventDefault(); }, on); // touch long-press
+  c.setAttribute('data-rmute-ctile', '');
+  c.append(tools);
+  ctiles.set(c, { key, tools, stop, toggle: () => (held ? (held = false) : toggle()) });
+  queueShift(c);
+  update();
+}
+
+// A click on a tile's own header line (its open summary), off its links and buttons.
+function inHead(e, c) {
+  const sum = ctileSummary(c);
+  if (!sum?.parentElement.open) return false;
+  for (const n of e.composedPath()) {
+    if (n === sum) return true;
+    if (n === c) return false;
+    if (n.matches?.('a[href], button, input, [role="button"], [role="menu"]')) return false;
+  }
+  return false;
+}
+window.addEventListener('click', (e) => {
+  if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  const c = e.target.closest?.('summary')?.parentElement?.parentElement;
+  const ui = c && ctiles.get(c);
+  if (!ui || !inHead(e, c)) return;
+  e.preventDefault(); // not Reddit's own collapse
+  e.stopPropagation();
+  ui.toggle();
+  if (c.contains(document.activeElement)) document.activeElement.blur();
+}, true);
+window.addEventListener('keydown', (e) => {
+  if ((e.key !== 'Enter' && e.key !== ' ') || !e.target.matches?.('summary')) return;
+  const c = e.target.parentElement?.parentElement;
+  const ui = c && ctiles.get(c);
+  if (!ui || !e.target.parentElement.open) return;
+  e.preventDefault();
+  e.stopPropagation();
+  ui.toggle();
+}, true);
 
 /* ---------- Built-in recommendation filters ---------- */
 
@@ -1860,9 +2059,7 @@ const barToggles = new WeakMap(); // post -> its bar's show/hide toggle
 
 // Everything after the sub name on the header's left side (badges like an
 // app icon, the •, the time), and the shared left edge they stretch from.
-function stretchParts(post) {
-  const head = post.querySelector('[slot="credit-bar"]');
-  const link = head?.querySelector('a[data-testid="subreddit-name"]');
+function stretchParts(post, head = post.querySelector('[slot="credit-bar"]'), link = head?.querySelector('a[data-testid="subreddit-name"]')) {
   if (!link) return [];
   const parts = [];
   // Wrappers with display: contents (rpl-hovercard around the community status
@@ -1894,8 +2091,8 @@ function expandIn(post, from) {
   stretchIn(post);
 }
 
-function stretchIn(post) {
-  for (const [n, origin] of stretchParts(post)) {
+function stretchIn(post, parts = stretchParts(post)) {
+  for (const [n, origin] of parts) {
     n.animate(
       { transform: ['scaleX(0.975)', 'scaleX(1)'], transformOrigin: [origin, origin], opacity: [0, 1] },
       // Starts once the sub name (0.3s CSS slide) is almost in place; both end together.
@@ -1909,8 +2106,8 @@ function stretchIn(post) {
 
 // Closing: • and time shrink a little back toward their left edge as they
 // fade, and the ⋯ fades out as the × does on opening. Held at the end.
-function stretchOut(post) {
-  const anims = stretchParts(post).map(([n, origin]) => n.animate(
+function stretchOut(post, parts = stretchParts(post)) {
+  const anims = parts.map(([n, origin]) => n.animate(
     { transform: ['scaleX(1)', 'scaleX(0.975)'], transformOrigin: [origin, origin], opacity: [1, 0] },
     { duration: 180, easing: 'ease-in', fill: 'forwards' },
   ));
@@ -2210,11 +2407,12 @@ function markTitles(root = document) {
     });
     document.querySelectorAll('shreddit-post[data-rmute-tile]').forEach((post) => syncDecideBar(post, null));
     document.querySelectorAll('.rmute-cbar').forEach((bar) => syncCommentBar(bar.parentElement, ''));
+    document.querySelectorAll('shreddit-comment[data-rmute-ctile]').forEach((c) => syncCommentTile(c, ''));
     return;
   }
   if (root.matches?.(`${POST_SELECTOR}, .thing.link`)) markTitle(root);
   root.querySelectorAll?.(`${POST_SELECTOR}, .thing.link`).forEach(markTitle);
-  if (!wordMatchers.commentWords && !(mutes.settings.hideComments && mutes.users.length) && !document.querySelector('.rmute-cbar')) return;
+  if (!wordMatchers.commentWords && !(mutes.settings.hideComments && mutes.users.length) && !document.querySelector('.rmute-cbar, [data-rmute-ctile]')) return;
   if (root.matches?.(COMMENT_SELECTOR)) markComment(root);
   root.querySelectorAll?.(COMMENT_SELECTOR).forEach(markComment);
 }
