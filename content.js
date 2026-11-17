@@ -230,9 +230,8 @@ function ownParts(c, keep, head) {
   const reply = `shreddit-comment, [slot^="children"], [slot*="more" i]`;
   // Reddit's thread line stays: the line, its ⊖, the mask under a last reply, and
   // the summary, since the click strip on the line lives in it (and a closed
-  // comment's row, which is the way to open it again). A tile (head) drops the
-  // ⊖, which would sit alone on a row under the header.
-  const kept = `summary, .ssr-thread-line, ${head ? '' : '.collapse-container, '}.branchline${keep ? ', ' + keep : ''}`;
+  // comment's row, which is the way to open it again). The ⊖ always stays as Reddit has it.
+  const kept = `summary, .ssr-thread-line, .collapse-container, .branchline${keep ? ', ' + keep : ''}`;
   const step = ` > :not(${reply}, ${kept})`;
   const levels = [0, 1, 2, 3, 4].map((n) => `${c}${step.repeat(n)} > *`);
   const own = `:is(${c} *):is(${levels.join(', ')}):not(${reply}, :has(${reply}), ${kept})`;
@@ -1796,13 +1795,14 @@ function syncCommentTile(c, reason) {
   update();
 }
 
-// A click on a tile's own header line (its open summary), off its links and buttons.
+// A click on a tile's own header line (its open summary), off its links, buttons and the ⊖ strip.
 function inHead(e, c) {
   const sum = ctileSummary(c);
   if (!sum?.parentElement.open) return false;
   for (const n of e.composedPath()) {
     if (n === sum) return true;
     if (n === c) return false;
+    if (n.classList?.contains('threadline-strip')) return false; // Reddit's ⊖ and thread line
     if (n.matches?.('a[href], button, input, [role="button"], [role="menu"]')) return false;
   }
   return false;
