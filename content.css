@@ -304,9 +304,11 @@ html:not([data-rmute-off]) shreddit-post[data-rmute-tile]:not([data-rmute-open])
   transform: translateX(-30px) scale(1.1667);
 }
 shreddit-post[data-rmute-tile] [slot="credit-bar"] a[data-testid="subreddit-name"] > :first-child {
-  transition: opacity 0.2s ease-out;
+  /* Moves with the name's left edge as it fades. */
+  transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s ease-out;
 }
 html:not([data-rmute-off]) shreddit-post[data-rmute-tile]:not([data-rmute-open]) [slot="credit-bar"] a[data-testid="subreddit-name"] > :first-child {
+  transform: translateX(-30px);
   opacity: 0;
 }
 .rmute-decide.rmute-tile-tools {
