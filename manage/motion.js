@@ -32,6 +32,7 @@
   let hovered = null;
   let last = 0;
   let line = null;
+  let edge = 0; // where the row's ends show, from the middle, in px
   let pointer = null; // the pointer's x from the row's middle while it's over the row
 
   function build() {
@@ -125,7 +126,7 @@
         const at = mid - (width + extra) / 2;
         const along = off / mag + at * size * (1 - own);
         el.style.opacity = fade(along / round);
-        el.style.transform = `translateX(${slide}px) perspective(${VIEW}px) translateZ(${-round}px) rotateY(${along / round}rad) translateZ(${round + pop}px) perspective(${small * WORD_VIEW}px) translateZ(${-small}px) rotateY(${own * at * size / small}rad) translateZ(${small}px) scale(${size * grow}) translate(-50%, -50%)`;
+        el.style.transform = `translateX(${slide}px) perspective(${VIEW}px) translateZ(${-round}px) rotateY(${bend(along / round, round)}rad) translateZ(${round + pop}px) perspective(${small * WORD_VIEW}px) translateZ(${-small}px) rotateY(${own * at * size / small}rad) translateZ(${small}px) scale(${size * grow}) translate(-50%, -50%)`;
       }
     }
     // The line follows the selected title when a hover pushes it aside.
@@ -135,6 +136,7 @@
       line.style.translate = `${project(page.spot - middle, round, 0)}px 0`;
       line.style.opacity = fade((page.spot - middle) / round);
     }
+    edge = project(round * REACH, round, 0);
     drawLine(round);
   }
 
@@ -151,8 +153,9 @@
   // How fast hovering at a side scrolls the row, in titles a second, + to the right.
   function drift() {
     if (pointer === null) return 0;
-    const out = Math.abs(pointer) / (tabs.clientWidth / 2);
-    if (out <= SIDE) return 0;
+    // Only over the row itself, not the space past its ends.
+    const out = Math.abs(pointer) / edge;
+    if (out <= SIDE || out > 1) return 0;
     return Math.sign(pointer) * SIDE_SPEED * Math.min(1, (out - SIDE) / (1 - SIDE));
   }
 
@@ -162,9 +165,20 @@
     hover(strip.find((t) => t.hit && x >= t.left - GAP / 2 && x <= t.right + GAP / 2)?.button ?? null);
   }
 
+  // Past the ends the letters bunch up towards the curve's edge instead of turning on
+  // so far that perspective brings them back in, so the row reads as one string.
+  function bend(angle, round) {
+    const top = Math.acos(1 / (1 + VIEW / round)) * 0.97; // just short of where it would turn back
+    const from = Math.min(REACH, top * 0.85);
+    const past = Math.abs(angle) - from;
+    if (past <= 0) return angle;
+    const limit = top - from;
+    return Math.sign(angle) * (from + limit * (1 - Math.exp(-past / limit)));
+  }
+
   // A point on the row as it appears on screen, from the middle, out by pop along its facing.
   function project(along, round, pop) {
-    const angle = along / round;
+    const angle = bend(along / round, round);
     return (round + pop) * Math.sin(angle) * VIEW / (VIEW + round - (round + pop) * Math.cos(angle));
   }
 
