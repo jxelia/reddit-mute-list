@@ -218,7 +218,7 @@ html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toa
 .rmute-decide .rmute-pick button {
   width: 28px;
   height: 28px;
-  color: var(--color-neutral-content-strong, inherit);
+  color: var(--color-neutral-content-weak, #8a8a8a);
 }
 .rmute-decide .rmute-pick button:hover,
 .rmute-decide .rmute-pick button:focus-visible {
