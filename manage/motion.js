@@ -8,6 +8,7 @@
   const VIEW = 120; // how far the viewer is from the front of the eye
   const GAP = 5; // between titles along the strip
   const SIZES = [1.25, 1.06, 0.98, 0.94]; // a title's size by how many titles it is from the selected one
+  const POP = 12; // how far a hovered title also comes out of the carousel, along the way it's facing, in px
   const GROW = 0.3; // how much bigger each letter of a hovered title gets; the word widens by its letters
   const RIPPLE = 0.7; // letters further from the title's middle start growing this much later (0 = all at once)
   const POP_ROOM = 14; // how far past the row's ends it can go, in px
@@ -95,12 +96,13 @@
         l.mid = l.from + extra + l.wide * grow / 2;
         extra += l.wide * (grow - 1);
       }
+      const pop = POP * lift;
       const outer = Math.abs(off) + (width + extra) * size / 2;
-      const slide = lift ? -Math.sign(off) * Math.max(0, project(outer, round, 0) - tabs.clientWidth / 2 - POP_ROOM) : 0;
+      const slide = lift ? -Math.sign(off) * Math.max(0, project(outer, round, pop) - tabs.clientWidth / 2 - POP_ROOM) : 0;
       for (const { el, mid, grow } of letters) {
         const at = mid - (width + extra) / 2;
         const along = spot + at * size * (1 - own) - middle;
-        el.style.transform = `translateX(${slide}px) perspective(${VIEW}px) translateZ(${-round}px) rotateY(${along / round}rad) translateZ(${round}px) perspective(${small * WORD_VIEW}px) translateZ(${-small}px) rotateY(${own * at * size / small}rad) translateZ(${small}px) scale(${size * grow}) translate(-50%, -50%)`;
+        el.style.transform = `translateX(${slide}px) perspective(${VIEW}px) translateZ(${-round}px) rotateY(${along / round}rad) translateZ(${round + pop}px) perspective(${small * WORD_VIEW}px) translateZ(${-small}px) rotateY(${own * at * size / small}rad) translateZ(${small}px) scale(${size * grow}) translate(-50%, -50%)`;
       }
     }
     drawLine(round);
