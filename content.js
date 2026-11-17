@@ -1862,9 +1862,11 @@ const barToggles = new WeakMap(); // post -> its bar's show/hide toggle
 
 // Opening: the post grows down out of the bar's height, and the header's
 // time and ⋯ slide in a little from the right as they fade in.
-function expandIn(post, from) {
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+// The bar's sub name morphs into the post's own (and back), so it never vanishes.
+function expandIn(post, from, name) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return null;
   const to = post.offsetHeight;
+  const spot = morphName(post, name, true);
   if (to > from) {
     post.animate(
       { height: [`${from}px`, `${to}px`], overflow: ['clip', 'clip'] },
@@ -1878,14 +1880,48 @@ function expandIn(post, from) {
       { duration: 200, delay: 60, easing: 'ease-out', fill: 'backwards' },
     );
   }
+  return spot;
+}
+
+// The post's own sub name text and its icon (Reddit's link holds both).
+function subNameParts(post) {
+  const link = hiddenNames.get(post);
+  if (!link) return {};
+  const text = [...link.querySelectorAll('span')].reverse()
+    .find((n) => /^r\//i.test(n.textContent.trim()) && !n.querySelector('span')) || link;
+  const icon = [...link.children].find((n) => !n.contains(text));
+  return { text, icon };
+}
+
+// Moves the post's sub name text between the bar's spot and its own, scaled
+// by the two font sizes. `name` is the bar name's spot relative to the post's
+// top-left ({x, y: centre, size}); opening takes it as a viewport rect and
+// returns it relative to the post, for closing later.
+function morphName(post, name, opening) {
+  const { text, icon } = subNameParts(post);
+  if (!text || !name) return null;
+  const box = post.getBoundingClientRect();
+  const spot = opening
+    ? { x: name.rect.left - box.left, y: name.rect.top + name.rect.height / 2 - box.top, size: name.size }
+    : name;
+  const own = text.getBoundingClientRect();
+  const scale = spot.size / (parseFloat(getComputedStyle(text).fontSize) || spot.size);
+  const dx = box.left + spot.x - own.left;
+  const dy = box.top + spot.y - own.top - (own.height * scale) / 2;
+  const away = `translate(${dx}px, ${dy}px) scale(${scale})`;
+  const timing = { duration: opening ? 300 : 260, easing: 'cubic-bezier(0.2, 0, 0, 1)', fill: opening ? 'backwards' : 'forwards' };
+  text.animate({ transform: opening ? [away, 'none'] : ['none', away], transformOrigin: ['0 0', '0 0'] }, timing);
+  icon?.animate({ opacity: opening ? [0, 1] : [1, 0] }, { ...timing, duration: 180, delay: opening ? 80 : 0 });
+  return spot;
 }
 
 // Closing, the reverse: time and ⋯ slide back right as they fade, and the
 // post shrinks to the bar's height. Resolves when done.
-function collapseOut(post, to) {
+function collapseOut(post, to, name) {
   post.getAnimations({ subtree: true }).forEach((a) => a.cancel());
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return Promise.resolve();
-  const anims = [];
+  morphName(post, name, false);
+  const anims = post.getAnimations({ subtree: true });
   const head = post.querySelector('[slot="credit-bar"]');
   for (const n of head?.querySelectorAll('faceplate-timeago, shreddit-post-overflow-menu') || []) {
     anims.push(n.animate(
@@ -1956,29 +1992,31 @@ function syncDecideBar(post, sub, kind = 'rec') {
   const what = kind === 'page' ? 'post and comments' : 'post';
   el.title = `Show ${what}`;
   let barHeight = 0;
+  let nameSpot = null;
   let closing = false;
   const toggle = () => {
     if (closing) return;
     if (post.hasAttribute('data-rmute-open')) {
       // Closing: the post folds back to the bar's height first, then swaps.
       closing = true;
-      collapseOut(post, barHeight).then(() => {
+      collapseOut(post, barHeight, nameSpot).then(() => {
         closing = false;
         if (post.hasAttribute('data-rmute-open') && el.isConnected) flip();
       });
     } else {
       barHeight = el.offsetHeight;
-      flip();
+      const name = { rect: link.getBoundingClientRect(), size: parseFloat(getComputedStyle(link).fontSize) };
+      flip(name);
     }
   };
-  const flip = () => {
+  const flip = (name) => {
     const open = post.toggleAttribute('data-rmute-open');
     if (kind === 'page') document.documentElement.toggleAttribute('data-rmute-word-post', !open);
     // Open, the bar goes (content.css) and the post looks as it would without
     // one, its own sub name back; closed, the bar names the sub again.
     if (open) {
       hiddenNames.get(post)?.style.removeProperty('display');
-      expandIn(post, barHeight);
+      nameSpot = expandIn(post, barHeight, name);
     } else matchSubName(post, sub, label);
     el.setAttribute('aria-expanded', String(open));
     el.title = `${open ? 'Hide' : 'Show'} ${what}`;
