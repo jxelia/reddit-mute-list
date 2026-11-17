@@ -2072,9 +2072,15 @@ function stretchParts(post, head = post.querySelector('[slot="credit-bar"]'), li
   for (let n = link; n && n.parentElement !== head; n = n.parentElement) {
     for (let sib = n.nextElementSibling; sib; sib = sib.nextElementSibling) add(sib);
   }
-  parts.sort((x, y) => x.getBoundingClientRect().left - y.getBoundingClientRect().left);
-  const left = parts[0]?.getBoundingClientRect().left;
-  return parts.map((n) => [n, `${left - n.getBoundingClientRect().left}px 50%`]);
+  // The • and the time stretch together from the •'s left edge; badges (app
+  // icons, the community status icon) each from their own.
+  const dot = parts.find((n) => n.textContent.trim() === '•');
+  const time = (n) => n.matches('faceplate-timeago') || n.querySelector('faceplate-timeago');
+  const left = dot?.getBoundingClientRect().left;
+  return parts.map((n) => {
+    const own = n.getBoundingClientRect().left;
+    return [n, `${dot && (n === dot || time(n)) ? left - own : 0}px 50%`];
+  });
 }
 
 // Opening: the post grows down out of the bar's height, and the • and time
