@@ -304,12 +304,12 @@ html:not([data-rmute-off]) shreddit-post[data-rmute-tile]:not([data-rmute-open])
   transform: translateX(-30px) scale(1.1667);
 }
 shreddit-post[data-rmute-tile] [slot="credit-bar"] a[data-testid="subreddit-name"] > :first-child {
-  /* Moves with the name's left edge as it fades. */
-  transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s ease-out;
+  /* Stays put; its right edge is cut at the name's left edge as the name
+     slides over it (same 30px, same curve). */
+  transition: clip-path 0.3s cubic-bezier(0.2, 0, 0, 1);
 }
 html:not([data-rmute-off]) shreddit-post[data-rmute-tile]:not([data-rmute-open]) [slot="credit-bar"] a[data-testid="subreddit-name"] > :first-child {
-  transform: translateX(-30px);
-  opacity: 0;
+  clip-path: inset(0 100% 0 0);
 }
 .rmute-decide.rmute-tile-tools {
   position: absolute;
