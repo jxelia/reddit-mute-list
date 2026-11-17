@@ -2005,12 +2005,12 @@ function expandIn(post, from) {
 
 function stretchIn(post, parts = stretchParts(post)) {
   for (const [n, origin, time] of parts) {
-    n.animate(
+    // Badges stretch in once the sub name (0.3s CSS slide) is almost in place and
+    // end with it; the • and time just fade in from 250 ms, also ending with it.
+    if (time) n.animate({ opacity: [0, 1] }, { duration: 50, delay: 250, easing: 'linear', fill: 'backwards' });
+    else n.animate(
       { transform: ['scaleX(0.975)', 'scaleX(1)'], transformOrigin: [origin, origin], opacity: [0, 1] },
-      // Badges start once the sub name (0.3s CSS slide) is almost in place and end
-      // with it; the • and time, quicker, from 250 ms, also ending with it.
-      time ? { duration: 50, delay: 250, easing: 'cubic-bezier(0.2, 0, 0, 1)', fill: 'backwards' }
-        : { duration: 120, delay: 180, easing: 'cubic-bezier(0.2, 0, 0, 1)', fill: 'backwards' },
+      { duration: 120, delay: 180, easing: 'cubic-bezier(0.2, 0, 0, 1)', fill: 'backwards' },
     );
   }
   // The ⋯ fades in under the fading ×, also done at 300 ms.
