@@ -1860,8 +1860,19 @@ function markPopular(post) {
 const hiddenNames = new WeakMap(); // post -> its own sub name link, hidden under a bar
 const barToggles = new WeakMap(); // post -> its bar's show/hide toggle
 
-// Opening: the post grows down out of the bar's height, and the header's
-// time and ⋯ slide in a little from the right as they fade in.
+// The header's • and time, and the left edge they stretch out from (or back into).
+function stretchParts(post) {
+  const head = post.querySelector('[slot="credit-bar"]');
+  if (!head) return [];
+  const dot = [...head.querySelectorAll('span')].find((n) => !n.children.length && n.textContent.trim() === '•');
+  const parts = [dot, head.querySelector('faceplate-timeago')].filter(Boolean);
+  const left = parts[0]?.getBoundingClientRect().left;
+  return parts.map((n) => [n, `${left - n.getBoundingClientRect().left}px 50%`]);
+}
+
+// Opening: the post grows down out of the bar's height, and the header's •
+// and time stretch out from nothing at their left, a touch past full width
+// and back. The ⋯ just shows (the bar's × fades out over it, fadeGhost).
 function expandIn(post, from) {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const to = post.offsetHeight;
@@ -1871,26 +1882,39 @@ function expandIn(post, from) {
       { duration: Math.min(380, 180 + to / 4), easing: 'cubic-bezier(0.2, 0, 0, 1)' },
     );
   }
-  const head = post.querySelector('[slot="credit-bar"]');
-  for (const n of head?.querySelectorAll('faceplate-timeago, shreddit-post-overflow-menu') || []) {
-    n.animate(
-      { transform: ['translateX(10px)', 'none'], opacity: [0, 1] },
-      { duration: 200, delay: 60, easing: 'ease-out', fill: 'backwards' },
-    );
+  for (const [n, origin] of stretchParts(post)) {
+    n.animate([
+      { transform: 'scaleX(0)', transformOrigin: origin, opacity: 0 },
+      { transform: 'scaleX(1.06)', transformOrigin: origin, opacity: 1, offset: 0.7 },
+      { transform: 'scaleX(1)', transformOrigin: origin, opacity: 1 },
+    ], { duration: 340, delay: 60, easing: 'cubic-bezier(0.2, 0, 0.2, 1)', fill: 'backwards' });
   }
 }
 
-// Closing, the reverse: time and ⋯ slide back right as they fade, and the
-// post shrinks to the bar's height. Resolves when done.
+// A copy of the bar's × (or Mute r/) left where it was, fading out, since
+// the bar itself goes at once.
+function fadeGhost(node) {
+  const r = node.getBoundingClientRect();
+  if (!r.width || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const ghost = document.createElement('div');
+  ghost.className = 'rmute-decide rmute-ghost';
+  ghost.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;
+  ghost.append(node.cloneNode(true));
+  document.documentElement.append(ghost);
+  ghost.animate({ opacity: [1, 0] }, { duration: 220, easing: 'ease-out', fill: 'forwards' })
+    .finished.then(() => ghost.remove(), () => ghost.remove());
+}
+
+// Closing, the reverse: • and time shrink back into their left edge as they
+// fade, and the post shrinks to the bar's height. Resolves when done.
 function collapseOut(post, to) {
   post.getAnimations({ subtree: true }).forEach((a) => a.cancel());
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return Promise.resolve();
   const anims = [];
-  const head = post.querySelector('[slot="credit-bar"]');
-  for (const n of head?.querySelectorAll('faceplate-timeago, shreddit-post-overflow-menu') || []) {
+  for (const [n, origin] of stretchParts(post)) {
     anims.push(n.animate(
-      { transform: ['none', 'translateX(10px)'], opacity: [1, 0] },
-      { duration: 150, easing: 'ease-in', fill: 'forwards' },
+      { transform: ['scaleX(1)', 'scaleX(0)'], transformOrigin: [origin, origin], opacity: [1, 0] },
+      { duration: 180, easing: 'ease-in', fill: 'forwards' },
     ));
   }
   const from = post.offsetHeight;
@@ -1972,7 +1996,12 @@ function syncDecideBar(post, sub, kind = 'rec') {
     }
   };
   const flip = () => {
+    if (!post.hasAttribute('data-rmute-open') && menu) fadeGhost(menu);
     const open = post.toggleAttribute('data-rmute-open');
+    // Closed again: the × fades back in where the ⋯ was.
+    if (!open && menu && kind !== 'page' && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      menu.animate({ opacity: [0, 1] }, { duration: 220, easing: 'ease-out' });
+    }
     if (kind === 'page') document.documentElement.toggleAttribute('data-rmute-word-post', !open);
     // Open, the bar goes (content.css) and the post looks as it would without
     // one, its own sub name back; closed, the bar names the sub again.

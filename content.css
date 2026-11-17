@@ -266,6 +266,14 @@ html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toa
 .rmute-decide[aria-expanded="true"] {
   display: none !important;
 }
+/* The bar's × left fading where it was as the post opens (fadeGhost). */
+.rmute-decide.rmute-ghost {
+  position: fixed;
+  z-index: 1;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+}
 shreddit-post[data-rmute-open] [slot="credit-bar"] {
   cursor: pointer;
 }
