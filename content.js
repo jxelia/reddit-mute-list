@@ -1884,13 +1884,27 @@ function expandIn(post, from, name) {
 }
 
 // The post's own sub name text and its icon (Reddit's link holds both).
-function subNameParts(post) {
-  const link = hiddenNames.get(post);
+function subNameParts(post, link = hiddenNames.get(post)) {
   if (!link) return {};
   const text = [...link.querySelectorAll('span')].reverse()
     .find((n) => /^r\//i.test(n.textContent.trim()) && !n.querySelector('span')) || link;
   const icon = [...link.children].find((n) => !n.contains(text));
   return { text, icon };
+}
+
+// How far a post's own sub name text sits from the post's left edge: the
+// bar puts its name there too. Measured on a showing post, else the last value.
+let nameX = null;
+function alignBarName(bar) {
+  if (nameX == null) {
+    for (const p of [...document.querySelectorAll('shreddit-post')].slice(0, 40)) {
+      const link = [...p.querySelectorAll('[slot="credit-bar"] a[href]')]
+        .find((a) => /\/r\/[^/]+\/?$/.test(new URL(a.href, location.href).pathname) && /^r\//i.test(a.textContent.trim()));
+      const r = link && subNameParts(p, link).text?.getBoundingClientRect();
+      if (r?.width) { nameX = r.left - p.getBoundingClientRect().left; break; }
+    }
+  }
+  if (nameX != null) bar.style.paddingLeft = `${nameX}px`;
 }
 
 // Moves the post's sub name text between the bar's spot and its own, scaled
@@ -1905,12 +1919,20 @@ function morphName(post, name, opening) {
     ? { x: name.rect.left - box.left, y: name.rect.top + name.rect.height / 2 - box.top, size: name.size }
     : name;
   const own = text.getBoundingClientRect();
+  // The bar's name sits where this one does (alignBarName), so it stays put
+  // and only changes size, from its left edge.
+  if (opening) {
+    nameX = own.left - box.left;
+    spot.x = nameX;
+    const bar = post.previousElementSibling;
+    if (bar?.classList.contains('rmute-decide')) bar.style.paddingLeft = `${nameX}px`;
+  }
   const scale = spot.size / (parseFloat(getComputedStyle(text).fontSize) || spot.size);
   const dx = box.left + spot.x - own.left;
-  const dy = box.top + spot.y - own.top - (own.height * scale) / 2;
+  const dy = box.top + spot.y - (own.top + own.height / 2);
   const away = `translate(${dx}px, ${dy}px) scale(${scale})`;
   const timing = { duration: opening ? 300 : 260, easing: 'cubic-bezier(0.2, 0, 0, 1)', fill: opening ? 'backwards' : 'forwards' };
-  text.animate({ transform: opening ? [away, 'none'] : ['none', away], transformOrigin: ['0 0', '0 0'] }, timing);
+  text.animate({ transform: opening ? [away, 'none'] : ['none', away], transformOrigin: ['0 50%', '0 50%'] }, timing);
   icon?.animate({ opacity: opening ? [0, 1] : [1, 0] }, { ...timing, duration: 180, delay: opening ? 80 : 0 });
   return spot;
 }
@@ -2058,6 +2080,7 @@ function syncDecideBar(post, sub, kind = 'rec') {
   el.append(label);
   if (kind !== 'page') el.append(menu);
   post.before(el);
+  alignBarName(el);
 
   matchSubName(post, sub, label);
 }
