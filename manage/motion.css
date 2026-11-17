@@ -12,8 +12,10 @@
   .tabs[data-ring] button {
     position: absolute; left: 50%; top: 45%; width: 0; height: 0; padding: 0; margin: 0; border: 0;
     font-size: 14px;
-    transition: color 0.2s;
+    transition: color 0.2s, opacity 0.2s;
   }
+  /* While a title is hovered, the other unselected ones fade so it reads clearly over them. */
+  .tabs[data-ring]:has(button[data-hover]:not([aria-selected="true"])) button:not([data-hover], [aria-selected="true"]) { opacity: 0.3; }
   .tabs[data-ring] button[data-hover]:not([aria-selected="true"]) { color: color-mix(in srgb, var(--fg) 30%, var(--muted)); z-index: 1; }
   .tabs[data-ring] button:focus-visible { outline: none; color: var(--accent); }
   .tabs .letter { position: absolute; left: 0; top: 0; padding: 0.4rem 1px; white-space: pre; transform-origin: 0 0; }
