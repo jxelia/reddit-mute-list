@@ -8,8 +8,8 @@
   const VIEW = 120; // how far the viewer is from the front of the eye
   const GAP = 5; // between titles along the strip
   const SIZES = [1.25, 1.06, 0.98, 0.94]; // a title's size by how many titles it is from the selected one
-  const POP = 12; // how far a hovered title comes out of the carousel, along the way it's facing, in px
-  const FILL = [400, 680]; // a hovered title's letters thicken from this weight to this as it comes out
+  const GROW = 0.3; // how much bigger each letter of a hovered title gets; the word widens by its letters
+  const RIPPLE = 0.7; // letters further from the title's middle start growing this much later (0 = all at once)
   const POP_ROOM = 14; // how far past the row's ends it can go, in px
   const HOVER_TIME = 70; // how quickly it gets there, in ms (about 3x this to settle)
   const WORD_REACH = 1.2; // how far round the selected word's ends sit, against the row's curve at that point
@@ -19,7 +19,7 @@
   const LINE = 11; // the line's distance below the middle of the title, in px
   const TIME = 450;
   const pen = document.createElement('canvas').getContext('2d');
-  let strip = null; // [{ button, width, letters: [{ el, at }] }]
+  let strip = null; // [{ button, width, letters: [{ el, from, wide, d }] }]
   let pos = 0; // which title is in the middle; between two while moving
   let lineWidth = 0; // the shortest title's, whichever is selected
   let frame = 0;
@@ -45,7 +45,7 @@
         el.ariaHidden = 'true';
         el.textContent = text[i];
         button.append(el);
-        letters.push({ el, at: from + wide / 2 - width / 2 });
+        letters.push({ el, from, wide, d: Math.abs(from + wide / 2 - width / 2) / (width / 2 || 1) });
       }
       return { button, width, letters, lift: 0 };
     });
@@ -86,15 +86,21 @@
       t.left = project(off - half, round, 0);
       t.right = project(off + half, round, 0);
       // It comes straight out, and slides back only as far as it would leave the page.
-      const pop = POP * lift;
-      // The letters fill out as it comes, not only the word growing.
-      const weight = lift ? String(Math.round(FILL[0] + (FILL[1] - FILL[0]) * lift)) : '';
-      const outer = Math.abs(off) + half;
-      const slide = lift ? -Math.sign(off) * Math.max(0, project(outer, round, pop) - tabs.clientWidth / 2 - POP_ROOM) : 0;
-      for (const { el, at } of letters) {
+      // Each letter grows on its own, from the middle out, and pushes the next ones along,
+      // so the word widens because its letters do.
+      let extra = 0;
+      for (const l of letters) {
+        const grow = 1 + GROW * Math.max(0, Math.min(1, lift * (1 + RIPPLE) - RIPPLE * l.d));
+        l.grow = grow;
+        l.mid = l.from + extra + l.wide * grow / 2;
+        extra += l.wide * (grow - 1);
+      }
+      const outer = Math.abs(off) + (width + extra) * size / 2;
+      const slide = lift ? -Math.sign(off) * Math.max(0, project(outer, round, 0) - tabs.clientWidth / 2 - POP_ROOM) : 0;
+      for (const { el, mid, grow } of letters) {
+        const at = mid - (width + extra) / 2;
         const along = spot + at * size * (1 - own) - middle;
-        el.style.transform = `translateX(${slide}px) perspective(${VIEW}px) translateZ(${-round}px) rotateY(${along / round}rad) translateZ(${round + pop}px) perspective(${small * WORD_VIEW}px) translateZ(${-small}px) rotateY(${own * at * size / small}rad) translateZ(${small}px) scale(${size}) translate(-50%, -50%)`;
-        el.style.fontWeight = weight;
+        el.style.transform = `translateX(${slide}px) perspective(${VIEW}px) translateZ(${-round}px) rotateY(${along / round}rad) translateZ(${round}px) perspective(${small * WORD_VIEW}px) translateZ(${-small}px) rotateY(${own * at * size / small}rad) translateZ(${small}px) scale(${size * grow}) translate(-50%, -50%)`;
       }
     }
     drawLine(round);
