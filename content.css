@@ -247,8 +247,21 @@ html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toa
 .rmute-pick:focus-within .rmute-tools {
   width: 28px;
 }
+/* Expanded bar: the × spins and fades out (the ✓ with it); it spins back in on collapse. */
+.rmute-pick > button {
+  transition: opacity 0.25s ease-out, transform 0.25s ease-out, visibility 0.25s;
+}
+.rmute-decide[aria-expanded="true"] .rmute-pick > button {
+  opacity: 0;
+  transform: rotate(180deg);
+  visibility: hidden;
+}
+.rmute-decide[aria-expanded="true"] .rmute-tools {
+  width: 0;
+  visibility: hidden;
+}
 @media (prefers-reduced-motion: reduce) {
-  .rmute-tools { transition: none; }
+  .rmute-tools, .rmute-pick > button { transition: none; }
 }
 
 /* The Mute r/ button on r/popular bars: greyed until hovered. */
