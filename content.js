@@ -1685,7 +1685,7 @@ function queueShift(c) {
   shiftQueue.add(c);
 }
 
-// After the name: the •, the time and badges (stretchIn / stretchOut).
+// After the name: the •, the time and badges (stretchIn / stretchOut fade them in order).
 const ctileParts = (c) => {
   const meta = ctileSummary(c)?.querySelector('[slot="commentMeta"]');
   return stretchParts(c, meta, meta?.querySelector('[data-testid="nameplate"]'));
@@ -1989,8 +1989,8 @@ function stretchParts(post, head = post.querySelector('[slot="credit-bar"]'), li
   });
 }
 
-// Opening: the post grows down out of the bar's height, and the • and time
-// stretch a little rightward from their left edge as they fade in. The ⋯ just shows.
+// Opening: the post grows down out of the bar's height, and the header row
+// comes in in order (stretchIn).
 function expandIn(post, from) {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const to = post.offsetHeight;
@@ -2003,35 +2003,39 @@ function expandIn(post, from) {
   stretchIn(post);
 }
 
-function stretchIn(post, parts = stretchParts(post)) {
-  for (const [n, origin, time] of parts) {
-    // Badges stretch in once the sub name (0.3s CSS slide) is almost in place and
-    // end with it; the • and time just fade in from 250 ms, also ending with it.
-    if (time) n.animate({ opacity: [0, 1] }, { duration: 50, delay: 250, easing: 'linear', fill: 'backwards' });
-    else n.animate(
-      { transform: ['scaleX(0.975)', 'scaleX(1)'], transformOrigin: [origin, origin], opacity: [0, 1] },
-      { duration: 120, delay: 180, easing: 'cubic-bezier(0.2, 0, 0, 1)', fill: 'backwards' },
-    );
-  }
-  // The ⋯ fades in under the fading ×, also done at 300 ms.
-  post.querySelector('[slot="credit-bar"] shreddit-post-overflow-menu')
-    ?.animate({ opacity: [0, 1] }, { duration: 300, easing: 'ease-in-out' });
-}
-
-// Closing: • and time shrink a little back toward their left edge as they
-// fade, and the ⋯ fades out as the × does on opening. Held at the end.
-function stretchOut(post, parts = stretchParts(post)) {
-  const anims = parts.map(([n, origin]) => n.animate(
-    { transform: ['scaleX(1)', 'scaleX(0.975)'], transformOrigin: [origin, origin], opacity: [1, 0] },
-    { duration: 180, easing: 'ease-in', fill: 'forwards' },
-  ));
+// One order for the whole header, both ways. Opening: the tile grows, the name
+// slides right and the icon's soft edge runs ahead of it (CSS, 0-300 ms, one
+// curve); then the rest of the row fades in left to right, •+time, each badge,
+// the ⋯ (where the × faded out), 20 ms apart from 250 ms. Closing runs it
+// backwards: the row fades out right to left first, then the name covers the icon.
+function rowSteps(post, parts) {
+  const steps = [];
+  const time = parts.filter(([, , t]) => t).map(([n]) => n);
+  if (time.length) steps.push(time);
+  for (const [n, , t] of parts) if (!t) steps.push([n]);
   const dots = post.querySelector('[slot="credit-bar"] shreddit-post-overflow-menu');
-  if (dots) anims.push(dots.animate({ opacity: [1, 0] }, { duration: 220, easing: 'ease-out', fill: 'forwards' }));
-  return anims;
+  if (dots) steps.push([dots]);
+  const x = (step) => step[0].getBoundingClientRect().left;
+  return steps.sort((a, b) => x(a) - x(b));
 }
 
-// Closing, the reverse: • and time shrink a little toward their left edge as
-// they fade, and the post shrinks to the bar's height. Resolves when done.
+function stretchIn(post, parts = stretchParts(post)) {
+  rowSteps(post, parts).forEach((step, i) => step.forEach((n) => n.animate(
+    { opacity: [0, 1] },
+    { duration: 50, delay: 250 + 20 * i, easing: 'linear', fill: 'backwards' },
+  )));
+}
+
+// Held at the end.
+function stretchOut(post, parts = stretchParts(post)) {
+  return rowSteps(post, parts).reverse().flatMap((step, i) => step.map((n) => n.animate(
+    { opacity: [1, 0] },
+    { duration: 50, delay: 20 * i, easing: 'linear', fill: 'forwards' },
+  )));
+}
+
+// Closing, the reverse: the header row fades out right to left (stretchOut),
+// and the post shrinks to the bar's height. Resolves when done.
 function collapseOut(post, to) {
   post.getAnimations({ subtree: true }).forEach((a) => a.cancel());
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return Promise.resolve();
