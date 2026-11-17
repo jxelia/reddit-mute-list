@@ -316,13 +316,13 @@ body:not(.popup) :is(#main-group, #word-group, #rec-group) { max-height: 29rem; 
 :is(#main-group, #word-group, #rec-group) > summary::-webkit-details-marker { display: none; }
 :is(#main-group, #word-group, #rec-group) > summary > * { display: none; }
 /* Open, the rows start near the top, over the bar's empty part. What's left of the bar closes it. */
-:is(#main-group, #word-group, #rec-group)[open]::details-content { margin-top: -0.4rem; }
-/* Open, the bar's top 2rem stays put and the rows scroll under it, so the top row keeps the
-   first row's 2rem gap, all of it closing the list. Clipped to that 2rem so it never covers a
+:is(#main-group, #word-group, #rec-group)[open]::details-content { margin-top: -1.14rem; }
+/* Open, the bar's top 1.26rem (the shade's height) stays put and the rows scroll under it, so the top row keeps the
+   first row's 1.26rem gap, all of it closing the list. Clipped to that 1.26rem so it never covers a
    row's name or ×. Rows fade slightly in its lowest 0.3rem as they go under. */
-:is(#main-group, #word-group, #rec-group)[open] > summary { position: sticky; top: 0; z-index: 1; clip-path: inset(0 0 calc(100% - 2rem)); container-type: scroll-state; }
-:is(#main-group, #word-group, #rec-group)[open] > summary::after { content: ""; position: absolute; inset: 0 0 auto; height: 2rem; }
-@container scroll-state(stuck: top) { :is(#main-group, #word-group, #rec-group) > summary::after { background: linear-gradient(var(--bg) 1.7rem, transparent); } }
+:is(#main-group, #word-group, #rec-group)[open] > summary { position: sticky; top: 0; z-index: 1; clip-path: inset(0 0 calc(100% - 1.26rem)); container-type: scroll-state; }
+:is(#main-group, #word-group, #rec-group)[open] > summary::after { content: ""; position: absolute; inset: 0 0 auto; height: 1.26rem; }
+@container scroll-state(stuck: top) { :is(#main-group, #word-group, #rec-group) > summary::after { background: linear-gradient(var(--bg) 0.96rem, transparent); } }
 /* Open rows would sit over the shade; with motion on, motion.css slides it away instead. */
 @media (prefers-reduced-motion: reduce) { :is(#main-group, #word-group, #rec-group)[open] > summary { background: none; } }
 :is(#main-group, #word-group, #rec-group) .list { margin: 0; border: 0; border-radius: 0; max-height: none; overflow: visible; }
