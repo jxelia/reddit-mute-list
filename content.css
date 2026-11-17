@@ -477,27 +477,23 @@ html:not([data-rmute-off]) shreddit-comment[data-rmute-ctile]:is(:not([data-rmut
 html:not([data-rmute-off]) shreddit-comment[data-rmute-ctile] > details > summary [slot="commentMeta"] :is([data-testid="nameplate"], [data-testid="nameplate"] *) {
   visibility: visible;
 }
-/* Why ("user", "word"), after the collapsed name; in the header, so it slides
-   with it, but placed from the header's edge (--rmute-name-end, content.js),
-   outside the name's overflow: hidden wrappers. Fades as the • and time come in. */
-shreddit-comment[data-rmute-ctile] > details > summary [slot="commentMeta"] > .rmute-why {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: var(--rmute-name-end, 0);
-  display: flex;
-  align-items: center;
+/* Why ("user", "word"), in the header's row right after the collapsed name.
+   Only on a collapsed tile, so it takes no room from the • and time. */
+.rmute-why {
+  display: none;
+  flex: none;
   margin-left: 0.5rem;
   color: var(--color-neutral-content-weak, #576f76);
   font: italic 12px/16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   white-space: nowrap;
-  transition: opacity 0.18s ease-in;
 }
-shreddit-comment[data-rmute-ctile][data-rmute-open]:not([data-rmute-closing]) > details > summary [slot="commentMeta"] > .rmute-why,
-shreddit-comment[data-rmute-ctile] > details:not([open]) > summary [slot="commentMeta"] > .rmute-why {
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.12s ease-out, visibility 0s linear 0.12s;
+html:not([data-rmute-off]) shreddit-comment[data-rmute-ctile]:not([data-rmute-open]) > details[open] > summary [slot="commentMeta"] .rmute-why {
+  display: inline-block;
+  visibility: visible;
+  animation: rmute-why-in 0.18s ease-in;
+}
+@keyframes rmute-why-in {
+  from { opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   shreddit-comment[data-rmute-ctile] * { transition: none !important; }

@@ -1659,24 +1659,19 @@ function syncCommentBar(c, reason) {
 const ctiles = new WeakMap(); // comment -> { key, why, stop, toggle }
 const ctileSummary = (c) => c.querySelector(':scope > details > summary');
 
-// How far the name sits right of the avatar, so it lands on it, and where the
-// name ends in the header (for why). The header's slide is taken back out, so
-// it's right in either state.
+// How far the name sits right of the avatar, so it lands on it. The header's
+// slide is taken back out, so it's right in either state.
 function measureTile(c) {
   const sum = ctileSummary(c);
   const av = sum?.querySelector('[slot="commentAvatar"]');
   const meta = sum?.querySelector('[slot="commentMeta"]');
   if (!av?.offsetWidth || !meta) return null;
   const name = meta.querySelector('[data-testid="nameplate"]');
-  const box = (name?.offsetWidth ? name : meta.firstElementChild || meta).getBoundingClientRect();
-  const m = meta.getBoundingClientRect();
-  const shift = box.left - new DOMMatrix(getComputedStyle(meta).transform).m41 - av.getBoundingClientRect().left;
-  return { shift, end: (name?.offsetWidth ? box.right : box.left) - m.left };
+  const left = (name?.offsetWidth ? name : meta.firstElementChild || meta).getBoundingClientRect().left;
+  return left - new DOMMatrix(getComputedStyle(meta).transform).m41 - av.getBoundingClientRect().left;
 }
 function applyTile(c, x) {
-  if (!x || x.shift <= 0) return;
-  c.style.setProperty('--rmute-shift', `${x.shift}px`);
-  c.style.setProperty('--rmute-name-end', `${x.end}px`);
+  if (x > 0) c.style.setProperty('--rmute-shift', `${x}px`);
 }
 // All tiles of a page load measured in one layout.
 const shiftQueue = new Set();
@@ -1711,7 +1706,6 @@ function syncCommentTile(c, reason) {
     c.getAnimations({ subtree: true }).forEach((a) => a.cancel());
     for (const a of ['ctile', 'open', 'closing', 'noreplies']) c.removeAttribute(`data-rmute-${a}`);
     c.style.removeProperty('--rmute-shift');
-    c.style.removeProperty('--rmute-name-end');
     ctileSummary(c)?.removeAttribute('title');
     return;
   }
@@ -1719,8 +1713,7 @@ function syncCommentTile(c, reason) {
   if (!ui && mutes.settings.commentHideReplies && reason.includes('word')) c.setAttribute('data-rmute-noreplies', '');
   const stop = new AbortController();
   const on = { signal: stop.signal };
-  // In the header itself, so it slides with the name; placed by --rmute-name-end
-  // (content.css), outside the name's overflow: hidden wrappers.
+  // In the header's row, right after the name (before the •), so it slides with it.
   const why = document.createElement('span');
   why.className = 'rmute-why';
   why.textContent = names ? reason : `… · ${reason}`;
@@ -1794,7 +1787,10 @@ function syncCommentTile(c, reason) {
   for (const type of ['pointerup', 'pointerleave', 'pointercancel']) c.addEventListener(type, () => clearTimeout(timer), on);
   c.addEventListener('contextmenu', (e) => { if (held) e.preventDefault(); }, on); // touch long-press
   c.setAttribute('data-rmute-ctile', '');
-  ctileSummary(c)?.querySelector('[slot="commentMeta"]')?.append(why);
+  const meta = ctileSummary(c)?.querySelector('[slot="commentMeta"]');
+  const dot = meta && [...meta.querySelectorAll('span[aria-hidden="true"]')].find((n) => n.textContent.trim() === '•');
+  if (dot) dot.before(why);
+  else meta?.querySelector('[data-testid="nameplate"]')?.closest('a')?.after(why);
   ctiles.set(c, { key, why, stop, toggle: () => (held ? (held = false) : toggle()) });
   queueShift(c);
   update();
