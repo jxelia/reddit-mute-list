@@ -4,7 +4,11 @@
   if (!matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
   const tabs = document.querySelector('.tabs');
   const buttons = [...tabs.querySelectorAll('[role="tab"]')];
-  const REACH = 0.6; // the far end of the longer side sits this far round the eye, in radians
+  const REACH = 0.6; // both ends of the row sit this far round the eye, in radians, whichever page
+  const FADED = 0.3; // a letter past the ends goes on round the curve, at this opacity or less
+  const FADE_IN = 0.08; // over this far past the ends, in radians, then on to nothing round the side
+  const SIDE = 0.55; // hovering further out than this, of the row's half-width, scrolls it that way
+  const SIDE_SPEED = 1.2; // titles a second at the very edge
   const VIEW = 120; // how far the viewer is from the front of the eye
   const GAP = 5; // between titles along the strip
   const SIZES = [1.25, 1.06, 0.98, 0.94]; // a title's size by how many titles it is from the selected one
@@ -28,6 +32,7 @@
   let hovered = null;
   let last = 0;
   let line = null;
+  let pointer = null; // the pointer's x from the row's middle while it's over the row
 
   function build() {
     strip = buttons.map((button) => {
@@ -74,8 +79,9 @@
     const high = Math.min(low + 1, strip.length - 1);
     const between = (key) => strip[low][key] + (strip[high][key] - strip[low][key]) * (pos - low);
     const restMiddle = between('rest');
-    // Tighter when the longer side is short, so the curve always reaches as far round.
-    const round = Math.max(restMiddle, across - restMiddle, 200) * 1.08 / REACH;
+    // The same on every page: half the strip reaches each end, and titles past an end
+    // go on round the curve instead of stringing out further.
+    const round = Math.max(across / 2, 200) * 1.08 / REACH;
     // A hovered title's letters each grow, from the middle out, pushing the next ones
     // along, and it comes out of the carousel; the titles round it, the selected one
     // too, move aside by as much, so nothing overlaps.
@@ -112,17 +118,48 @@
       // Coming out spreads it by mag, so its centre is set back to land on its spot,
       // and it slides back only as far as it would leave the page.
       const off = spot - middle;
+      t.hit = Math.abs((rest - restMiddle) / round) < REACH + FADE_IN;
       const outer = Math.abs(off) + (width + extra) * size * mag / 2;
       const slide = lift ? -Math.sign(off) * Math.max(0, project(outer, round, 0) - tabs.clientWidth / 2 - POP_ROOM) : 0;
       for (const { el, mid, grow } of letters) {
         const at = mid - (width + extra) / 2;
         const along = off / mag + at * size * (1 - own);
+        el.style.opacity = fade(along / round);
         el.style.transform = `translateX(${slide}px) perspective(${VIEW}px) translateZ(${-round}px) rotateY(${along / round}rad) translateZ(${round + pop}px) perspective(${small * WORD_VIEW}px) translateZ(${-small}px) rotateY(${own * at * size / small}rad) translateZ(${small}px) scale(${size * grow}) translate(-50%, -50%)`;
       }
     }
     // The line follows the selected title when a hover pushes it aside.
-    line.style.translate = `${project(between('spot') - middle, round, 0)}px 0`;
+    // It stays under the current page's title, while hovering at a side scrolls the row.
+    const page = strip[selected()];
+    if (page) {
+      line.style.translate = `${project(page.spot - middle, round, 0)}px 0`;
+      line.style.opacity = fade((page.spot - middle) / round);
+    }
     drawLine(round);
+  }
+
+  // Full up to the ends, then FADED or less as it goes on round, gone at the side.
+  function fade(angle) {
+    const past = Math.abs(angle) - REACH;
+    if (past <= 0) return '';
+    if (past < FADE_IN) return String(1 - (1 - FADED) * past / FADE_IN);
+    return String(Math.max(0, FADED * (1 - (past - FADE_IN) / (Math.PI / 2 - REACH - FADE_IN))));
+  }
+
+  const selected = () => strip.findIndex((t) => t.button.getAttribute('aria-selected') === 'true');
+
+  // How fast hovering at a side scrolls the row, in titles a second, + to the right.
+  function drift() {
+    if (pointer === null) return 0;
+    const out = Math.abs(pointer) / (tabs.clientWidth / 2);
+    if (out <= SIDE) return 0;
+    return Math.sign(pointer) * SIDE_SPEED * Math.min(1, (out - SIDE) / (1 - SIDE));
+  }
+
+  function pick() {
+    if (pointer === null) return hover(null);
+    const x = pointer;
+    hover(strip.find((t) => t.hit && x >= t.left - GAP / 2 && x <= t.right + GAP / 2)?.button ?? null);
   }
 
   // A point on the row as it appears on screen, from the middle, out by pop along its facing.
@@ -162,6 +199,15 @@
       if (t < 1) busy = true;
       else moving = null;
     }
+    const speed = drift();
+    if (speed) {
+      const to = Math.max(0, Math.min(strip.length - 1, pos + speed * passed / 1000));
+      if (to !== pos) {
+        moving = null;
+        pos = to;
+        busy = true;
+      }
+    }
     for (const t of strip) {
       const goal = t.button === hovered && t.button.getAttribute('aria-selected') !== 'true' ? 1 : 0;
       t.lift += (goal - t.lift) * (1 - Math.exp(-passed / HOVER_TIME));
@@ -169,6 +215,7 @@
       else busy = true;
     }
     draw();
+    if (speed && busy) pick(); // what's under a still pointer as the row scrolls past it
     if (busy) run();
     else last = 0;
   }
@@ -178,7 +225,7 @@
   }
 
   function place(animate) {
-    const tab = strip.findIndex((t) => t.button.getAttribute('aria-selected') === 'true');
+    const tab = selected();
     if (tab < 0) return;
     if (animate) {
       moving = { from: pos, to: tab, start: performance.now() };
@@ -202,10 +249,16 @@
   // pointer stays hovered.
   tabs.addEventListener('pointermove', (e) => {
     const box = tabs.getBoundingClientRect();
-    const x = e.clientX - box.left - box.width / 2;
-    hover(strip.find((t) => x >= t.left - GAP / 2 && x <= t.right + GAP / 2)?.button ?? null);
+    pointer = e.clientX - box.left - box.width / 2;
+    pick();
+    if (drift()) run();
   });
-  tabs.addEventListener('pointerleave', () => hover(null));
+  // Back to the current page's title when the pointer leaves.
+  tabs.addEventListener('pointerleave', () => {
+    pointer = null;
+    hover(null);
+    place(true);
+  });
   tabs.addEventListener('click', (e) => {
     if (!e.target.closest('[role="tab"]')) hovered?.click();
   });
