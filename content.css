@@ -173,6 +173,10 @@ html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toa
   font-size: 14px;
   line-height: 20px;
 }
+/* The card moves focus to its title link as it opens; a hover isn't keyboard use, so no ring. */
+.rmute-decide [slot="content"] :focus {
+  outline: none;
+}
 .rmute-decide:focus-visible {
   outline: 2px solid var(--color-neutral-content-strong, currentColor);
   outline-offset: 1px;
