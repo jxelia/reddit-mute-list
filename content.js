@@ -1984,7 +1984,8 @@ function stretchParts(post, head = post.querySelector('[slot="credit-bar"]'), li
   const left = dot?.getBoundingClientRect().left;
   return parts.map((n) => {
     const own = n.getBoundingClientRect().left;
-    return [n, `${dot && (n === dot || time(n)) ? left - own : 0}px 50%`];
+    const t = !!dot && (n === dot || !!time(n));
+    return [n, `${t ? left - own : 0}px 50%`, t];
   });
 }
 
@@ -2003,11 +2004,13 @@ function expandIn(post, from) {
 }
 
 function stretchIn(post, parts = stretchParts(post)) {
-  for (const [n, origin] of parts) {
+  for (const [n, origin, time] of parts) {
     n.animate(
       { transform: ['scaleX(0.975)', 'scaleX(1)'], transformOrigin: [origin, origin], opacity: [0, 1] },
-      // Starts once the sub name (0.3s CSS slide) is almost in place; both end together.
-      { duration: 120, delay: 180, easing: 'cubic-bezier(0.2, 0, 0, 1)', fill: 'backwards' },
+      // Badges start once the sub name (0.3s CSS slide) is almost in place and end
+      // with it; the • and time, quicker, only after 280 ms of the slide.
+      time ? { duration: 80, delay: 280, easing: 'cubic-bezier(0.2, 0, 0, 1)', fill: 'backwards' }
+        : { duration: 120, delay: 180, easing: 'cubic-bezier(0.2, 0, 0, 1)', fill: 'backwards' },
     );
   }
   // The ⋯ fades in under the fading ×, also done at 300 ms.
