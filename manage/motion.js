@@ -8,7 +8,7 @@
   const FADED = 0.3; // a letter past the ends goes on round the curve, at this opacity or less
   const FADE_IN = 0.08; // over this far past the ends, in radians, then on to nothing round the side
   const SIDE = 0.55; // hovering further out than this, of the row's half-width, scrolls it that way
-  const SIDE_SPEED = 1.2; // titles a second at the very edge
+  const SIDE_SPEED = 3; // titles a second at the very edge; slow near the start, faster and faster out to it
   const VIEW = 120; // how far the viewer is from the front of the eye
   const GAP = 5; // between titles along the strip
   const SIZES = [1.25, 1.06, 0.98, 0.94]; // a title's size by how many titles it is from the selected one
@@ -160,7 +160,7 @@
     // Only over the row itself, not the space past its ends.
     const out = Math.abs(pointer) / edge;
     if (out <= SIDE || out > 1) return 0;
-    return Math.sign(pointer) * SIDE_SPEED * Math.min(1, (out - SIDE) / (1 - SIDE));
+    return Math.sign(pointer) * SIDE_SPEED * Math.min(1, (out - SIDE) / (1 - SIDE)) ** 2;
   }
 
   function pick() {
