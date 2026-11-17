@@ -1917,6 +1917,9 @@ function collapseOut(post, to) {
       { duration: 180, easing: 'ease-in', fill: 'forwards' },
     ));
   }
+  // The ⋯ fades out as the bar's × did on opening.
+  const dots = post.querySelector('[slot="credit-bar"] shreddit-post-overflow-menu');
+  if (dots) anims.push(dots.animate({ opacity: [1, 0] }, { duration: 220, easing: 'ease-out', fill: 'forwards' }));
   const from = post.offsetHeight;
   if (to && from > to) {
     anims.push(post.animate(
