@@ -283,50 +283,27 @@ html:not([data-rmute-off]) shreddit-post[data-rmute-tile]:not([data-rmute-open])
   background-color: var(--color-neutral-background) !important;
 }
 /* Every part, since Reddit sets visibility: visible on the time, but not the
-   sub hover card's content, which would show blank. */
+   sub hover card's content, which would show blank. No transitions: open, the
+   header is there as usual at once; the tile's label fades out over it as a
+   copy (tileGhost in content.js). */
 html:not([data-rmute-off]) shreddit-post[data-rmute-tile]:not([data-rmute-open]) [slot="credit-bar"],
 html:not([data-rmute-off]) shreddit-post[data-rmute-tile]:not([data-rmute-open]) [slot="credit-bar"] *:where(:not([slot="content"], [slot="content"] *)) {
   visibility: hidden;
-  /* Hidden once the closing fades and slide are done. */
-  transition: visibility 0s linear 0.36s;
 }
 html:not([data-rmute-off]) shreddit-post[data-rmute-tile]:not([data-rmute-open]) [slot="credit-bar"] faceplate-hovercard > [slot="content"] {
   visibility: visible;
-  transition: none;
-}
-shreddit-post[data-rmute-tile] [slot="credit-bar"] a[data-testid="subreddit-name"] > span:last-child {
-  visibility: visible;
-  transform-origin: 0 50%;
-  transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1);
 }
 html:not([data-rmute-off]) shreddit-post[data-rmute-tile]:not([data-rmute-open]) [slot="credit-bar"] a[data-testid="subreddit-name"] > span:last-child {
-  /* Same size, left over the 30px icon. Closing, it waits 60 ms for the row
-     after it to fade out first. */
+  /* Same size, left over the 30px icon. */
+  visibility: visible;
   transform: translateX(-30px);
-  transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1) 0.06s;
 }
-/* The icon shows from its left as the name slides off it, with a soft 8px
-   right edge. The edge runs 16px (a few characters) ahead of the name, as if
-   the r/ had further to go: 0 closed, 46px open (box 30px), so the 24px icon
-   is fully shown about 90 ms in. A length property so it animates. */
-@property --rmute-icon-edge {
-  syntax: "<length>";
-  inherits: false;
-  initial-value: 46px;
-}
-shreddit-post[data-rmute-tile] [slot="credit-bar"] a[data-testid="subreddit-name"] > :first-child {
-  --rmute-icon-edge: 46px;
-  mask-image: linear-gradient(to right, #000 calc(var(--rmute-icon-edge) - 8px), transparent var(--rmute-icon-edge));
-  /* It also stretches a little rightward from its left edge, done by then. */
-  transform-origin: 0 50%;
-  transition: --rmute-icon-edge 0.3s cubic-bezier(0.2, 0, 0, 1), transform 0.09s ease-out;
-}
-html:not([data-rmute-off]) shreddit-post[data-rmute-tile]:not([data-rmute-open]) [slot="credit-bar"] a[data-testid="subreddit-name"] > :first-child {
-  --rmute-icon-edge: 0px;
-  transform: scaleX(0.95);
-  /* Stays visible while its edge closes: the credit bar's delayed hide doesn't
-     reach an icon drawn inside a shadow root, which would vanish at once. */
-  transition: --rmute-icon-edge 0.3s cubic-bezier(0.2, 0, 0, 1) 0.06s, transform 0.09s ease-out 0.06s, visibility 0s linear 0.36s;
+.rmute-tile-ghost {
+  position: absolute;
+  z-index: 1;
+  margin: 0;
+  white-space: nowrap;
+  pointer-events: none;
 }
 .rmute-decide.rmute-tile-tools {
   position: absolute;
@@ -337,8 +314,7 @@ html:not([data-rmute-off]) shreddit-post[data-rmute-tile]:not([data-rmute-open])
   margin: 0;
   padding: 0;
   justify-content: flex-end;
-  /* Closing: back once the ⋯ has faded (the first of the row to go). */
-  transition: opacity 0.15s ease-out 0.05s;
+  transition: opacity 0.15s ease-out;
 }
 .rmute-tile-tools .rmute-pick {
   /* The × centred where the ⋯ is. */
@@ -347,7 +323,7 @@ html:not([data-rmute-off]) shreddit-post[data-rmute-tile]:not([data-rmute-open])
 shreddit-post[data-rmute-open] > .rmute-tile-tools {
   opacity: 0;
   visibility: hidden;
-  /* Opening: gone before the ⋯ fades in at its spot, last in the row. */
+  /* Opening: fades with the label. */
   transition: opacity 0.2s ease-in, visibility 0s linear 0.2s;
 }
 @media (prefers-reduced-motion: reduce) {

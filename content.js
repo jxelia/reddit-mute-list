@@ -2116,6 +2116,7 @@ function syncTile(post, sub, kind) {
     post.getAnimations({ subtree: true }).forEach((a) => a.cancel());
     post.removeAttribute('data-rmute-tile');
     post.removeAttribute('data-rmute-open');
+    post.querySelector(':scope > .rmute-tile-ghost')?.remove();
     barToggles.delete(post);
   }
   if (!sub) return;
@@ -2127,25 +2128,67 @@ function syncTile(post, sub, kind) {
   post.setAttribute('data-rmute-tile', kind);
   tiles.set(post, { sub, tools });
 
+  // Opening: the header is there as usual at once and the tile grows; a copy of
+  // the tile's label fades out over it. Closing, the reverse: the copy fades in
+  // as the tile shrinks, then it swaps to the tile.
+  let closing = null;
   barToggles.set(post, () => {
+    if (closing) return closing.cancel(); // back to open
     post.getAnimations({ subtree: true }).forEach((a) => a.cancel());
+    post.querySelector(':scope > .rmute-tile-ghost')?.remove();
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const cs = getComputedStyle(post);
-    const from = [cs.height, cs.paddingBottom];
-    const open = post.toggleAttribute('data-rmute-open');
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    // The tile grows to the full post or shrinks back; the name's size and
-    // spot, the icon and the × fade are CSS transitions.
-    const to = [cs.height, cs.paddingBottom]; // live: cs updates with the attribute
-    const h = parseFloat(open ? to[0] : from[0]);
-    post.animate(
-      { height: [from[0], to[0]], paddingBottom: [from[1], to[1]], overflow: ['clip', 'clip'] },
-      open
-        ? { duration: 300, easing: 'cubic-bezier(0.2, 0, 0, 1)' } // ends with the sub name's slide
-        : { duration: Math.min(320, 160 + h / 5), easing: 'cubic-bezier(0.3, 0, 0.8, 0.15)' },
-    );
-    if (open) stretchIn(post);
-    else stretchOut(post);
+    const box = () => [cs.height, cs.paddingBottom]; // live: cs follows the attribute
+    const grow = (from, to, opts) => post.animate(
+      { height: [from[0], to[0]], paddingBottom: [from[1], to[1]], overflow: ['clip', 'clip'] }, opts);
+    if (!post.hasAttribute('data-rmute-open')) {
+      const from = box();
+      const ghost = still ? null : tileGhost(post);
+      post.setAttribute('data-rmute-open', '');
+      if (!ghost) return;
+      grow(from, box(), { duration: 300, easing: 'cubic-bezier(0.2, 0, 0, 1)' });
+      ghost.animate({ opacity: [1, 0] }, { duration: 200, easing: 'ease-out', fill: 'forwards' })
+        .finished.finally(() => ghost.remove()).catch(() => {});
+      return;
+    }
+    const from = box();
+    post.removeAttribute('data-rmute-open');
+    const to = box();
+    const ghost = still ? null : tileGhost(post);
+    if (!ghost) return;
+    post.setAttribute('data-rmute-open', '');
+    const duration = Math.min(320, 160 + parseFloat(from[0]) / 5);
+    closing = grow(from, to, { duration, easing: 'cubic-bezier(0.3, 0, 0.8, 0.15)', fill: 'forwards' });
+    ghost.animate({ opacity: [0, 1] }, { duration, easing: 'ease-in', fill: 'forwards' });
+    closing.finished.then(() => {
+      post.removeAttribute('data-rmute-open');
+      requestAnimationFrame(() => post.getAnimations().forEach((x) => x.cancel()));
+    }, () => {}).finally(() => {
+      closing = null;
+      ghost.remove();
+    });
   });
+}
+
+// A copy of the tile's label (the sub name in the icon's spot) on top of the
+// post, for fading between the tile and the regular header. Measured with the
+// tile closed.
+function tileGhost(post) {
+  const name = post.querySelector('[slot="credit-bar"] a[data-testid="subreddit-name"] > span:last-child');
+  if (!name) return null;
+  const open = post.hasAttribute('data-rmute-open');
+  post.removeAttribute('data-rmute-open');
+  const r = name.getBoundingClientRect();
+  const p = post.getBoundingClientRect();
+  const cs = getComputedStyle(name);
+  const ghost = document.createElement('span');
+  ghost.className = 'rmute-tile-ghost';
+  ghost.textContent = name.textContent;
+  ghost.style.cssText = `left:${r.left - p.left - post.clientLeft}px;top:${r.top - p.top - post.clientTop}px;`
+    + `font:${cs.font};color:${cs.color};letter-spacing:${cs.letterSpacing};`;
+  if (open) post.setAttribute('data-rmute-open', '');
+  post.append(ghost);
+  return ghost;
 }
 
 // r/popular: the same Mute r/ button as under a post's ⋯ (mutes everywhere,
