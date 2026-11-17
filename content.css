@@ -256,7 +256,7 @@ html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toa
 }
 .rmute-decide[aria-expanded="true"] .rmute-pick > button {
   opacity: 0;
-  transform: rotate(180deg);
+  transform: rotate(135deg);
   visibility: hidden;
 }
 .rmute-decide[aria-expanded="true"] .rmute-tools {
