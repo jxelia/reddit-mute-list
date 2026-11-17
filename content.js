@@ -129,7 +129,7 @@ function buildCss(list) {
   // much less with the names in one.
   for (let i = 0; i < hiddenAuthors.length; i += 100) {
     const c = `shreddit-comment:is(${hiddenAuthors.slice(i, i + 100).join(', ')}):not([data-rmute-open])`;
-    commentRules.push(ownParts(c, '.rmute-ctools', true));
+    commentRules.push(ownParts(c, '', true));
     lineRules.push(...threadLine(c, true));
   }
   // Comments with a muted word shrink to the bar markComment() puts in them
@@ -144,7 +144,7 @@ function buildCss(list) {
     }
   } else {
     const cword = 'shreddit-comment[data-rmute-cword]:not([data-rmute-open])';
-    commentRules.push(ownParts(cword, '.rmute-ctools', true));
+    commentRules.push(ownParts(cword, '', true));
     lineRules.push(...threadLine(cword, true));
     other.push('.thing.comment[data-rmute-cword]:not([data-rmute-open]) > :not(.child, .rmute-cbar)');
   }
@@ -230,8 +230,9 @@ function ownParts(c, keep, head) {
   const reply = `shreddit-comment, [slot^="children"], [slot*="more" i]`;
   // Reddit's thread line stays: the line, its ⊖, the mask under a last reply, and
   // the summary, since the click strip on the line lives in it (and a closed
-  // comment's row, which is the way to open it again).
-  const kept = `summary, .ssr-thread-line, .collapse-container, .branchline${keep ? ', ' + keep : ''}`;
+  // comment's row, which is the way to open it again). A tile (head) drops the
+  // ⊖, which would sit alone on a row under the header.
+  const kept = `summary, .ssr-thread-line, ${head ? '' : '.collapse-container, '}.branchline${keep ? ', ' + keep : ''}`;
   const step = ` > :not(${reply}, ${kept})`;
   const levels = [0, 1, 2, 3, 4].map((n) => `${c}${step.repeat(n)} > *`);
   const own = `:is(${c} *):is(${levels.join(', ')}):not(${reply}, :has(${reply}), ${kept})`;
@@ -1650,24 +1651,32 @@ function syncCommentBar(c, reason) {
 }
 
 // Reddit's comments: the comment itself, cut to its header line like a sub
-// tile (content.css), with only u/name, slid left over the avatar. A click on
-// the line adds why and Show comment at its right; Show comment opens it the
-// way a sub tile opens, and the opened header's free space closes it again.
-// Pressing and holding hides the replies too. A thread closed with Reddit's
-// line shows Reddit's own row.
-const ctiles = new WeakMap(); // comment -> { key, tools, stop, toggle }
+// tile (content.css), with only u/name, slid left over the avatar, and why
+// ("user", "word") after it. A click on the line opens it the way a sub tile
+// opens, and the opened header's free space closes it again. Pressing and
+// holding hides the replies too. A thread closed with Reddit's line shows
+// Reddit's own row.
+const ctiles = new WeakMap(); // comment -> { key, why, stop, toggle }
 const ctileSummary = (c) => c.querySelector(':scope > details > summary');
 
-// How far the name sits right of the avatar, so it lands on it. The header's
-// slide is taken back out, so it's right in either state.
-function measureShift(c) {
+// How far the name sits right of the avatar, so it lands on it, and where the
+// name ends in the header (for why). The header's slide is taken back out, so
+// it's right in either state.
+function measureTile(c) {
   const sum = ctileSummary(c);
   const av = sum?.querySelector('[slot="commentAvatar"]');
   const meta = sum?.querySelector('[slot="commentMeta"]');
-  if (!av?.offsetWidth || !meta) return 0;
+  if (!av?.offsetWidth || !meta) return null;
   const name = meta.querySelector('[data-testid="nameplate"]');
-  const left = (name?.offsetWidth ? name : meta).getBoundingClientRect().left;
-  return left - new DOMMatrix(getComputedStyle(meta).transform).m41 - av.getBoundingClientRect().left;
+  const box = (name?.offsetWidth ? name : meta.firstElementChild || meta).getBoundingClientRect();
+  const m = meta.getBoundingClientRect();
+  const shift = box.left - new DOMMatrix(getComputedStyle(meta).transform).m41 - av.getBoundingClientRect().left;
+  return { shift, end: (name?.offsetWidth ? box.right : box.left) - m.left };
+}
+function applyTile(c, x) {
+  if (!x || x.shift <= 0) return;
+  c.style.setProperty('--rmute-shift', `${x.shift}px`);
+  c.style.setProperty('--rmute-name-end', `${x.end}px`);
 }
 // All tiles of a page load measured in one layout.
 const shiftQueue = new Set();
@@ -1676,7 +1685,7 @@ function queueShift(c) {
     requestAnimationFrame(() => {
       const list = [...shiftQueue];
       shiftQueue.clear();
-      list.map((n) => [n, measureShift(n)]).forEach(([n, x]) => { if (x > 0) n.style.setProperty('--rmute-shift', `${x}px`); });
+      list.map((n) => [n, measureTile(n)]).forEach(([n, x]) => applyTile(n, x));
     });
   }
   shiftQueue.add(c);
@@ -1692,9 +1701,9 @@ function syncCommentTile(c, reason) {
   const names = mutes.settings.commentNames === 'show';
   const key = reason && `${reason} ${names}`;
   const ui = ctiles.get(c);
-  if (ui ? ui.key === key && ui.tools.isConnected : !key) return;
+  if (ui ? ui.key === key && ui.why.isConnected : !key) return;
   if (ui) {
-    ui.tools.remove();
+    ui.why.remove();
     ui.stop.abort();
     ctiles.delete(c);
   }
@@ -1702,6 +1711,7 @@ function syncCommentTile(c, reason) {
     c.getAnimations({ subtree: true }).forEach((a) => a.cancel());
     for (const a of ['ctile', 'open', 'closing', 'noreplies']) c.removeAttribute(`data-rmute-${a}`);
     c.style.removeProperty('--rmute-shift');
+    c.style.removeProperty('--rmute-name-end');
     ctileSummary(c)?.removeAttribute('title');
     return;
   }
@@ -1709,22 +1719,14 @@ function syncCommentTile(c, reason) {
   if (!ui && mutes.settings.commentHideReplies && reason.includes('word')) c.setAttribute('data-rmute-noreplies', '');
   const stop = new AbortController();
   const on = { signal: stop.signal };
-  const tools = document.createElement('span');
-  tools.className = 'rmute-ctools';
-  const label = document.createElement('span');
-  const show = document.createElement('button');
-  show.type = 'button';
-  show.textContent = 'Show comment';
-  tools.append(label, show);
-  let why = false;
+  // In the header itself, so it slides with the name; placed by --rmute-name-end
+  // (content.css), outside the name's overflow: hidden wrappers.
+  const why = document.createElement('span');
+  why.className = 'rmute-why';
+  why.textContent = names ? reason : `… · ${reason}`;
   const update = () => {
     const sum = ctileSummary(c);
-    label.textContent = [!names && '…', why && reason].filter(Boolean).join(' · ');
-    show.hidden = !why;
-    if (sum) {
-      tools.style.height = `${sum.offsetHeight}px`;
-      sum.title = c.hasAttribute('data-rmute-noreplies') ? 'Click to show the replies again' : 'Press and hold to hide the replies too';
-    }
+    if (sum) sum.title = c.hasAttribute('data-rmute-noreplies') ? 'Click to show the replies again' : 'Press and hold to hide the replies too';
   };
   const settle = () => {
     c.getAnimations({ subtree: true }).forEach((a) => a.cancel());
@@ -1736,8 +1738,7 @@ function syncCommentTile(c, reason) {
   // its spot (CSS), then the • and time stretch in; all done at 300 ms.
   const open = () => {
     settle();
-    const x = measureShift(c);
-    if (x > 0) c.style.setProperty('--rmute-shift', `${x}px`);
+    applyTile(c, measureTile(c));
     const from = c.offsetHeight;
     c.setAttribute('data-rmute-open', '');
     if (still()) return;
@@ -1751,7 +1752,6 @@ function syncCommentTile(c, reason) {
   // The reverse; the body stays until the comment has shrunk over it.
   const close = () => {
     settle();
-    why = false;
     if (still()) {
       c.removeAttribute('data-rmute-open');
       return;
@@ -1775,22 +1775,9 @@ function syncCommentTile(c, reason) {
   const toggle = () => {
     if (c.hasAttribute('data-rmute-noreplies')) c.removeAttribute('data-rmute-noreplies');
     else if (c.hasAttribute('data-rmute-open') && !c.hasAttribute('data-rmute-closing')) close();
-    else why = !why;
+    else open();
     update();
   };
-  show.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    why = false;
-    open();
-    update();
-  }, on);
-  // The reason works like the line itself.
-  tools.addEventListener('click', (e) => {
-    if (e.target.closest('button')) return;
-    e.stopPropagation();
-    toggle();
-  }, on);
   let timer = null;
   let held = false;
   c.addEventListener('pointerdown', (e) => {
@@ -1801,15 +1788,14 @@ function syncCommentTile(c, reason) {
       settle();
       c.removeAttribute('data-rmute-open');
       c.setAttribute('data-rmute-noreplies', '');
-      why = false;
       update();
     }, LONG_PRESS_MS);
   }, on);
   for (const type of ['pointerup', 'pointerleave', 'pointercancel']) c.addEventListener(type, () => clearTimeout(timer), on);
   c.addEventListener('contextmenu', (e) => { if (held) e.preventDefault(); }, on); // touch long-press
   c.setAttribute('data-rmute-ctile', '');
-  c.append(tools);
-  ctiles.set(c, { key, tools, stop, toggle: () => (held ? (held = false) : toggle()) });
+  ctileSummary(c)?.querySelector('[slot="commentMeta"]')?.append(why);
+  ctiles.set(c, { key, why, stop, toggle: () => (held ? (held = false) : toggle()) });
   queueShift(c);
   update();
 }

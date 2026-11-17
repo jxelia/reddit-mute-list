@@ -21,7 +21,7 @@ html:not([data-rmute-off]) shreddit-feed-page-loading {
 }
 
 /* Switched off in the popup: what the extension already added goes away. */
-html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toast, .rmute-pop, .rmute-native, .rmute-cbar, .rmute-ctools) {
+html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toast, .rmute-pop, .rmute-native, .rmute-cbar, .rmute-why) {
   display: none !important;
 }
 
@@ -467,54 +467,37 @@ shreddit-comment[data-rmute-ctile] > details > summary [slot="commentAvatar"] {
   clip-path: inset(-100vh calc(100% - var(--rmute-p) * var(--rmute-shift, 40px) - round(down, var(--rmute-p), 1) * 100vw) -100vh -100vw);
 }
 /* Everything but the name and hover cards; hidden once the closing fades are done. */
-html:not([data-rmute-off]) shreddit-comment[data-rmute-ctile]:is(:not([data-rmute-open]), [data-rmute-closing]) > details[open] > summary [slot="commentMeta"] *:where(:not([slot="content"], [slot="content"] *, [data-testid="nameplate"], [data-testid="nameplate"] *)) {
+html:not([data-rmute-off]) shreddit-comment[data-rmute-ctile]:is(:not([data-rmute-open]), [data-rmute-closing]) > details[open] > summary [slot="commentMeta"] *:where(:not([slot="content"], [slot="content"] *, [data-testid="nameplate"], [data-testid="nameplate"] *, .rmute-why)) {
   visibility: hidden;
   transition: visibility 0s linear 0.3s;
 }
 html:not([data-rmute-off]) shreddit-comment[data-rmute-ctile] > details > summary [slot="commentMeta"] :is([data-testid="nameplate"], [data-testid="nameplate"] *) {
   visibility: visible;
 }
-/* Why and Show comment, at the header line's right, after a click on it. */
-.rmute-ctools {
+/* Why ("user", "word"), after the collapsed name; in the header, so it slides
+   with it, but placed from the header's edge (--rmute-name-end, content.js),
+   outside the name's overflow: hidden wrappers. Fades as the • and time come in. */
+shreddit-comment[data-rmute-ctile] > details > summary [slot="commentMeta"] > .rmute-why {
   position: absolute;
-  z-index: 2;
   top: 0;
-  right: 0;
+  bottom: 0;
+  left: var(--rmute-name-end, 0);
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  height: 36px;
+  margin-left: 0.5rem;
   color: var(--color-neutral-content-weak, #576f76);
   font: italic 12px/16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  cursor: pointer;
-  user-select: none;
-  transition: opacity 0.22s ease-out;
+  white-space: nowrap;
+  transition: opacity 0.18s ease-in;
 }
-.rmute-ctools:not(:has(> span:not(:empty), > button:not([hidden]))) {
-  display: none;
-}
-.rmute-ctools button {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--color-neutral-content-strong, currentColor);
-  font: inherit;
-  font-style: normal;
-  cursor: pointer;
-}
-.rmute-ctools button:hover {
-  text-decoration: underline;
-}
-.rmute-ctools button[hidden] {
-  display: none;
-}
-shreddit-comment[data-rmute-open]:not([data-rmute-closing]) > .rmute-ctools,
-shreddit-comment:has(> details:not([open])) > .rmute-ctools {
+shreddit-comment[data-rmute-ctile][data-rmute-open]:not([data-rmute-closing]) > details > summary [slot="commentMeta"] > .rmute-why,
+shreddit-comment[data-rmute-ctile] > details:not([open]) > summary [slot="commentMeta"] > .rmute-why {
   opacity: 0;
   visibility: hidden;
+  transition: opacity 0.12s ease-out, visibility 0s linear 0.12s;
 }
 @media (prefers-reduced-motion: reduce) {
-  shreddit-comment[data-rmute-ctile] *, .rmute-ctools { transition: none !important; }
+  shreddit-comment[data-rmute-ctile] * { transition: none !important; }
 }
 
 /* Popup's page list: a double-clicked sub's post, scrolled to. */
