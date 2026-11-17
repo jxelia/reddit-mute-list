@@ -1858,12 +1858,19 @@ function markPopular(post) {
 const hiddenNames = new WeakMap(); // post -> its own sub name link, hidden under a bar
 const barToggles = new WeakMap(); // post -> its bar's show/hide toggle
 
-// The header's • and time, and the shared left edge they stretch from.
+// Everything after the sub name on the header's left side (badges like an
+// app icon, the •, the time), and the shared left edge they stretch from.
 function stretchParts(post) {
   const head = post.querySelector('[slot="credit-bar"]');
-  if (!head) return [];
-  const dot = [...head.querySelectorAll('span')].find((n) => !n.children.length && n.textContent.trim() === '•');
-  const parts = [dot, head.querySelector('faceplate-timeago')].filter(Boolean);
+  const link = head?.querySelector('a[data-testid="subreddit-name"]');
+  if (!link) return [];
+  const parts = [];
+  for (let n = link; n && n.parentElement !== head; n = n.parentElement) {
+    for (let sib = n.nextElementSibling; sib; sib = sib.nextElementSibling) {
+      if (sib.offsetWidth && !sib.querySelector('shreddit-post-overflow-menu')) parts.push(sib);
+    }
+  }
+  parts.sort((x, y) => x.getBoundingClientRect().left - y.getBoundingClientRect().left);
   const left = parts[0]?.getBoundingClientRect().left;
   return parts.map((n) => [n, `${left - n.getBoundingClientRect().left}px 50%`]);
 }
@@ -1885,7 +1892,7 @@ function expandIn(post, from) {
 function stretchIn(post) {
   for (const [n, origin] of stretchParts(post)) {
     n.animate(
-      { transform: ['scaleX(0.95)', 'scaleX(1)'], transformOrigin: [origin, origin], opacity: [0, 1] },
+      { transform: ['scaleX(0.975)', 'scaleX(1)'], transformOrigin: [origin, origin], opacity: [0, 1] },
       { duration: 260, delay: 60, easing: 'cubic-bezier(0.2, 0, 0, 1)', fill: 'backwards' },
     );
   }
@@ -1895,7 +1902,7 @@ function stretchIn(post) {
 // fade, and the ⋯ fades out as the × does on opening. Held at the end.
 function stretchOut(post) {
   const anims = stretchParts(post).map(([n, origin]) => n.animate(
-    { transform: ['scaleX(1)', 'scaleX(0.95)'], transformOrigin: [origin, origin], opacity: [1, 0] },
+    { transform: ['scaleX(1)', 'scaleX(0.975)'], transformOrigin: [origin, origin], opacity: [1, 0] },
     { duration: 180, easing: 'ease-in', fill: 'forwards' },
   ));
   const dots = post.querySelector('[slot="credit-bar"] shreddit-post-overflow-menu');
@@ -1949,6 +1956,9 @@ window.addEventListener('click', (e) => {
   e.preventDefault();
   e.stopPropagation();
   toggle();
+  // The mouse press focused the post link, and Reddit's focus-within
+  // highlight would stay after the pointer leaves.
+  if (post.contains(document.activeElement)) document.activeElement.blur();
 }, true);
 // Enter on a collapsed tile's own post link opens it instead of the post page.
 window.addEventListener('keydown', (e) => {
