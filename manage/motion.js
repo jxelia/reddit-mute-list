@@ -87,7 +87,8 @@
     // along, and it comes out of the carousel; the titles round it, the selected one
     // too, move aside by as much, so nothing overlaps.
     let grown = 0;
-    let hover = null;
+    let shift = 0; // how far the lifted titles have moved from rest, weighted by lift
+    let lifted = 0;
     for (const t of strip) {
       let extra = 0;
       for (const l of t.letters) {
@@ -102,10 +103,13 @@
       const wide = (t.width + extra) * t.size * t.mag;
       t.spot = grown + wide / 2;
       grown += wide + GAP;
-      if (t.lift && t.lift > (hover?.lift ?? 0)) hover = t;
+      shift += t.lift * (t.spot - t.rest);
+      lifted += t.lift;
     }
-    // The hovered title stays where it rests; everything else moves away from it.
-    const middle = between('spot') + (hover ? (hover.spot - hover.rest) - (between('spot') - restMiddle) : 0);
+    // The hovered title stays where it rests; everything else moves away from it. While
+    // the hover passes from one title to the next, both count by how far each is lifted,
+    // so the row moves once, straight to the next push, instead of resetting and pushing.
+    const middle = lifted ? restMiddle + shift / lifted : between('spot');
     for (const t of strip) {
       const { width, away, size, lift, spot, rest, letters, extra, pop, mag } = t;
       // The title in the middle is a little carousel of its own: the main one carries
@@ -162,7 +166,9 @@
   function pick() {
     if (pointer === null) return hover(null);
     const x = pointer;
-    hover(strip.find((t) => t.hit && x >= t.left - GAP / 2 && x <= t.right + GAP / 2)?.button ?? null);
+    const over = strip.find((t) => t.hit && x >= t.left - GAP / 2 && x <= t.right + GAP / 2)?.button;
+    // Between two titles the hover stays on the last one, so it goes straight to the next.
+    hover(over ?? (Math.abs(x) <= edge ? hovered : null));
   }
 
   // Past the ends the letters bunch up towards the curve's edge instead of turning on
