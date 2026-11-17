@@ -1705,7 +1705,6 @@ function syncCommentTile(c, reason) {
     c.getAnimations({ subtree: true }).forEach((a) => a.cancel());
     for (const a of ['ctile', 'open', 'closing', 'noreplies']) c.removeAttribute(`data-rmute-${a}`);
     c.style.removeProperty('--rmute-shift');
-    ctileSummary(c)?.removeAttribute('title');
     return;
   }
   // Replies start hidden too when the popup says so.
@@ -1716,15 +1715,7 @@ function syncCommentTile(c, reason) {
   const why = document.createElement('span');
   why.className = 'rmute-why';
   why.textContent = names ? reason : `… · ${reason}`;
-  const update = () => {
-    const sum = ctileSummary(c);
-    if (sum) sum.title = c.hasAttribute('data-rmute-noreplies') ? 'Click to show the replies again' : 'Press and hold to hide the replies too';
-  };
-  const settle = () => {
-    c.getAnimations({ subtree: true }).forEach((a) => a.cancel());
-    if (c.hasAttribute('data-rmute-closing')) c.removeAttribute('data-rmute-open');
-    c.removeAttribute('data-rmute-closing');
-  };
+  const settle = () => c.getAnimations({ subtree: true }).forEach((a) => a.cancel());
   const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   // The body grows down out of the header line as the name slides back onto
   // its spot (CSS), then the • and time stretch in; all done at 300 ms.
@@ -1741,91 +1732,22 @@ function syncCommentTile(c, reason) {
     }
     stretchIn(c, ctileParts(c));
   };
-  // The reverse; the body stays until the comment has shrunk over it.
-  const close = () => {
-    settle();
-    if (still()) {
-      c.removeAttribute('data-rmute-open');
-      return;
-    }
-    const from = c.offsetHeight;
-    c.removeAttribute('data-rmute-open');
-    const to = c.offsetHeight;
-    c.setAttribute('data-rmute-open', '');
-    c.setAttribute('data-rmute-closing', '');
-    const anims = stretchOut(c, ctileParts(c));
-    if (from > to) {
-      anims.push(c.animate({ height: [`${from}px`, `${to}px`], overflow: ['clip', 'clip'] },
-        { duration: Math.min(320, 160 + (from - to) / 5), easing: 'cubic-bezier(0.3, 0, 0.8, 0.15)', fill: 'forwards' }));
-    }
-    Promise.all(anims.map((a) => a.finished)).then(() => {
-      c.removeAttribute('data-rmute-open');
-      c.removeAttribute('data-rmute-closing');
-      requestAnimationFrame(() => anims.forEach((a) => a.cancel()));
-    }, () => {});
-  };
-  const toggle = () => {
-    if (c.hasAttribute('data-rmute-noreplies')) c.removeAttribute('data-rmute-noreplies');
-    else if (c.hasAttribute('data-rmute-open') && !c.hasAttribute('data-rmute-closing')) close();
-    else open();
-    update();
-  };
-  let timer = null;
-  let held = false;
-  c.addEventListener('pointerdown', (e) => {
-    if (e.button !== 0 || !inHead(e, c)) return;
-    held = false;
-    timer = setTimeout(() => {
-      held = true;
-      settle();
-      c.removeAttribute('data-rmute-open');
-      c.setAttribute('data-rmute-noreplies', '');
-      update();
-    }, LONG_PRESS_MS);
+  // Reddit's own collapse (its ⊖ and header click) is left as it is: this only
+  // listens. Once the reader opens the comment again with it, it shows in full.
+  const details = ctileSummary(c)?.parentElement;
+  details?.addEventListener('toggle', () => {
+    if (!details.open) return settle();
+    c.removeAttribute('data-rmute-noreplies');
+    if (!c.hasAttribute('data-rmute-open')) open();
   }, on);
-  for (const type of ['pointerup', 'pointerleave', 'pointercancel']) c.addEventListener(type, () => clearTimeout(timer), on);
-  c.addEventListener('contextmenu', (e) => { if (held) e.preventDefault(); }, on); // touch long-press
   c.setAttribute('data-rmute-ctile', '');
   const meta = ctileSummary(c)?.querySelector('[slot="commentMeta"]');
   const dot = meta && [...meta.querySelectorAll('span[aria-hidden="true"]')].find((n) => n.textContent.trim() === '•');
   if (dot) dot.before(why);
   else meta?.querySelector('[data-testid="nameplate"]')?.closest('a')?.after(why);
-  ctiles.set(c, { key, why, stop, toggle: () => (held ? (held = false) : toggle()) });
+  ctiles.set(c, { key, why, stop });
   queueShift(c);
-  update();
 }
-
-// A click on a tile's own header line (its open summary), off its links, buttons and the ⊖ strip.
-function inHead(e, c) {
-  const sum = ctileSummary(c);
-  if (!sum?.parentElement.open) return false;
-  for (const n of e.composedPath()) {
-    if (n === sum) return true;
-    if (n === c) return false;
-    if (n.classList?.contains('threadline-strip')) return false; // Reddit's ⊖ and thread line
-    if (n.matches?.('a[href], button, input, [role="button"], [role="menu"]')) return false;
-  }
-  return false;
-}
-window.addEventListener('click', (e) => {
-  if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-  const c = e.target.closest?.('summary')?.parentElement?.parentElement;
-  const ui = c && ctiles.get(c);
-  if (!ui || !inHead(e, c)) return;
-  e.preventDefault(); // not Reddit's own collapse
-  e.stopPropagation();
-  ui.toggle();
-  if (c.contains(document.activeElement)) document.activeElement.blur();
-}, true);
-window.addEventListener('keydown', (e) => {
-  if ((e.key !== 'Enter' && e.key !== ' ') || !e.target.matches?.('summary')) return;
-  const c = e.target.parentElement?.parentElement;
-  const ui = c && ctiles.get(c);
-  if (!ui || !e.target.parentElement.open) return;
-  e.preventDefault();
-  e.stopPropagation();
-  ui.toggle();
-}, true);
 
 /* ---------- Built-in recommendation filters ---------- */
 
