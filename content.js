@@ -1858,28 +1858,18 @@ function markPopular(post) {
 const hiddenNames = new WeakMap(); // post -> its own sub name link, hidden under a bar
 const barToggles = new WeakMap(); // post -> its bar's show/hide toggle
 
-// The header's • and time as one strip, each with clip-path keyframes so a
-// single edge sweeps across both from the •'s left to the time's right.
-function wipeFrames(post) {
+// The header's • and time, and the shared left edge they stretch from.
+function stretchParts(post) {
   const head = post.querySelector('[slot="credit-bar"]');
   if (!head) return [];
   const dot = [...head.querySelectorAll('span')].find((n) => !n.children.length && n.textContent.trim() === '•');
-  const parts = [dot, head.querySelector('faceplate-timeago')].filter(Boolean).map((n) => [n, n.getBoundingClientRect()]);
-  if (!parts.length) return [];
-  const left = parts[0][1].left;
-  const width = parts.at(-1)[1].right - left || 1;
-  const hide = 'inset(0 100% 0 0)';
-  const show = 'inset(0 0 0 0)';
-  return parts.map(([n, r]) => [n, [
-    { clipPath: hide, offset: 0 },
-    { clipPath: hide, offset: Math.max(0, (r.left - left) / width) },
-    { clipPath: show, offset: Math.min(1, (r.right - left) / width) },
-    { clipPath: show, offset: 1 },
-  ]]);
+  const parts = [dot, head.querySelector('faceplate-timeago')].filter(Boolean);
+  const left = parts[0]?.getBoundingClientRect().left;
+  return parts.map((n) => [n, `${left - n.getBoundingClientRect().left}px 50%`]);
 }
 
 // Opening: the post grows down out of the bar's height, and the • and time
-// show from left to right. The ⋯ just shows.
+// stretch a little rightward from their left edge as they fade in. The ⋯ just shows.
 function expandIn(post, from) {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const to = post.offsetHeight;
@@ -1893,16 +1883,20 @@ function expandIn(post, from) {
 }
 
 function stretchIn(post) {
-  for (const [n, frames] of wipeFrames(post)) {
-    n.animate(frames, { duration: 260, delay: 60, easing: 'cubic-bezier(0.3, 0, 0.2, 1)', fill: 'backwards' });
+  for (const [n, origin] of stretchParts(post)) {
+    n.animate(
+      { transform: ['scaleX(0.95)', 'scaleX(1)'], transformOrigin: [origin, origin], opacity: [0, 1] },
+      { duration: 260, delay: 60, easing: 'cubic-bezier(0.2, 0, 0, 1)', fill: 'backwards' },
+    );
   }
 }
 
-// Closing: the • and time hide from right to left, and the ⋯ fades out as
-// the × does on opening. Held at the end.
+// Closing: • and time shrink a little back toward their left edge as they
+// fade, and the ⋯ fades out as the × does on opening. Held at the end.
 function stretchOut(post) {
-  const anims = wipeFrames(post).map(([n, frames]) => n.animate(
-    frames, { duration: 180, easing: 'ease-out', direction: 'reverse', fill: 'forwards' },
+  const anims = stretchParts(post).map(([n, origin]) => n.animate(
+    { transform: ['scaleX(1)', 'scaleX(0.95)'], transformOrigin: [origin, origin], opacity: [1, 0] },
+    { duration: 180, easing: 'ease-in', fill: 'forwards' },
   ));
   const dots = post.querySelector('[slot="credit-bar"] shreddit-post-overflow-menu');
   if (dots) anims.push(dots.animate({ opacity: [1, 0] }, { duration: 220, easing: 'ease-out', fill: 'forwards' }));
