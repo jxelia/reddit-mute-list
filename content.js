@@ -2008,8 +2008,8 @@ function stretchIn(post, parts = stretchParts(post)) {
     n.animate(
       { transform: ['scaleX(0.975)', 'scaleX(1)'], transformOrigin: [origin, origin], opacity: [0, 1] },
       // Badges start once the sub name (0.3s CSS slide) is almost in place and end
-      // with it; the • and time, quicker, only after 280 ms of the slide.
-      time ? { duration: 80, delay: 280, easing: 'cubic-bezier(0.2, 0, 0, 1)', fill: 'backwards' }
+      // with it; the • and time, quicker, from 250 ms, also ending with it.
+      time ? { duration: 50, delay: 250, easing: 'cubic-bezier(0.2, 0, 0, 1)', fill: 'backwards' }
         : { duration: 120, delay: 180, easing: 'cubic-bezier(0.2, 0, 0, 1)', fill: 'backwards' },
     );
   }
