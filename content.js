@@ -1871,8 +1871,8 @@ function stretchParts(post) {
 }
 
 // Opening: the post grows down out of the bar's height, and the header's •
-// and time stretch out from nothing at their left, a touch past full width
-// and back. The ⋯ just shows (the bar's × fades out over it, fadeGhost).
+// and time stretch out from just under full width at their left, a touch
+// past it and back. The ⋯ just shows (the bar's × fades out over it, fadeGhost).
 function expandIn(post, from) {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const to = post.offsetHeight;
@@ -1884,10 +1884,10 @@ function expandIn(post, from) {
   }
   for (const [n, origin] of stretchParts(post)) {
     n.animate([
-      { transform: 'scaleX(0)', transformOrigin: origin, opacity: 0 },
-      { transform: 'scaleX(1.06)', transformOrigin: origin, opacity: 1, offset: 0.7 },
+      { transform: 'scaleX(0.9)', transformOrigin: origin, opacity: 0 },
+      { transform: 'scaleX(1.025)', transformOrigin: origin, opacity: 1, offset: 0.65 },
       { transform: 'scaleX(1)', transformOrigin: origin, opacity: 1 },
-    ], { duration: 340, delay: 60, easing: 'cubic-bezier(0.2, 0, 0.2, 1)', fill: 'backwards' });
+    ], { duration: 300, delay: 60, easing: 'cubic-bezier(0.2, 0, 0.2, 1)', fill: 'backwards' });
   }
 }
 
@@ -1905,15 +1905,15 @@ function fadeGhost(node) {
     .finished.then(() => ghost.remove(), () => ghost.remove());
 }
 
-// Closing, the reverse: • and time shrink back into their left edge as they
-// fade, and the post shrinks to the bar's height. Resolves when done.
+// Closing, the reverse: • and time shrink a little toward their left edge as
+// they fade, and the post shrinks to the bar's height. Resolves when done.
 function collapseOut(post, to) {
   post.getAnimations({ subtree: true }).forEach((a) => a.cancel());
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return Promise.resolve();
   const anims = [];
   for (const [n, origin] of stretchParts(post)) {
     anims.push(n.animate(
-      { transform: ['scaleX(1)', 'scaleX(0)'], transformOrigin: [origin, origin], opacity: [1, 0] },
+      { transform: ['scaleX(1)', 'scaleX(0.9)'], transformOrigin: [origin, origin], opacity: [1, 0] },
       { duration: 180, easing: 'ease-in', fill: 'forwards' },
     ));
   }
