@@ -1858,6 +1858,27 @@ function markPopular(post) {
 // bar shows or hides the post itself), then by kind: 'rec' a menu with Keep and
 // Mute, 'popular' the Mute r/ button, 'page' (an opened post) nothing.
 const hiddenNames = new WeakMap(); // post -> its own sub name link, hidden under a bar
+const barToggles = new WeakMap(); // post -> its bar's show/hide toggle
+
+// An opened post's header line (sub, time, ⋯) closes it again, as the bar
+// would: a click in its free space, not on a link or button. Reddit's
+// full-post link lies over that space, so it goes by the click's position.
+window.addEventListener('click', (e) => {
+  if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  const post = e.target.closest?.('shreddit-post[data-rmute-open]');
+  const toggle = post && barToggles.get(post);
+  const head = toggle && post.querySelector('[slot="credit-bar"]');
+  if (!head) return;
+  const r = head.getBoundingClientRect();
+  if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+  for (const n of e.composedPath()) {
+    if (n === post) break;
+    if (n.matches?.('a[href]:not([slot="full-post-link"]), button, input, [role="button"], [role="menu"]')) return;
+  }
+  e.preventDefault();
+  e.stopPropagation();
+  toggle();
+}, true);
 
 function syncDecideBar(post, sub, kind = 'rec') {
   const prev = post.previousElementSibling;
@@ -1890,11 +1911,15 @@ function syncDecideBar(post, sub, kind = 'rec') {
   const toggle = () => {
     const open = post.toggleAttribute('data-rmute-open');
     if (kind === 'page') document.documentElement.toggleAttribute('data-rmute-word-post', !open);
-    if (!hiddenNames.has(post)) matchSubName(post, sub, label);
+    // Open, the bar goes (content.css) and the post looks as it would without
+    // one, its own sub name back; closed, the bar names the sub again.
+    if (open) hiddenNames.get(post)?.style.removeProperty('display');
+    else matchSubName(post, sub, label);
     el.setAttribute('aria-expanded', String(open));
     el.title = `${open ? 'Hide' : 'Show'} ${what}`;
   };
   el.addEventListener('click', toggle);
+  barToggles.set(post, toggle);
   el.addEventListener('keydown', (e) => {
     if (e.target !== el || (e.key !== 'Enter' && e.key !== ' ')) return;
     e.preventDefault();
