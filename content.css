@@ -279,6 +279,8 @@ html:not([data-rmute-off]) shreddit-post[data-rmute-tile]:not([data-rmute-open])
   height: 28px;
   padding-bottom: 4px;
   overflow: clip;
+  /* No hover or focus highlight until it opens. */
+  background-color: var(--color-neutral-background) !important;
 }
 /* Every part, since Reddit sets visibility: visible on the time. */
 html:not([data-rmute-off]) shreddit-post[data-rmute-tile]:not([data-rmute-open]) [slot="credit-bar"],
