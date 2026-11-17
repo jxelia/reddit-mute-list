@@ -9,6 +9,7 @@
   const GAP = 5; // between titles along the strip
   const SIZES = [1.25, 1.06, 0.98, 0.94]; // a title's size by how many titles it is from the selected one
   const POP = 12; // how far a hovered title comes out of the carousel, along the way it's facing, in px
+  const FILL = [400, 680]; // a hovered title's letters thicken from this weight to this as it comes out
   const POP_ROOM = 14; // how far past the row's ends it can go, in px
   const HOVER_TIME = 70; // how quickly it gets there, in ms (about 3x this to settle)
   const WORD_REACH = 1.2; // how far round the selected word's ends sit, against the row's curve at that point
@@ -86,11 +87,14 @@
       t.right = project(off + half, round, 0);
       // It comes straight out, and slides back only as far as it would leave the page.
       const pop = POP * lift;
+      // The letters fill out as it comes, not only the word growing.
+      const weight = lift ? String(Math.round(FILL[0] + (FILL[1] - FILL[0]) * lift)) : '';
       const outer = Math.abs(off) + half;
       const slide = lift ? -Math.sign(off) * Math.max(0, project(outer, round, pop) - tabs.clientWidth / 2 - POP_ROOM) : 0;
       for (const { el, at } of letters) {
         const along = spot + at * size * (1 - own) - middle;
         el.style.transform = `translateX(${slide}px) perspective(${VIEW}px) translateZ(${-round}px) rotateY(${along / round}rad) translateZ(${round + pop}px) perspective(${small * WORD_VIEW}px) translateZ(${-small}px) rotateY(${own * at * size / small}rad) translateZ(${small}px) scale(${size}) translate(-50%, -50%)`;
+        el.style.fontWeight = weight;
       }
     }
     drawLine(round);
