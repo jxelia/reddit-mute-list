@@ -251,12 +251,12 @@ html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toa
 .rmute-pick > button {
   /* Opacity drops evenly over the spin. Its own layer, so the spinning icon
      is drawn once and faded smoothly instead of shimmering as it redraws. */
-  transition: opacity 0.25s linear, transform 0.25s ease-out, visibility 0.25s;
+  transition: opacity 0.35s linear, transform 0.35s ease-out, visibility 0.35s;
   will-change: opacity, transform;
 }
 .rmute-decide[aria-expanded="true"] .rmute-pick > button {
   opacity: 0;
-  transform: rotate(135deg);
+  transform: rotate(130deg);
   visibility: hidden;
 }
 .rmute-decide[aria-expanded="true"] .rmute-tools {
