@@ -316,6 +316,9 @@ shreddit-post[data-rmute-tile] [slot="credit-bar"] a[data-testid="subreddit-name
 html:not([data-rmute-off]) shreddit-post[data-rmute-tile]:not([data-rmute-open]) [slot="credit-bar"] a[data-testid="subreddit-name"] > :first-child {
   clip-path: inset(0 100% 0 0);
   transform: scaleX(0.95);
+  /* Stays visible while its clip closes: the credit bar's delayed hide doesn't
+     reach an icon drawn inside a shadow root, which would vanish at once. */
+  transition: clip-path 0.3s cubic-bezier(0.2, 0, 0, 1), transform 0.12s ease-out, visibility 0s linear 0.3s;
 }
 .rmute-decide.rmute-tile-tools {
   position: absolute;
