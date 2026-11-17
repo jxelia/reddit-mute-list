@@ -1860,6 +1860,26 @@ function markPopular(post) {
 const hiddenNames = new WeakMap(); // post -> its own sub name link, hidden under a bar
 const barToggles = new WeakMap(); // post -> its bar's show/hide toggle
 
+// Opening: the post grows down out of the bar's height, and the header's
+// time and ⋯ slide in a little from the right as they fade in.
+function expandIn(post, from) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const to = post.offsetHeight;
+  if (to > from) {
+    post.animate(
+      { height: [`${from}px`, `${to}px`], overflow: ['clip', 'clip'] },
+      { duration: Math.min(380, 180 + to / 4), easing: 'cubic-bezier(0.2, 0, 0, 1)' },
+    );
+  }
+  const head = post.querySelector('[slot="credit-bar"]');
+  for (const n of head?.querySelectorAll('faceplate-timeago, shreddit-post-overflow-menu') || []) {
+    n.animate(
+      { transform: ['translateX(10px)', 'none'], opacity: [0, 1] },
+      { duration: 200, delay: 60, easing: 'ease-out', fill: 'backwards' },
+    );
+  }
+}
+
 // An opened post's header line (sub, time, ⋯) closes it again, as the bar
 // would: a click in its free space, not on a link or button. Reddit's
 // full-post link lies over that space, so it goes by the click's position.
@@ -1909,12 +1929,15 @@ function syncDecideBar(post, sub, kind = 'rec') {
   const what = kind === 'page' ? 'post and comments' : 'post';
   el.title = `Show ${what}`;
   const toggle = () => {
+    const barHeight = el.offsetHeight;
     const open = post.toggleAttribute('data-rmute-open');
     if (kind === 'page') document.documentElement.toggleAttribute('data-rmute-word-post', !open);
     // Open, the bar goes (content.css) and the post looks as it would without
     // one, its own sub name back; closed, the bar names the sub again.
-    if (open) hiddenNames.get(post)?.style.removeProperty('display');
-    else matchSubName(post, sub, label);
+    if (open) {
+      hiddenNames.get(post)?.style.removeProperty('display');
+      expandIn(post, barHeight);
+    } else matchSubName(post, sub, label);
     el.setAttribute('aria-expanded', String(open));
     el.title = `${open ? 'Hide' : 'Show'} ${what}`;
   };
