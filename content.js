@@ -1902,6 +1902,9 @@ function stretchIn(post) {
       { duration: 120, delay: 180, easing: 'cubic-bezier(0.2, 0, 0, 1)', fill: 'backwards' },
     );
   }
+  // The ⋯ fades in under the fading ×, also done at 300 ms.
+  post.querySelector('[slot="credit-bar"] shreddit-post-overflow-menu')
+    ?.animate({ opacity: [0, 1] }, { duration: 300, easing: 'ease-in-out' });
 }
 
 // Closing: • and time shrink a little back toward their left edge as they
@@ -2022,7 +2025,7 @@ function syncTile(post, sub, kind) {
     post.animate(
       { height: [from[0], to[0]], paddingBottom: [from[1], to[1]], overflow: ['clip', 'clip'] },
       open
-        ? { duration: Math.min(380, 180 + h / 4), easing: 'cubic-bezier(0.2, 0, 0, 1)' }
+        ? { duration: 300, easing: 'cubic-bezier(0.2, 0, 0, 1)' } // ends with the sub name's slide
         : { duration: Math.min(320, 160 + h / 5), easing: 'cubic-bezier(0.3, 0, 0.8, 0.15)' },
     );
     if (open) stretchIn(post);
