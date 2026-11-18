@@ -8,3 +8,8 @@ build.txt
 .DS_Store
 # The popup designer's saved edits
 tools/designer/changes.json
+# Personal mute lists
+lists/
+# Local project notes
+CLAUDE.md
+NOTES.md
