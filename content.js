@@ -1767,20 +1767,11 @@ function syncCommentTile(c, reason) {
       requestAnimationFrame(() => anims.forEach((a) => a.cancel()));
     }, () => {});
   };
-  // Reddit's own collapse (its ⊖ and header click) is left as it is: this only
-  // listens. Once the reader opens the comment again with it, it shows in full.
+  // Reddit's own collapse (its ⊖ / ⊕ and header click) is left as it is and
+  // never changes Show / Hide: this only ends a running animation on a close.
   const details = ctileSummary(c)?.parentElement;
-  // Chrome also fires toggle once for a details that starts open, so only a
-  // reopen after a seen close counts.
-  let closed = false;
   details?.addEventListener('toggle', () => {
-    if (!details.open) {
-      closed = true;
-      return settle();
-    }
-    if (!closed) return;
-    c.removeAttribute('data-rmute-noreplies');
-    if (!c.hasAttribute('data-rmute-open')) open();
+    if (!details.open) settle();
   }, on);
   // Inside Reddit's summary: keep its own toggle out of this one click.
   show.addEventListener('click', (e) => {
