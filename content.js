@@ -162,7 +162,7 @@ function buildCss(list) {
     other.push(`html[data-rmute-muted-op] :is(${COMMENT_SECTIONS})`);
   }
   posts.push(...recPosts);
-  const pagePosts = rename ? [] : wordOnSubs.map((p) => ['html[data-rmute-page="subs"]', p]);
+  const pagePosts = rename ? [] : wordOnSubs.map((p) => `${p}[data-rmute-on-subs]`);
   if (!rename) posts.push(...wordAnywhere);
 
   // Feed posts sit in an <article> followed by an <hr>; hide those too so no
@@ -172,7 +172,7 @@ function buildCss(list) {
   const withArticle = (p) => [p, `${p} + hr`, `article:has(> ${p})`, `article:has(> ${p}) + hr`];
   const selectors = [
     ...posts.flatMap(withArticle),
-    ...pagePosts.flatMap(([page, p]) => withArticle(p).map((sel) => `${page} ${sel}`)),
+    ...pagePosts.flatMap(withArticle),
     ...other
   ];
   // Many small rules, not one: Chrome silently ignores selectors past about
@@ -193,7 +193,7 @@ function buildCss(list) {
   // Rename: the post stays, its title says which word matched, and its text,
   // media and thumbnail are hidden.
   if (rename) {
-    const hit = [...wordAnywhere, ...wordOnSubs.map((p) => `html[data-rmute-page="subs"] ${p}`)];
+    const hit = [...wordAnywhere, ...wordOnSubs.map((p) => `${p}[data-rmute-on-subs]`)];
     const inHit = (sel) => hit.map((p) => `${p} ${sel}`).join(',\n');
     rules.push(
       `${inHit(':is([slot="title"], a.title)[data-rmute-hit]')} { font-size: 0 !important; }`,
@@ -1299,6 +1299,7 @@ function postFlair(post) {
 const postSub = (post) => (post.matches('.thing') ? MuteStore.normalize(post.dataset.subreddit) : postInfo(post).sub);
 
 function markTitle(post) {
+  markSubsPage(post);
   markPreset(post);
   markScore(post);
   const sub = postSub(post);
@@ -2396,6 +2397,15 @@ const needsMarking = () => Object.values(wordMatchers).some(Boolean) || presetsO
   mutes.settings.hideSeen || mutes.settings.hideDuplicates || Number(mutes.settings.maxAgeHours) > 0 || mutes.settings.hideCrossposts ||
   mutes.settings.hideCommentsOnMutedPosts;
 
+// Title words on the page of a sub not joined: the sub page a post was loaded
+// on is kept on the post (like postScope), since Reddit changes the URL
+// before it swaps the old page out, which showed its hidden posts for a moment.
+let subsPage = null;
+const listingOf = (post) => (post.dataset.rmuteListing ||= location.pathname.match(LISTING_RE)?.[1].toLowerCase() || '-');
+function markSubsPage(post) {
+  if (listingOf(post) === subsPage) post.setAttribute('data-rmute-on-subs', '');
+}
+
 // "popular" on r/popular, "subs" on the page of a subreddit that isn't
 // joined or in any custom feed, otherwise nothing. Reddit navigates without reloading, so
 // this reruns from the mutation observer whenever the URL changes.
@@ -2417,6 +2427,14 @@ function updatePageScope(force = true) {
   }
   if (scope) document.documentElement.dataset.rmutePage = scope;
   else delete document.documentElement.dataset.rmutePage;
+  // Only this page's own posts: the old page's posts are still there for a
+  // moment after Reddit changes the URL, and keep their mark until they go.
+  subsPage = scope === 'subs' ? sub : null;
+  if (sub) {
+    document.querySelectorAll(`${POST_SELECTOR}, .thing.link`).forEach((post) => {
+      if (listingOf(post) === sub) post.toggleAttribute('data-rmute-on-subs', !!subsPage);
+    });
+  }
   // Main page and r/popular bars need no re-marking here: each post keeps the
   // scope it was loaded with (postScope).
 }
