@@ -1699,6 +1699,7 @@ function syncCommentTile(c, reason) {
   if (ui ? ui.key === key && ui.why.isConnected : !key) return;
   if (ui) {
     ui.why.remove();
+    ui.hide.remove();
     ui.stop.abort();
     ctiles.delete(c);
   }
@@ -1720,7 +1721,16 @@ function syncCommentTile(c, reason) {
   show.type = 'button';
   show.textContent = 'Show comment';
   why.append(show);
-  const settle = () => c.getAnimations({ subtree: true }).forEach((a) => a.cancel());
+  // At the end of the open header, after the time and badges.
+  const hide = document.createElement('button');
+  hide.type = 'button';
+  hide.className = 'rmute-hide';
+  hide.textContent = 'Hide comment';
+  const settle = () => {
+    c.getAnimations({ subtree: true }).forEach((a) => a.cancel());
+    if (c.hasAttribute('data-rmute-closing')) c.removeAttribute('data-rmute-open');
+    c.removeAttribute('data-rmute-closing');
+  };
   const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   // The body grows down out of the header line as the name slides back onto
   // its spot (CSS), then the • and time stretch in; all done at 300 ms.
@@ -1737,6 +1747,26 @@ function syncCommentTile(c, reason) {
     }
     stretchIn(c, ctileParts(c));
   };
+  // The reverse; the body stays until the comment has shrunk over it.
+  const close = () => {
+    settle();
+    if (still()) return c.removeAttribute('data-rmute-open');
+    const from = c.offsetHeight;
+    c.removeAttribute('data-rmute-open');
+    const to = c.offsetHeight;
+    c.setAttribute('data-rmute-open', '');
+    c.setAttribute('data-rmute-closing', '');
+    const anims = stretchOut(c, ctileParts(c));
+    if (from > to) {
+      anims.push(c.animate({ height: [`${from}px`, `${to}px`], overflow: ['clip', 'clip'] },
+        { duration: Math.min(320, 160 + (from - to) / 5), easing: 'cubic-bezier(0.3, 0, 0.8, 0.15)', fill: 'forwards' }));
+    }
+    Promise.all(anims.map((a) => a.finished)).then(() => {
+      c.removeAttribute('data-rmute-open');
+      c.removeAttribute('data-rmute-closing');
+      requestAnimationFrame(() => anims.forEach((a) => a.cancel()));
+    }, () => {});
+  };
   // Reddit's own collapse (its ⊖ and header click) is left as it is: this only
   // listens. Once the reader opens the comment again with it, it shows in full.
   const details = ctileSummary(c)?.parentElement;
@@ -1752,12 +1782,18 @@ function syncCommentTile(c, reason) {
     c.removeAttribute('data-rmute-noreplies');
     open();
   }, on);
+  hide.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    close();
+  }, on);
   c.setAttribute('data-rmute-ctile', '');
   const meta = ctileSummary(c)?.querySelector('[slot="commentMeta"]');
   const dot = meta && [...meta.querySelectorAll('span[aria-hidden="true"]')].find((n) => n.textContent.trim() === '•');
   if (dot) dot.before(why);
   else meta?.querySelector('[data-testid="nameplate"]')?.closest('a')?.after(why);
-  ctiles.set(c, { key, why, stop });
+  meta?.append(hide);
+  ctiles.set(c, { key, why, hide, stop });
   queueShift(c);
 }
 

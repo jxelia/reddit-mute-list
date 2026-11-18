@@ -484,7 +484,13 @@ html:not([data-rmute-off]) shreddit-comment[data-rmute-ctile]:not([data-rmute-op
   visibility: visible;
   animation: rmute-why-in 0.18s ease-in;
 }
-.rmute-why button {
+.rmute-hide {
+  display: none;
+}
+html:not([data-rmute-off]) shreddit-comment[data-rmute-ctile][data-rmute-open]:not([data-rmute-closing]) > details[open] > summary [slot="commentMeta"] .rmute-hide {
+  display: inline-block;
+}
+.rmute-why button, .rmute-hide {
   margin-left: 0.75rem;
   padding: 0;
   border: 0;
@@ -494,7 +500,7 @@ html:not([data-rmute-off]) shreddit-comment[data-rmute-ctile]:not([data-rmute-op
   font-style: normal;
   cursor: pointer;
 }
-.rmute-why button:hover {
+:is(.rmute-why button, .rmute-hide):hover {
   text-decoration: underline;
 }
 @keyframes rmute-why-in {
