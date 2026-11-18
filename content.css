@@ -462,7 +462,7 @@ shreddit-comment[data-rmute-ctile] > details > summary [slot="commentAvatar"] {
   clip-path: inset(-100vh calc(100% - var(--rmute-p) * var(--rmute-shift, 40px) - round(down, var(--rmute-p), 1) * 100vw) -100vh -100vw);
 }
 /* Everything but the name and hover cards; hidden once the closing fades are done. */
-html:not([data-rmute-off]) shreddit-comment[data-rmute-ctile]:is(:not([data-rmute-open]), [data-rmute-closing]) > details[open] > summary [slot="commentMeta"] *:where(:not([slot="content"], [slot="content"] *, [data-testid="nameplate"], [data-testid="nameplate"] *, .rmute-why)) {
+html:not([data-rmute-off]) shreddit-comment[data-rmute-ctile]:is(:not([data-rmute-open]), [data-rmute-closing]) > details[open] > summary [slot="commentMeta"] *:where(:not([slot="content"], [slot="content"] *, [data-testid="nameplate"], [data-testid="nameplate"] *, .rmute-why, .rmute-why *)) {
   visibility: hidden;
   transition: visibility 0s linear 0.3s;
 }
@@ -483,6 +483,19 @@ html:not([data-rmute-off]) shreddit-comment[data-rmute-ctile]:not([data-rmute-op
   display: inline-block;
   visibility: visible;
   animation: rmute-why-in 0.18s ease-in;
+}
+.rmute-why button {
+  margin-left: 0.75rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-neutral-content-strong, currentColor);
+  font: inherit;
+  font-style: normal;
+  cursor: pointer;
+}
+.rmute-why button:hover {
+  text-decoration: underline;
 }
 @keyframes rmute-why-in {
   from { opacity: 0; }

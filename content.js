@@ -1716,6 +1716,10 @@ function syncCommentTile(c, reason) {
   const why = document.createElement('span');
   why.className = 'rmute-why';
   why.textContent = names ? reason : `… · ${reason}`;
+  const show = document.createElement('button');
+  show.type = 'button';
+  show.textContent = 'Show comment';
+  why.append(show);
   const settle = () => c.getAnimations({ subtree: true }).forEach((a) => a.cancel());
   const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   // The body grows down out of the header line as the name slides back onto
@@ -1740,6 +1744,13 @@ function syncCommentTile(c, reason) {
     if (!details.open) return settle();
     c.removeAttribute('data-rmute-noreplies');
     if (!c.hasAttribute('data-rmute-open')) open();
+  }, on);
+  // Inside Reddit's summary: keep its own toggle out of this one click.
+  show.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    c.removeAttribute('data-rmute-noreplies');
+    open();
   }, on);
   c.setAttribute('data-rmute-ctile', '');
   const meta = ctileSummary(c)?.querySelector('[slot="commentMeta"]');
