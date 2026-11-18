@@ -2376,13 +2376,32 @@ function markTitles(root = document) {
     document.querySelectorAll('shreddit-post[data-rmute-tile]').forEach((post) => syncDecideBar(post, null));
     document.querySelectorAll('.rmute-cbar').forEach((bar) => syncCommentBar(bar.parentElement, ''));
     document.querySelectorAll('shreddit-comment[data-rmute-ctile]').forEach((c) => syncCommentTile(c, ''));
+    document.querySelectorAll('[data-rmute-search]').forEach((r) => r.removeAttribute('data-rmute-search'));
     return;
   }
   if (root.matches?.(`${POST_SELECTOR}, .thing.link`)) markTitle(root);
   root.querySelectorAll?.(`${POST_SELECTOR}, .thing.link`).forEach(markTitle);
+  if (root.matches?.(SEARCH_RESULT)) markSearchResult(root);
+  root.querySelectorAll?.(SEARCH_RESULT).forEach(markSearchResult);
   if (!wordMatchers.commentWords && !(mutes.settings.hideComments && mutes.users.length) && !document.querySelector('.rmute-cbar, [data-rmute-ctile]')) return;
   if (root.matches?.(COMMENT_SELECTOR)) markComment(root);
   root.querySelectorAll?.(COMMENT_SELECTOR).forEach(markComment);
+}
+
+// A post in search results (/search/): not a shreddit-post, but its tracking
+// context names the sub and author (search-result-item paste 2026-11-18).
+// Hidden for a muted title word, sub or user, on any search page.
+const SEARCH_RESULT = '[data-testid="search-post-with-content-preview"]';
+const onSearch = () => /\/search\/?$/.test(location.pathname);
+
+function markSearchResult(item) {
+  let ctx = {};
+  try { ctx = JSON.parse(item.querySelector('search-telemetry-tracker[data-faceplate-tracking-context]')?.dataset.faceplateTrackingContext || '{}'); } catch {}
+  const sub = MuteStore.normalize(ctx.subreddit?.name || '');
+  const author = MuteStore.normalize(ctx.profile?.name || '');
+  const title = item.querySelector('[data-testid="post-title-text"]')?.textContent || ctx.post?.title || '';
+  const hit = (sub && inList(mutes.subs, sub)) || userMuted(author, sub) || !!wordHit(wordMatchers.titleWords, title, sub);
+  item.toggleAttribute('data-rmute-search', hit);
 }
 
 function updateWords() {
@@ -2395,7 +2414,7 @@ function updateWords() {
 const needsMarking = () => Object.values(wordMatchers).some(Boolean) || presetsOn() ||
   mutes.settings.collapsePopular || Number(mutes.settings.minScore) > 0 ||
   mutes.settings.hideSeen || mutes.settings.hideDuplicates || Number(mutes.settings.maxAgeHours) > 0 || mutes.settings.hideCrossposts ||
-  mutes.settings.hideCommentsOnMutedPosts;
+  mutes.settings.hideCommentsOnMutedPosts || (onSearch() && (mutes.subs.length > 0 || mutes.users.length > 0));
 
 // Title words on the page of a sub not joined: the sub page a post was loaded
 // on is kept on the post (like postScope), since Reddit changes the URL

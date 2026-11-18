@@ -497,3 +497,6 @@ html:not([data-rmute-off]) shreddit-comment[data-rmute-ctile]:not([data-rmute-op
   0%, 40% { outline: 3px solid #ff4500; outline-offset: 2px; }
   100% { outline: 3px solid transparent; outline-offset: 2px; }
 }
+
+/* Search results with a muted title word, sub or user (markSearchResult). */
+[data-rmute-search] { display: none !important; }
