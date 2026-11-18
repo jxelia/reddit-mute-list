@@ -1770,8 +1770,15 @@ function syncCommentTile(c, reason) {
   // Reddit's own collapse (its ⊖ and header click) is left as it is: this only
   // listens. Once the reader opens the comment again with it, it shows in full.
   const details = ctileSummary(c)?.parentElement;
+  // Chrome also fires toggle once for a details that starts open, so only a
+  // reopen after a seen close counts.
+  let closed = false;
   details?.addEventListener('toggle', () => {
-    if (!details.open) return settle();
+    if (!details.open) {
+      closed = true;
+      return settle();
+    }
+    if (!closed) return;
     c.removeAttribute('data-rmute-noreplies');
     if (!c.hasAttribute('data-rmute-open')) open();
   }, on);
