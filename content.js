@@ -494,8 +494,7 @@ function postScope(post) {
 
 // Actions in menu order. Mute r/… has its own button under the ⋯ (see
 // addMuteButtons), so it's only in the fallback popover and, where that
-// button is hidden (post pages), the native menu. On recommended posts the
-// button is "Show fewer posts like this" instead, so the menu has both mutes.
+// button is hidden (post pages) or absent (recommended posts), the native menu.
 function actionsFor(post, { withMuteSub = isRecommended(post) || !post.querySelector('.rmute-under-btn')?.checkVisibility() } = {}) {
   const { sub, author } = postInfo(post);
   const actions = [];
@@ -519,7 +518,9 @@ function addMuteButton(menu) {
   menu.dataset.rmuteUnder = '';
   const post = menu.closest(POST_SELECTOR);
   const sub = post && postInfo(post).sub;
-  if (!sub) return;
+  // Recommended posts get no button: the user had its "Show fewer" eye removed
+  // (2026-11-20; code in ~/.claude/extension-reference/design.md).
+  if (!sub || isRecommended(post)) return;
 
   const column = document.createElement('span');
   column.className = 'rmute-under';
@@ -531,20 +532,17 @@ function addMuteButton(menu) {
     column.slot = menu.slot;
     menu.removeAttribute('slot');
   }
-  // Recommended posts get Reddit's own "Show fewer posts like this" instead.
-  const fewer = isRecommended(post);
   const button = document.createElement('button');
   button.type = 'button';
-  button.className = fewer ? 'rmute-under-btn rmute-fewer' : 'rmute-under-btn';
-  button.title = fewer ? 'Show fewer posts like this and hide' : `Mute r/${sub}`;
+  button.className = 'rmute-under-btn';
+  button.title = `Mute r/${sub}`;
   button.setAttribute('aria-label', button.title);
-  button.appendChild(makeSvg(fewer ? ICONS.fewer : ICONS.mute));
+  button.appendChild(makeSvg(ICONS.mute));
   // The post itself opens on click; keep that from happening.
   button.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopImmediatePropagation();
-    if (fewer) showFewer(post, menu);
-    else mute('subs', sub);
+    mute('subs', sub);
   });
   menu.before(column);
   column.append(menu, button);
@@ -1080,13 +1078,6 @@ function pickFromMenu(menuHost, test, done) {
     done(false);
   };
   tick();
-}
-
-function showFewer(post, menuHost) {
-  pickFromMenu(menuHost, isShowFewer, () => {
-    // "Show fewer" closes the menu (or swaps the post); reopen for Hide.
-    setTimeout(() => pickFromMenu(menuHost, isHide, () => {}), 150);
-  });
 }
 
 // Older versions hid these posts themselves; drop what they stored.

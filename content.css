@@ -64,20 +64,6 @@ html[data-rmute-off] :is(.rmute-under-btn, .rmute-decide, .rmute-old, .rmute-toa
   outline: none;
 }
 
-/* Show fewer: a bare icon, colored like the icons in Reddit's menu items. */
-.rmute-under-btn.rmute-fewer,
-.rmute-under-btn.rmute-fewer:hover,
-.rmute-under-btn.rmute-fewer:focus-visible {
-  background: none;
-  color: var(--color-neutral-content-strong, #fff);
-  opacity: 0.7;
-}
-
-.rmute-under-btn.rmute-fewer:hover,
-.rmute-under-btn.rmute-fewer:focus-visible {
-  opacity: 0.85;
-}
-
 .rmute-under-btn svg {
   width: 20px;
   height: 20px;
