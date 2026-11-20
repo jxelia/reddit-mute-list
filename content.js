@@ -235,7 +235,9 @@ function ownParts(c, keep, head) {
   const step = ` > :not(${reply}, ${kept})`;
   const levels = [0, 1, 2, 3, 4].map((n) => `${c}${step.repeat(n)} > *`);
   const own = `:is(${c} *):is(${levels.join(', ')}):not(${reply}, :has(${reply}), ${kept})`;
-  return head ? own : `${own}, ${c} > details[open] > summary > :not(.threadline-strip)`;
+  // A tile's details holds its header: kept even with no replies in it, while
+  // the steps still go through it to hide the body.
+  return head ? `${own}:not(${c} > details)` :`${own}, ${c} > details[open] > summary > :not(.threadline-strip)`;
 }
 
 // The popup's on/off switch. Off: no hiding, nothing added to the page
